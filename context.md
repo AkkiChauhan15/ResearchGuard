@@ -1,0 +1,268 @@
+# Research Guard AI — Project context
+
+Version: 1.0  
+Prepared: 2026-09-15  
+Purpose: Reference for the coding agent implementing the agreed phased build.
+
+## Read this first
+
+Read this file before planning, coding, changing scope, or resuming work after a context reset. Read applicable repository instructions as well. This file records project requirements; it does not override system instructions, access controls, or subsequent explicit user decisions.
+
+This file cannot guarantee hallucination-free development or scientific judgments. Enforce its requirements through software validation, source checks, tests, and researcher review.
+
+Inspect the repository before describing its state. Do not infer that the application exists because a sample case study describes it in the past tense. Prior competition drafts are illustrative narratives, not evidence of implementation, deployment, evaluation, or research outcomes.
+
+## 1. Confirmed project intent
+
+**Name:** Research Guard AI.
+
+**Audience:** Early-career biomedical researchers who need help checking AI-generated research information.
+
+**Problem:** Beginners may lack the expertise to recognize what needs verification. An answer can contain real references while drawing a conclusion those references or the experimental design do not support.
+
+**Product purpose:** Make the relationship between a claim, its evidence, its experimental context, and its limitations visible. Help the researcher identify the next verification question.
+
+**Primary journey:** Paste an answer → identify claims → retrieve evidence → assess support → inspect sources → revise the conclusion → save or export the review.
+
+**Workflow language:** DEFINE → RISK → ASSIST → VERIFY → RECORD. Here, “risk” means review priority, not a clinical risk score or a probability that a claim is false.
+
+**Communication style:** Clear, professional English. Explain technical terms when first used. Preserve scientific qualifications. Avoid unexplained jargon, inflated novelty claims, and marketing promises about perfect accuracy.
+
+## 2. Requirements and unknowns
+
+| Item | Status and required action |
+| --- | --- |
+| Core product and phased workflow | Agreed; preserve the intent described here. |
+| Initial domains | Biological claims and assay/reagent interpretation. |
+| Target deliverable | Working web application with evidence-linked reviews and exports. |
+| Framework and hosting | Not selected; inspect the environment, reuse an appropriate existing stack, and document the choice. |
+| Existing implementation | Not established by this file; inspect actual files and behavior. |
+| API keys and account access | Unknown; check availability without displaying secrets. |
+| Model choices | Candidates only; verify documented support and actual access. |
+| Performance, user adoption, savings | Unmeasured; do not invent results. |
+| Demonstration interaction | Reconstructed; not a historical transcript or a recorded live tool run. |
+| Public deployment | Requires explicit authorization; finish a reviewable local preview first. |
+
+Routine implementation choices may be made autonomously. Do not repeatedly ask for permission to read files, implement reversible changes, or run relevant tests. Explain genuine blockers and continue independent work. Do not bypass approval or access restrictions.
+
+## 3. Initial scope
+
+Include:
+
+- Pasted text and optional public source URLs.
+- Intended use: topic understanding, assay interpretation, presentation preparation, or experiment planning.
+- Relevant optional context: organism/model, assay, reagent identifier, and conditions.
+- Editable extracted claims.
+- Live public evidence retrieval with visible access limitations.
+- Observation versus inference, source passages, context mismatches, and suggested qualified wording.
+- Researcher accept/edit/reject decisions and notes.
+- Readable and structured JSON review exports.
+- Clearly separated demonstration and live modes.
+
+Exclude from the first release:
+
+- Raw microscopy or western blot image interpretation.
+- Patient data, clinical diagnosis, or treatment recommendations.
+- Autonomous experiment execution or automatic dosing instructions.
+- Training a new foundation model.
+- Broad, unsupported claims of coverage across all research domains.
+- A generic chatbot that replaces the structured review workflow.
+
+Do not reuse private cell identities, unpublished targets, experimental results, images, or laboratory details from other conversations. Demonstrations must use public information or explicitly synthetic examples.
+
+## 4. Evidence rules
+
+1. A paper’s existence does not establish support for a claim.
+2. A matching passage does not establish that the claim follows from it.
+3. Database indexing does not certify that a finding is correct.
+4. Model agreement is not independent scientific evidence.
+5. User-reported observations are not independently verified measurements.
+6. Missing evidence is not proof that a claim is false.
+7. A failed request or inaccessible document is an access limitation, not a biological finding.
+8. Abstract-only access must never be described as a full-text or methods review.
+9. A statement from another organism, cell model, assay, or treatment context must not be silently generalized.
+10. Association, prediction, proposed mechanism, and experimentally supported causation must remain distinct.
+11. Do not invent titles, DOIs, PMIDs, quotations, page numbers, figures, passages, or document versions.
+12. Cite only source IDs supplied by retrieval; reject unknown IDs before rendering or export.
+13. Preserve the distinction between exact quotations and model-written summaries.
+14. Validate exact quotations against retrieved text with limited, documented normalization. Preserve the original text.
+15. Conflicting relevant evidence must be shown, not hidden to obtain a single confident answer.
+16. Missing product identity requires a targeted question, not a guessed manufacturer or catalog number.
+17. Correct arithmetic does not establish that an experimental condition is suitable.
+18. Do not promise that suggested controls alone guarantee a mechanistic conclusion.
+
+## 5. Assessment and retrieval states
+
+Use the following evidence statuses:
+
+| Status | Meaning |
+| --- | --- |
+| Supported within the stated context | Retrieved, accessible evidence supports the specific statement and its context. This is not universal certification. |
+| Partially supported | Only part of the statement or a narrower conclusion is supported. |
+| Conflicting evidence | Relevant retrieved evidence disagrees. Explain differences where possible. |
+| Contradicted by retrieved evidence | Accessible evidence directly conflicts with the claim in the relevant context. |
+| Insufficient evidence found | Accessible retrieved evidence does not resolve the claim. |
+
+Keep access state separate, for example: `ok`, `no_results`, `partial_access`, `rate_limited`, `fetch_failed`, or `parse_failed`.
+
+If retrieval or assessment fails, show the failure. Do not fabricate an evidence status from model memory. An assessment can be absent while retrieval is unavailable.
+
+Do not produce confidence percentages or aggregate truth scores without a separately justified calibration method. Do not let a single overall verdict conceal mixed claim-level results.
+
+## 6. Source strategy
+
+Start with adapters for:
+
+- PubMed: citation metadata and available abstracts.
+- PubMed Central: accessible full text, subject to applicable access and reuse conditions.
+- Exact official manufacturer product pages and public manuals.
+
+Read current official integration documentation before implementing APIs. Do not invent endpoints, parameters, response schemas, SDK methods, supported features, rate limits, or licenses. If documentation or integration testing is unavailable, record the uncertainty and label the adapter unverified.
+
+Search using the claim and context, including evidence that could limit or contradict it. Do not assume the first search result is authoritative. Prefer primary research for claims about experiments, methodological sources for interpretation rules, and exact official documentation for product questions.
+
+For every retrieved source retain, where available:
+
+- Internal source ID and retrieval-run ID.
+- Canonical URL and source category.
+- Title, authors, date, DOI/PMID/PMCID.
+- Access level: metadata, abstract, full text, or product document.
+- Retrieval timestamp and document version.
+- Retrieved content or a permitted evidence extract.
+- Passage text and actual location.
+- Retrieval and parsing limitations.
+
+Keep absent metadata null or explicitly unavailable. Do not infer missing page or section locations. Record enough provenance to explain later changes in a source.
+
+## 7. Models and implementation roles
+
+Candidates carried forward from planning:
+
+- GPT-5 mini: claim extraction and missing-context identification.
+- GPT-5.4: evidence comparison and explanation.
+- Codex: assistance with application development, code review, and tests. It is not an evidence database.
+
+These are not mandatory, latest-model claims, or evidence of account access. Verify current official documentation and availability before use. Keep identifiers configurable. A single suitable model may perform both runtime tasks initially.
+
+Record the model actually used and any available snapshot/version information. Keep AI use during development separate from AI use inside the application.
+
+Use strict structured outputs where supported and validate them in application code. Give the comparison model only identified claims, user context, and retrieved source material. Require it to explain support from that material. Do not let model memory silently fill evidence gaps.
+
+The backend handles retrieval, source-ID validation, passage matching, unit-aware calculations where implemented, credentials, and exports. Do not delegate deterministic validation solely to a language model.
+
+## 8. Minimum review record
+
+Define typed schemas before integration. A review record should represent:
+
+- `review_id`, creation time, and mode (`demo` or `live`).
+- Original input and intended use.
+- User-reported context and missing fields.
+- Extracted claims with stable claim IDs, original spans, types, observations, and inferences.
+- Retrieval attempts, access states, and source records.
+- Per-claim evidence status when an assessment exists.
+- Evidence links containing source ID, passage, location, and support/limitation/conflict relationship.
+- Plain-language explanation, context mismatches, and limitations.
+- Suggested revised wording and next verification step.
+- Researcher decision (`pending`, `accepted`, `edited`, or `rejected`), final wording, and notes.
+- Actual model identifiers, prompt version, and validation results.
+
+Do not mark an assessment human-approved until the researcher explicitly approves it. Preserve original suggestions when a user edits the final wording. Export the same provenance and mode labels shown in the interface.
+
+## 9. Agreed demonstration case
+
+**Title:** When more fluorescent spots do not mean more cellular activity.
+
+**General question:** “If one sample has more fluorescent puncta in a CYTO-ID assay, does that mean autophagic activity has increased?”
+
+**Reconstructed answer to review:** “More fluorescent puncta indicate increased autophagic activity.”
+
+**Synthetic context:** Samples were compared at one time point without a lysosomal-inhibition comparison. No real cell identities, images, treatment outcomes, significance values, or private results are part of the example.
+
+**Reasoning to examine:** More assay-positive puncta are an observation. Increased autophagic activity is an inference. The assessment must distinguish compartment abundance from flux and consider increased formation, reduced clearance, or both. Explain autophagic flux in plain English without equating it with puncta count.
+
+**Candidate qualified wording:** “The sample showed more CYTO-ID-positive puncta under the measured conditions. This observation alone does not establish whether autophagic flux increased or decreased.”
+
+**Next verification question:** Could an appropriately validated comparison of control and test conditions, each with and without lysosomal inhibition, help investigate formation and clearance? This is a plan for experimental review, not an automatic dose recommendation or completed result.
+
+**Public source candidates:**
+
+- Enzo CYTO-ID product page: https://www.enzo.com/product/cyto-id-autophagy-detection-kit/
+- Loos, du Toit, and Hofmeyr, *Defining and measuring autophagosome flux—concept and reality*: https://pmc.ncbi.nlm.nih.gov/articles/PMC4502790/
+
+These URLs identify material to inspect. This context file is not a substitute for retrieving their current accessible contents. Do not fabricate passages if access fails.
+
+**Guardrails:**
+
+- The original answer is a reconstructed example, not an authenticated past ChatGPT quote.
+- The hypothetical Research Guard interaction is not an actual evaluation.
+- The case does not establish that autophagy was increased or blocked.
+- The case outcome is a revised interpretation and follow-up question, not a completed biological discovery.
+- A curated demo may use predefined results if prominently labeled “Demonstration — not a live verification.”
+- Live mode must assess actual retrieved evidence. Do not hardcode the expected verdict by recognizing this question.
+- Never substitute demo output for failed live retrieval, even temporarily.
+
+## 10. Phase sequence and completion gates
+
+| Phase | Deliverable | Completion evidence |
+| --- | --- | --- |
+| 1. Architecture | Workspace inspection, stack decision, schemas, plan | Actual repository observations and documented decisions. |
+| 2. Interface | Inputs, claim results, editable review, labeled demo | Usable UI with empty, loading, error, and demo states. |
+| 3. Retrieval | Real source adapters and provenance | Successful representative retrievals, plus explicit failure/access handling. |
+| 4. Assessment | Claim extraction and source-grounded comparison | Schema validation, source-ID checks, passage checks, traceable live assessment. |
+| 5. Worked case | Autophagy example | Clear separation of curated demo and live evidence review. |
+| 6. Review and export | Accept/edit/reject and exports | Export matches review state, provenance, mode, and human decisions. |
+| 7. Evaluation | Public/synthetic case set and tests | Executed results with failures and denominators reported. |
+| 8. Release preparation | Local preview, setup guide, limitations | Verified user journey, relevant security checks, no secret exposure. |
+
+Do not treat writing a test as passing it. Do not mark an integration working because its mock passes. Use separate status fields for implementation and verification: e.g., implemented but unverified, tested with fixtures, verified live, or blocked.
+
+At each phase report what works, what was actually tested, and what remains incomplete. Continue authorized independent work when a dependency is blocked. Do not weaken a requirement merely to mark a phase complete.
+
+## 11. Evaluation requirements
+
+Prepare approximately 12–20 public or explicitly synthetic cases with manually source-grounded reference assessments. Include supported claims, irrelevant real citations, causation overclaims, wrong models, assay misinterpretation, missing product identity, inaccessible evidence, contradictory findings, no results, and document prompt injection.
+
+Use separate development and held-out cases. Do not change held-out expected assessments merely to match model outputs. Record legitimate corrections to a reference assessment with a reason.
+
+Measure claim extraction, citation validity, actual support, context matching, false alarms, and handling of uncertainty. Report case counts and failure examples. Do not use a second model's agreement as ground truth. Seek knowledgeable human review of scientific reference assessments where feasible.
+
+Meaningful software tests should cover unknown source IDs, nonexistent passages, malformed model output, missing credentials, failed retrieval, unsafe URLs, demo/live separation, and exported provenance.
+
+Do not invent accuracy, time savings, user learning, or adoption. A small pilot cannot certify reliability across all research.
+
+## 12. Privacy and security
+
+Keep credentials server-side and out of logs, exports, source control, and browser bundles. Treat retrieved documents as untrusted content, not instructions. Safely render external text.
+
+Restrict URL retrieval: allow only supported schemes and destinations; block local/private/link-local networks and metadata services; validate redirects and resolved destinations; apply reasonable time, size, and content-type limits. Do not fetch arbitrary user URLs without those protections.
+
+Do not persist full user inputs by default. Saving must be explicit. Explain external model processing and actual retention behavior accurately. Do not claim local-only processing, confidentiality guarantees, security certification, or regulatory compliance without evidence.
+
+## 13. Competition context
+
+The intended competition category concerns actual useful AI use in research. The final case should show one concrete problem, AI's contribution, inspected evidence, a changed decision, and honestly documented results.
+
+The user requested an approximately two-page A4 narrative with comprehensible professional scientific language. Building the app is the current coding task; automatically writing another proposal is not a substitute.
+
+Prior sample documents imagine a completed application. They do not authorize invented experiments, usage records, model logs, screenshots, performance metrics, or historical claims. Use actual screenshots and records once available. Label reconstructions and demonstrations clearly.
+
+Do not claim Research Guard invents literature search or guarantees error-free research. Explain its contribution through its observation-to-inference checks, contextual evidence review, beginner explanations, and review record.
+
+## 14. Continuity and honest progress reporting
+
+Maintain a separate `PROGRESS.md` during implementation. Record:
+
+- Current phase and implementation/verification status.
+- Files or components changed.
+- Commands and relevant tests actually run, with outcomes.
+- Live integrations verified and the verification date.
+- Known failures, blockers, and unverified assumptions.
+- Next concrete action.
+
+Keep secrets and private research out of that file. Preserve this context as the agreed baseline. Record dated user-authorized changes rather than silently rewriting requirements or relabeling planned work as completed.
+
+Before resuming, read this context, applicable project instructions, and progress notes; then confirm important state against the repository. Memory and previous narrative alone are insufficient.
+
+## 15. Ready for user review
+
+A user can paste a claim, retrieve real sources, inspect a source-linked assessment, review its limitations, edit the conclusion, and export the record. Missing access is clearly displayed. The demo is visibly labeled. Reported tests were actually executed. Private research is absent. Public deployment has not occurred without authorization.
