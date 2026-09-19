@@ -104,7 +104,8 @@ change local limits without putting secrets in source control:
 
 | Name | Default |
 | --- | --- |
-| `RESEARCHGUARD_FRONTEND_ORIGINS` | `http://127.0.0.1:5173,http://localhost:5173` |
+| `RESEARCHGUARD_FRONTEND_ORIGINS` | `http://127.0.0.1:5173,http://localhost:5173`; exact HTTPS origins are allowed for deployment, never wildcards |
+| `RESEARCHGUARD_ALLOWED_HOSTS` | local hosts; exact additional hostnames only. Render's `RENDER_EXTERNAL_HOSTNAME` is added automatically |
 | `RESEARCHGUARD_SESSION_TTL_SECONDS` | `3600` |
 | `RESEARCHGUARD_MAX_REVIEWS` | `24` |
 | `RESEARCHGUARD_MAX_REVIEW_BYTES` | `5000000` |
@@ -123,12 +124,15 @@ change local limits without putting secrets in source control:
 | `RESEARCHGUARD_AUTH_TIMEOUT_SECONDS` | `10` |
 | `RESEARCHGUARD_PERSISTENCE_TIMEOUT_SECONDS` | `10` |
 
-The React build reads only `VITE_SUPABASE_URL` and
-`VITE_SUPABASE_PUBLISHABLE_KEY`. These are public project values. Full dashboard and
+The React build reads the public project values `VITE_SUPABASE_URL` and
+`VITE_SUPABASE_PUBLISHABLE_KEY`. A hosted split deployment additionally uses the exact
+public origins `VITE_API_BASE_URL` and `VITE_APPLICATION_ORIGIN`; local development
+leaves both absent. Full dashboard and
 redirect setup is documented in `docs/AUTH_SETUP.md`. Google secrets, Supabase
 secret/service-role keys and JWT signing keys are not backend settings for this app.
 Migration application and saved-review RLS checks are documented in
 `docs/PERSISTENCE_SETUP.md`.
+The full Vercel/Render configuration is documented in `docs/DEPLOYMENT.md`.
 
 The provider limits serialized model input to 120,000 bytes, output to 64,000 bytes,
 and local Gemini concurrency to two calls. Extraction and assessment request at most

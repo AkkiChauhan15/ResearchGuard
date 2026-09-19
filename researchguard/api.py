@@ -195,16 +195,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     application.add_middleware(
         TrustedHostMiddleware,
-        allowed_hosts=["127.0.0.1", "localhost", "testserver"],
+        allowed_hosts=list(settings.allowed_hosts),
     )
 
     @application.middleware("http")
     async def local_origin_and_security_headers(request: Request, call_next):
         origin = request.headers.get("origin")
         request_origin = f"{request.url.scheme}://{request.headers.get('host', '')}".rstrip("/")
-        if origin and origin.rstrip("/") not in {*settings.frontend_origins, request_origin}:
+        origin_allowed = bool(
+            origin and origin.rstrip("/") in {*settings.frontend_origins, request_origin}
+        )
+        if origin and not origin_allowed:
             response = _error(400, "Cross-origin requests are not allowed.")
-        elif request.headers.get("sec-fetch-site") == "cross-site":
+        elif request.headers.get("sec-fetch-site") == "cross-site" and not origin_allowed:
             response = _error(400, "Cross-site requests are not allowed.")
         else:
             response = await call_next(request)

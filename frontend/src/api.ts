@@ -12,6 +12,25 @@ import type {
 } from './types'
 
 const sessionId = crypto.randomUUID()
+const configuredApiOrigin = import.meta.env.VITE_API_BASE_URL?.trim().replace(/\/$/, '')
+
+function apiUrl(path: string): string {
+  if (!configuredApiOrigin) return path
+  const parsed = new URL(configuredApiOrigin)
+  const localHttp = parsed.protocol === 'http:' && ['127.0.0.1', 'localhost'].includes(parsed.hostname)
+  if (
+    parsed.origin !== configuredApiOrigin
+    || (!localHttp && parsed.protocol !== 'https:')
+    || parsed.username
+    || parsed.password
+    || parsed.pathname !== '/'
+    || parsed.search
+    || parsed.hash
+  ) {
+    throw new Error('VITE_API_BASE_URL must be one exact HTTPS origin, or a local HTTP origin.')
+  }
+  return `${parsed.origin}${path}`
+}
 
 export class ApiError extends Error {
   status: number
@@ -30,7 +49,7 @@ async function errorMessage(response: Response): Promise<string> {
   } catch {
     // The API normally returns JSON errors; keep a safe fallback for proxy/network pages.
   }
-  return `The local service returned HTTP ${response.status}.`
+  return `The backend service returned HTTP ${response.status}.`
 }
 
 type AuthMode = 'none' | 'optional' | 'required'
@@ -53,7 +72,7 @@ async function request<T>(path: string, options: RequestInit = {}, authMode: Aut
   }
   let response: Response
   try {
-    response = await fetch(path, {
+    response = await fetch(apiUrl(path), {
       ...options,
       headers: {
         'X-Review-Session': sessionId,
@@ -63,7 +82,7 @@ async function request<T>(path: string, options: RequestInit = {}, authMode: Aut
       },
     })
   } catch {
-    throw new ApiError('The local backend is unavailable. Start FastAPI on port 8000 and try again.', 0)
+    throw new ApiError('The backend service is unavailable. Check its address and try again.', 0)
   }
   if (!response.ok) throw new ApiError(await errorMessage(response), response.status)
   return (await response.json()) as T
@@ -129,14 +148,14 @@ export async function downloadExport(review: Review, format: 'json' | 'txt'): Pr
   }
   let response: Response
   try {
-    response = await fetch(`/api/reviews/${review.review_id}/export?format=${format}`, {
+    response = await fetch(apiUrl(`/api/reviews/${review.review_id}/export?format=${format}`), {
       headers: {
         'X-Review-Session': sessionId,
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     })
   } catch {
-    throw new ApiError('The local backend is unavailable. The export was not created.', 0)
+    throw new ApiError('The backend service is unavailable. The export was not created.', 0)
   }
   if (!response.ok) throw new ApiError(await errorMessage(response), response.status)
   const objectUrl = URL.createObjectURL(await response.blob())
@@ -156,11 +175,11 @@ export async function downloadSavedExport(savedId: string, mode: 'demo' | 'live'
   }
   let response: Response
   try {
-    response = await fetch(`/api/saved-reviews/${savedId}/export?format=${format}`, {
+    response = await fetch(apiUrl(`/api/saved-reviews/${savedId}/export?format=${format}`), {
       headers: { Authorization: `Bearer ${token}` },
     })
   } catch {
-    throw new ApiError('The local backend is unavailable. The saved export was not created.', 0)
+    throw new ApiError('The backend service is unavailable. The saved export was not created.', 0)
   }
   if (!response.ok) throw new ApiError(await errorMessage(response), response.status)
   const objectUrl = URL.createObjectURL(await response.blob())

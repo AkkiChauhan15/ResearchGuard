@@ -24,6 +24,7 @@ from researchguard.store import ReviewStore
 def test_settings(**changes):
     values = dict(
         frontend_origins=("http://127.0.0.1:5173", "http://localhost:5173"),
+        allowed_hosts=("127.0.0.1", "localhost", "testserver"),
         session_ttl_seconds=3600,
         max_reviews=100,
         max_review_bytes=5_000_000,
@@ -240,6 +241,25 @@ class HTTPTests(unittest.IsolatedAsyncioTestCase):
             "/api/reviews/demo", headers={**self.headers(), "Origin": "https://evil.example"}, json={}
         )
         self.assertEqual(blocked.status_code, 400)
+
+        hosted_settings = test_settings(
+            frontend_origins=("https://research-guard-ai.vercel.app",),
+        )
+        async with AsyncAppClient(hosted_settings) as hosted:
+            hosted_response = await hosted.client.post(
+                "/api/reviews/demo",
+                headers={
+                    "X-Review-Session": str(uuid4()),
+                    "Origin": "https://research-guard-ai.vercel.app",
+                    "Sec-Fetch-Site": "cross-site",
+                },
+                json={},
+            )
+            self.assertEqual(hosted_response.status_code, 200, hosted_response.text)
+            self.assertEqual(
+                hosted_response.headers["access-control-allow-origin"],
+                "https://research-guard-ai.vercel.app",
+            )
 
         me = await self.client.get("/api/auth/me", headers=self.headers())
         self.assertEqual(me.status_code, 200, me.text)
@@ -616,6 +636,27 @@ class StoreTests(unittest.IsolatedAsyncioTestCase):
         with patch.dict(os.environ, {"RESEARCHGUARD_FRONTEND_ORIGINS": "*"}):
             with self.assertRaises(ValueError):
                 Settings.from_env()
+
+    async def test_hosted_origin_and_render_host_are_exactly_accepted(self):
+        with patch.dict(
+            os.environ,
+            {
+                "RESEARCHGUARD_FRONTEND_ORIGINS": "https://research-guard-ai.vercel.app",
+                "RENDER_EXTERNAL_HOSTNAME": "research-guard-api.onrender.com",
+            },
+            clear=True,
+        ):
+            settings = Settings.from_env()
+        self.assertEqual(settings.frontend_origins, ("https://research-guard-ai.vercel.app",))
+        self.assertIn("research-guard-api.onrender.com", settings.allowed_hosts)
+
+    async def test_wildcard_or_url_allowed_host_is_rejected(self):
+        for value in ("*", "https://research-guard-api.onrender.com", "*.onrender.com"):
+            with self.subTest(value=value), patch.dict(
+                os.environ, {"RESEARCHGUARD_ALLOWED_HOSTS": value}, clear=True
+            ):
+                with self.assertRaisesRegex(ValueError, "exact hostnames"):
+                    Settings.from_env()
 
     async def test_secret_supabase_key_is_rejected(self):
         with patch.dict(

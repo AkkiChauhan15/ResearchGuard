@@ -8,8 +8,10 @@ remains unverified.
 
 The user approved FastAPI, React + TypeScript + Tailwind, Supabase Free for Google
 sign-in and explicit saves, and Gemini Developer API via an AI Studio Free Tier
-project. The application remains local. No paid services, billing activation,
-credit purchases, paid fallback, or public deployment are authorized.
+project. Local implementation remains the verified baseline. On 2026-09-19 the user
+authorized free-tier deployment preparation and manual instructions. No paid services,
+billing activation, credit purchases, or paid fallback are authorized. A hosted run
+has not yet been executed or verified.
 
 The user supplied Phases B–H sequentially, one phase at a time. Do not infer or execute
 work after H. Preserve the original

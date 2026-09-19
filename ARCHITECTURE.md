@@ -5,13 +5,16 @@
 On 2026-09-16 the user approved **Python + FastAPI**, **React + TypeScript +
 Tailwind**, **Supabase Free** for Google authentication and explicitly saved
 reviews, and **Gemini Developer API through an AI Studio Free Tier project**.
-Local development first. No public deployment, paid services, billing activation,
-paid fallback, or credit purchases. Phase A documented the baseline. Phase B replaced
+Local development first. On 2026-09-19 the user authorized preparation of a public
+competition deployment using free tiers only. Paid services, billing activation,
+paid fallback, and credit purchases remain prohibited. Phase A documented the baseline. Phase B replaced
 the local HTTP adapter with FastAPI. Phase C replaces the primary interface with a
 Vite React/TypeScript/Tailwind SPA while preserving the FastAPI and review contracts.
 Phase D verified retrieval. Phase E replaces the provider-specific runtime path with
 a bounded Gemini adapter. Phase F adds authentication, and Phase G adds explicit
-saved-review persistence. Public deployment remains later work.
+saved-review persistence. The prepared hosted layout is a static Vite SPA on Vercel
+Hobby, one FastAPI worker on Render Free, and existing Supabase Free Auth/Postgres.
+No hosted journey is verified yet.
 
 Phase B preserves `schemas.py`, retrieval/transport protections, deterministic evidence
 validation, `demo.py` and its archived sources, review decision semantics, and
@@ -49,10 +52,17 @@ assessment, or editing must not write review bodies to Supabase automatically.
 Preserve the current review payload inside a versioned persistence envelope so
 database metadata does not force a rewrite of source/evidence schemas.
 
-The Phase B API permits only the explicit local React development origins
-`http://127.0.0.1:5173` and `http://localhost:5173` by default, never wildcard
-credentialed CORS. The current same-origin preview remains available on port 8000.
-Source URL restrictions are unchanged. Free-tier exhaustion must fail visibly.
+The API permits only explicit exact origins, defaulting to local React development at
+`http://127.0.0.1:5173` and `http://localhost:5173`. A hosted HTTPS origin must be
+configured exactly; wildcard CORS and wildcard trusted hosts remain rejected. The
+frontend accepts one exact build-time API origin and one exact hosted OAuth return
+origin. Source URL restrictions are unchanged. Free-tier exhaustion must fail visibly.
+
+Render is used for FastAPI because temporary drafts, locks, and source throttling are
+process-local and need one long-running worker. Vercel serves only the static SPA. This
+does not make unsaved state durable: a Render sleep, restart, or redeploy removes it.
+Only an explicit Supabase save persists. `docs/DEPLOYMENT.md` records the exact manual
+settings and current free-plan constraints.
 
 Synchronous retrieval, PDF parsing, provider calls, and export validation run in a
 bounded thread pool with route deadlines. Each review has an async mutation lock;

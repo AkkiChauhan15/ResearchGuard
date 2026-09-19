@@ -6,7 +6,7 @@
 > Google OAuth browser round trip and hosted two-user check remain unverified. The
 > configured Gemini key can access `gemini-3.8-flash`, and the structured-output adapter
 > is repaired, but generation is temporarily blocked by repeated HTTP 503 high-demand
-> responses. No billing, paid fallback, or public deployment was used.
+> responses. No billing, paid fallback, or public deployment has been used yet.
 
 A local research-review application for making claim-to-evidence relationships,
 experimental context, and limitations inspectable. Start with the clearly labeled
@@ -17,7 +17,9 @@ has passed controlled fixture tests but **has not completed a successful live ge
 in the user's project**. Key/model metadata access is verified; the latest bounded
 generation attempts reached Google and returned HTTP 503 high demand.
 Scientific accuracy has not been measured. See `PROGRESS.md` for actual results
-and incomplete phase gates; read `context.md` before continuing any phase.
+and incomplete phase gates; read `context.md` before continuing any phase. The exact
+free hosted setup is in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md); preparing that
+configuration does not count as a successful deployment.
 
 ## Run locally
 
@@ -225,9 +227,10 @@ The PDF parser briefly writes the public manual to a temporary file and deletes 
 Search terms and URLs go to public source services. Configured model actions send the
 input/context or retrieved passages to the Gemini Developer API. Google's pricing
 documentation states that Free Tier content is used to improve its products, so use
-only public or synthetic material for Phase E checks. No local-only processing or
-confidentiality guarantee is made. The API key remains server-side. This server is for
-a trusted local computer, not a multi-user deployment.
+only public or synthetic material for model checks and the first hosted demonstration.
+No local-only processing or confidentiality guarantee is made. The API key remains
+server-side. Hosted live reviews require verified Supabase identity and saved records
+use RLS, but the public deployment has not yet passed the hosted two-user journey.
 
 Prompt instructions, structured output, and deterministic checks reduce specific failure
 modes; they cannot certify reasoning, stop every prompt injection, or guarantee coverage.

@@ -12,8 +12,21 @@ test('localAuthRedirect accepts only the four configured local application origi
     'http://localhost:5173.evil.example',
     'http://localhost:5173/callback',
   ]) {
-    assert.throws(() => localAuthRedirect(origin), /configured local application origins/)
+    assert.throws(() => localAuthRedirect(origin), /configured application origins/)
   }
+})
+
+test('localAuthRedirect accepts only the exact configured hosted application origin', () => {
+  const production = 'https://research-guard-ai.vercel.app'
+  assert.equal(localAuthRedirect(production, production), `${production}/`)
+  assert.throws(
+    () => localAuthRedirect('https://preview-research-guard-ai.vercel.app', production),
+    /configured application origins/,
+  )
+  assert.throws(
+    () => localAuthRedirect(production, `${production}/callback`),
+    /one exact HTTPS origin/,
+  )
 })
 
 test('OAuth callback errors distinguish cancellation from provider failure', () => {

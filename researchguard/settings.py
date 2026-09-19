@@ -10,6 +10,12 @@ DEFAULT_FRONTEND_ORIGINS = (
     "http://localhost:5173",
 )
 
+DEFAULT_ALLOWED_HOSTS = (
+    "127.0.0.1",
+    "localhost",
+    "testserver",
+)
+
 
 def _supabase_url(value: str | None) -> str | None:
     if value is None or not value.strip():
@@ -60,24 +66,55 @@ def _origins(value: str | None) -> tuple[str, ...]:
         raise ValueError("RESEARCHGUARD_FRONTEND_ORIGINS must contain an origin.")
     for origin in values:
         parsed = urlsplit(origin)
+        local_http = (
+            parsed.scheme == "http"
+            and parsed.hostname in {"127.0.0.1", "localhost"}
+            and parsed.port is not None
+        )
+        hosted_https = parsed.scheme == "https" and parsed.hostname is not None
+        if not (local_http or hosted_https) or any(
+            (parsed.path, parsed.query, parsed.fragment, parsed.username, parsed.password)
+        ):
+            raise ValueError(
+                "RESEARCHGUARD_FRONTEND_ORIGINS accepts exact local HTTP origins with ports "
+                "or exact HTTPS origins only."
+            )
+    return values
+
+
+def _allowed_hosts(value: str | None, render_hostname: str | None) -> tuple[str, ...]:
+    values = list(DEFAULT_ALLOWED_HOSTS)
+    for raw in (value, render_hostname):
+        if not raw:
+            continue
+        values.extend(item.strip().lower() for item in raw.split(",") if item.strip())
+    unique = tuple(dict.fromkeys(values))
+    for host in unique:
+        parsed = urlsplit(f"//{host}")
         if (
-            parsed.scheme != "http"
-            or parsed.hostname not in {"127.0.0.1", "localhost"}
-            or parsed.port is None
+            host == "*"
+            or parsed.hostname != host
+            or parsed.port is not None
+            or parsed.username
+            or parsed.password
             or parsed.path
             or parsed.query
             or parsed.fragment
-            or parsed.username
+            or not re.fullmatch(r"[a-z0-9.-]+", host)
+            or ".." in host
+            or host.startswith(".")
+            or host.endswith(".")
         ):
             raise ValueError(
-                "RESEARCHGUARD_FRONTEND_ORIGINS accepts explicit local HTTP origins with ports only."
+                "RESEARCHGUARD_ALLOWED_HOSTS accepts exact hostnames only, without schemes, ports, or wildcards."
             )
-    return values
+    return unique
 
 
 @dataclass(frozen=True)
 class Settings:
     frontend_origins: tuple[str, ...] = DEFAULT_FRONTEND_ORIGINS
+    allowed_hosts: tuple[str, ...] = DEFAULT_ALLOWED_HOSTS
     session_ttl_seconds: int = 3600
     max_reviews: int = 24
     max_review_bytes: int = 5_000_000
@@ -95,6 +132,10 @@ class Settings:
     def from_env(cls) -> "Settings":
         return cls(
             frontend_origins=_origins(os.environ.get("RESEARCHGUARD_FRONTEND_ORIGINS")),
+            allowed_hosts=_allowed_hosts(
+                os.environ.get("RESEARCHGUARD_ALLOWED_HOSTS"),
+                os.environ.get("RENDER_EXTERNAL_HOSTNAME"),
+            ),
             session_ttl_seconds=_positive_int("RESEARCHGUARD_SESSION_TTL_SECONDS", 3600, 60, 86400),
             max_reviews=_positive_int("RESEARCHGUARD_MAX_REVIEWS", 24, 1, 1000),
             max_review_bytes=_positive_int("RESEARCHGUARD_MAX_REVIEW_BYTES", 5_000_000, 100_000, 20_000_000),

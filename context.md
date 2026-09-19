@@ -1,6 +1,6 @@
 # Research Guard AI — Project context
 
-Version: 1.7
+Version: 1.8
 Prepared: 2026-09-15; migration status updated 2026-09-19
 Purpose: Reference for the coding agent implementing the agreed phased build.
 
@@ -14,9 +14,10 @@ This file cannot guarantee hallucination-free development or scientific judgment
 
 The approved target is Python + FastAPI, React + TypeScript + Tailwind,
 Supabase Free for Google authentication and explicitly saved reviews, and the
-Gemini Developer API through an AI Studio Free Tier project. Develop locally first.
-No public deployment, paid services, billing activation, paid fallbacks, or credit
-purchases are authorized. Exhausted free quotas or unavailable free access must
+Gemini Developer API through an AI Studio Free Tier project. Development began locally.
+On 2026-09-19 the user authorized preparation and exact manual instructions for a
+public competition deployment using only free tiers. No paid services, billing
+activation, paid fallbacks, or credit purchases are authorized. Exhausted free quotas or unavailable free access must
 produce an explicit unavailable state, never an upgrade or provider fallback.
 
 Migration Phases A–G are implemented. Phase H was authorized on 2026-09-19 and performs
@@ -28,11 +29,11 @@ authenticated two-user journey remain blocked. The locally configured Gemini key
 `gemini-3.8-flash` metadata access were verified on 2026-09-19. The adapter's Gemini 3.8
 JSON Schema incompatibility was repaired, but bounded live generation attempts returned
 HTTP 503 high demand before producing output. Do not claim those
-external browser/model integrations work until their checks pass. Public deployment is
-not authorized and is not an implemented or verified feature.
-The user plans to complete Supabase/Google dashboard setup when deployment is handled;
-until then retain safe configuration placeholders and keep live OAuth marked unverified.
-This sequencing note does not authorize deployment or work after Phase H.
+external browser/model integrations work until their checks pass. Deployment-compatible
+configuration and instructions are now prepared, but no public deployment or hosted
+browser journey has been executed or verified by the agent. The user must complete the
+Render, Vercel, Supabase, and Google dashboard steps in `docs/DEPLOYMENT.md`; keep live
+OAuth and hosted behavior marked unverified until that journey passes.
 
 Preserve working Pydantic schemas, retrieval adapters, evidence validation, curated
 demo sources, review decisions, and exports. Adapt framework/provider boundaries
@@ -66,7 +67,7 @@ Inspect the repository before describing its state. Do not infer that the applic
 | Core product and phased workflow | Agreed; preserve the intent described here. |
 | Initial domains | Biological claims and assay/reagent interpretation. |
 | Target deliverable | Working web application with evidence-linked reviews and exports. |
-| Framework and hosting | FastAPI is the local HTTP adapter. Phase C implements a Vite React/TypeScript/Tailwind interface; the pre-React frontend remains available at `/legacy`. Local development only. |
+| Framework and hosting | FastAPI backend plus a Vite React/TypeScript/Tailwind frontend. The prepared free hosted layout is Vercel Hobby for the static SPA and one Render Free FastAPI worker. No hosted run is verified. |
 | Existing implementation | FastAPI/Uvicorn backend, React/TypeScript/Tailwind SPA, preserved legacy interface, process-local transient store, and reusable Pydantic/core modules. Verify against code and tests before claiming behavior. |
 | Authentication and saving | Phase F implements Supabase Google sign-in, token verification and owner binding for transient live reviews. Phase G adds explicit saved-review CRUD and versioned RLS. The linked hosted migration is applied; local two-user RLS/token behavior passed. Google OAuth and hosted authenticated two-user behavior remain unverified. Unsaved drafts stay transient. |
 | API keys and account access | Gemini key/model metadata access verified on 2026-09-19 without displaying the key. Free Tier is operator-attested in local configuration; billing state cannot be inspected by code. Generation remains blocked by HTTP 503 high demand. Never display secrets. |
@@ -74,7 +75,7 @@ Inspect the repository before describing its state. Do not infer that the applic
 | Cost boundary | Free tiers only. No billing activation, purchases, paid services, upgrades, or paid fallback. |
 | Performance, user adoption, savings | Unmeasured; do not invent results. |
 | Demonstration interaction | Reconstructed; not a historical transcript or a recorded live tool run. |
-| Public deployment | Requires explicit authorization; finish a reviewable local preview first. |
+| Public deployment | Free-tier competition deployment preparation is authorized. No deployment has been executed or verified; follow `docs/DEPLOYMENT.md`, use public/synthetic data, and do not enable billing. |
 
 Routine implementation choices may be made autonomously. Do not repeatedly ask for permission to read files, implement reversible changes, or run relevant tests. Explain genuine blockers and continue independent work. Do not bypass approval or access restrictions.
 

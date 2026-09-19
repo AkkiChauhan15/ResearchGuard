@@ -55,11 +55,11 @@ to Google's JavaScript origins and that exact URL to Supabase's Redirect URLs. T
 already permits ports 5173 and 8000 on `127.0.0.1` and `localhost`; configure only the
 one actually used. Do not add wildcards or a public URL.
 
-## Placeholders for a later authorized deployment
+## Hosted deployment values
 
-No public deployment is currently authorized, and the application intentionally
-rejects public OAuth return origins. When a later phase supplies and authorizes a real
-application origin, replace these placeholders in the provider dashboards:
+Free-tier competition deployment preparation is now authorized. The application accepts
+one exact hosted OAuth return origin only when `VITE_APPLICATION_ORIGIN` is present in
+that production build. Follow `DEPLOYMENT.md`, then replace these placeholders:
 
 | Dashboard field | Placeholder |
 | --- | --- |
@@ -72,9 +72,9 @@ application origin, replace these placeholders in the provider dashboards:
 
 The Google client ID and client secret are dashboard-only values. Do not create
 environment-variable placeholders for the client secret in the frontend or repository.
-Before using `<APP_ORIGIN>`, a later authorized phase must add it to the application's
-validated origin/CORS/CSP configuration and test the deployed round trip. Merely filling
-these dashboard fields does not make the current local-only build deployment-ready.
+Set the same exact origin in Render's `RESEARCHGUARD_FRONTEND_ORIGINS`. Merely filling
+these fields does not prove the deployed OAuth round trip works; complete the hosted
+checklist in `DEPLOYMENT.md`.
 
 ## Start and verify locally
 

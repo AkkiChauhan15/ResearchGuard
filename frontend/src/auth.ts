@@ -3,6 +3,7 @@ import { clearOAuthErrorFromUrl, localAuthRedirect, oauthCallbackOutcome } from 
 
 const projectUrl = import.meta.env.VITE_SUPABASE_URL?.trim().replace(/\/$/, '')
 const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim()
+const applicationOrigin = import.meta.env.VITE_APPLICATION_ORIGIN?.trim()
 
 function validProjectUrl(value: string | undefined): value is string {
   if (!value) return false
@@ -62,7 +63,7 @@ export function subscribeToAuth(
 
 export async function signInWithGoogle(): Promise<void> {
   if (!supabase) throw new Error('Google sign-in is unavailable until Supabase public configuration is added.')
-  const redirectTo = localAuthRedirect(window.location.origin)
+  const redirectTo = localAuthRedirect(window.location.origin, applicationOrigin)
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo },

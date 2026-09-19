@@ -1059,3 +1059,79 @@ Status: **KEY AND MODEL ACCESS VERIFIED; GENERATION BLOCKED BY PROVIDER HTTP 503
 Retry `.venv/bin/python -m scripts.verify_gemini_live` later. A passing gate requires
 both the synthetic extraction and evidence assessment plus deterministic validation.
 Do not switch models, enable billing, or add a fallback to work around HTTP 503.
+
+## 2026-09-19 — Free deployment preparation follow-up
+
+Status: **READY FOR MANUAL DEPLOYMENT; HOSTED JOURNEY UNVERIFIED.** No public service,
+billing method, paid plan, domain, OAuth setting, or external account was changed by
+the agent.
+
+### Changes made
+
+- Rechecked `context.md`, current progress, architecture, migration records, code,
+  tests and the Git remote before making deployment claims.
+- Selected Vercel Hobby for the static Vite SPA, one Render Free web service for
+  FastAPI, and the existing Supabase Free project. FastAPI was not moved to Vercel
+  Functions because draft records, locks and source throttling are process-local.
+- Added exact hosted HTTPS origin validation, exact trusted-host validation, automatic
+  use of Render's `RENDER_EXTERNAL_HOSTNAME`, and a targeted CORS/security correction
+  so an explicitly allowed Vercel origin is not rejected only because the browser marks
+  the request `Sec-Fetch-Site: cross-site`. Wildcards remain rejected.
+- Added `VITE_API_BASE_URL` for the exact Render origin and
+  `VITE_APPLICATION_ORIGIN` for the exact hosted OAuth return origin. Local Vite proxy
+  behavior remains the default when these are absent. Gemini and other secrets remain
+  unavailable to frontend code.
+- Pinned Render's Python runtime to 3.14.3 in `.python-version` and documented the exact
+  single-worker Uvicorn start command, health check, dashboard fields, public variables,
+  secret placement, Supabase/Google redirects, and hosted verification sequence in
+  `docs/DEPLOYMENT.md`.
+- Updated context, architecture, migration, Auth setup, examples and README to reflect
+  the newly authorized free-tier deployment preparation without claiming deployment.
+
+### Checks actually executed
+
+- `.venv/bin/python -m unittest discover -s tests -v`: **70/70 passed**, no skips.
+  New checks cover an explicit hosted Vercel origin with a cross-site browser request,
+  automatic exact Render host acceptance, and rejection of wildcard/URL host entries.
+  Existing auth, RLS repository, session isolation, limits, invalidation, retrieval,
+  evidence validation, provider failure and export checks remained green.
+- `npm run test:auth`: **1 test file passed**. It now covers exact hosted OAuth origin
+  acceptance, an unlisted preview-origin rejection and malformed hosted-origin rejection.
+- `npm run typecheck` and `npm run lint`: passed.
+- Hosted-style `npm run build` with synthetic public Render/Vercel origins: passed.
+  Vite 8.3.0 built 62 modules; output was 0.64 kB HTML, 25.72 kB CSS and 477.04 kB
+  JavaScript before gzip.
+- The hosted-style bundle contained both synthetic public origins and no Gemini-key,
+  Google-client-secret or Supabase-secret-shaped credential. The first broad marker
+  scan correctly found the literal `sb_secret_` rejection string; the credential-shaped
+  scan distinguished that guard from a key and passed.
+- `.venv/bin/python -m compileall -q researchguard tests` and
+  `.venv/bin/python -m pip check`: passed. `git diff --check` passed.
+- The exact single-worker hosted Uvicorn form started on `0.0.0.0:8077` with a synthetic
+  Render hostname. A loopback health request carrying that exact Host, the allowed
+  Vercel Origin and `Sec-Fetch-Site: cross-site` returned HTTP 200 and canonical health
+  JSON. Two earlier sandboxed bind attempts were unavailable; the permitted rerun passed
+  and was shut down. A normal local frontend build was restored afterward and passed.
+
+### Blockers and unverified assumptions
+
+- Render and Vercel were not connected or deployed, so build logs, cold-start behavior,
+  real CORS headers through their proxies, service health and quota behavior are unverified.
+- Hosted Google OAuth, session restoration/sign-out, hosted two-user RLS isolation and
+  the complete saved-review browser journey remain unverified.
+- Gemini key/model metadata access is verified, but generation still has no successful
+  live output after repeated provider HTTP 503 high-demand responses.
+- Render Free sleeps after inactivity and has ephemeral process/filesystem state. Every
+  unsaved draft can disappear on sleep, restart or redeploy; explicit Supabase saves are
+  the durable path. Vercel Hobby is limited to personal, non-commercial use.
+- The native Render runtime might not include the optional `pdftotext` binary. If absent,
+  live ENZ-51031 manual parsing reports an explicit unavailable state; the archived demo
+  and Enzo product-page retrieval do not depend on that binary.
+
+### Manual action required
+
+Follow `docs/DEPLOYMENT.md` in order: push a reviewed revision, create the Render Free
+backend, create the Vercel Hobby frontend, add the exact Vercel origin to Render, update
+Supabase URL Configuration and the Google OAuth client, then run the signed-out and
+two-account hosted checklists. Do not commit `.env`, add a service-role key, put the
+Gemini/Google secret in Vercel, enable billing, or use wildcard redirects/origins.

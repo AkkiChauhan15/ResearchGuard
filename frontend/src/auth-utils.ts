@@ -5,15 +5,36 @@ export const LOCAL_AUTH_ORIGINS = new Set([
   'http://localhost:8000',
 ])
 
-export function localAuthRedirect(origin: string): string {
+function exactHostedOrigin(value: string): string {
+  const parsed = new URL(value)
+  if (
+    parsed.origin !== value
+    || parsed.protocol !== 'https:'
+    || parsed.username
+    || parsed.password
+    || parsed.pathname !== '/'
+    || parsed.search
+    || parsed.hash
+  ) {
+    throw new Error('VITE_APPLICATION_ORIGIN must be one exact HTTPS origin without a path.')
+  }
+  return parsed.origin
+}
+
+export function localAuthRedirect(origin: string, configuredHostedOrigin?: string): string {
   let parsed: URL
   try {
     parsed = new URL(origin)
   } catch {
-    throw new Error('Google sign-in is limited to the configured local application origins.')
+    throw new Error('Google sign-in is limited to the configured application origins.')
   }
-  if (parsed.origin !== origin || !LOCAL_AUTH_ORIGINS.has(parsed.origin)) {
-    throw new Error('Google sign-in is limited to the configured local application origins.')
+  let hostedOrigin: string | null = null
+  if (configuredHostedOrigin?.trim()) hostedOrigin = exactHostedOrigin(configuredHostedOrigin.trim())
+  if (
+    parsed.origin !== origin
+    || (!LOCAL_AUTH_ORIGINS.has(parsed.origin) && parsed.origin !== hostedOrigin)
+  ) {
+    throw new Error('Google sign-in is limited to the configured application origins.')
   }
   return `${parsed.origin}/`
 }
