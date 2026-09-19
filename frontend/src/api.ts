@@ -1,5 +1,15 @@
 import { getAccessToken } from './auth'
-import type { ApiConfig, AuthenticatedUser, Decision, ExperimentalContext, Review, ReviewInput } from './types'
+import type {
+  ApiConfig,
+  AuthenticatedUser,
+  Decision,
+  ExperimentalContext,
+  Review,
+  ReviewInput,
+  SavedReviewList,
+  SavedReviewRecord,
+  SavedReviewSummary,
+} from './types'
 
 const sessionId = crypto.randomUUID()
 
@@ -89,6 +99,25 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ decision }),
     }),
+  listSavedReviews: () => request<SavedReviewList>('/api/saved-reviews', {}, 'required'),
+  saveReview: (reviewId: string) =>
+    request<SavedReviewRecord>('/api/saved-reviews', {
+      method: 'POST',
+      body: JSON.stringify({ review_id: reviewId }),
+    }, 'required'),
+  openSavedReview: (savedId: string) =>
+    request<SavedReviewRecord>(`/api/saved-reviews/${savedId}/open`, { method: 'POST' }, 'required'),
+  updateSavedReview: (savedId: string, reviewId: string, expectedRevision: number) =>
+    request<SavedReviewRecord>(`/api/saved-reviews/${savedId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ review_id: reviewId, expected_revision: expectedRevision }),
+    }, 'required'),
+  deleteSavedReview: (savedId: string, expectedRevision: number) =>
+    request<{ deleted: SavedReviewSummary }>(
+      `/api/saved-reviews/${savedId}?expected_revision=${expectedRevision}`,
+      { method: 'DELETE' },
+      'required',
+    ),
 }
 
 export async function downloadExport(review: Review, format: 'json' | 'txt'): Promise<void> {
@@ -114,6 +143,30 @@ export async function downloadExport(review: Review, format: 'json' | 'txt'): Pr
   const anchor = document.createElement('a')
   anchor.href = objectUrl
   anchor.download = `research-guard-${review.mode}.${format}`
+  anchor.click()
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000)
+}
+
+export async function downloadSavedExport(savedId: string, mode: 'demo' | 'live', format: 'json' | 'txt'): Promise<void> {
+  let token: string
+  try {
+    token = (await getAccessToken(true))!
+  } catch (reason) {
+    throw new ApiError(reason instanceof Error ? reason.message : 'Sign in again before exporting.', 401)
+  }
+  let response: Response
+  try {
+    response = await fetch(`/api/saved-reviews/${savedId}/export?format=${format}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+  } catch {
+    throw new ApiError('The local backend is unavailable. The saved export was not created.', 0)
+  }
+  if (!response.ok) throw new ApiError(await errorMessage(response), response.status)
+  const objectUrl = URL.createObjectURL(await response.blob())
+  const anchor = document.createElement('a')
+  anchor.href = objectUrl
+  anchor.download = `research-guard-saved-${mode}.${format}`
   anchor.click()
   setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000)
 }

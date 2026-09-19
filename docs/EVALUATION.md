@@ -20,6 +20,8 @@ hash, extraction, assessments, validation failures, and draft-label matches. The
 latter is diagnostic agreement with a draft, not a scientific accuracy estimate.
 The runner does not silently change references. It uses a deterministic no-assessment
 gate for inaccessible/no-results cases, rather than asking the model to invent a verdict.
+Model mode defaults to a bounded two-case batch (`--max-cases 2`). Run development
+batches first and never increase the batch to consume free quota or avoid a rate limit.
 
 A human reviewer should grade actual outputs with these separate counts:
 

@@ -9,11 +9,13 @@ import hashlib
 import json
 
 from researchguard.assessment import Extraction, call_model, validate_assessment
+from researchguard.local_env import load_local_env
 from researchguard.providers import provider_status
 from researchguard.schemas import Assessment, Passage, Source
 
 
 def main() -> int:
+    load_local_env()
     status = provider_status()
     if not status.available:
         print(json.dumps({
@@ -42,30 +44,44 @@ def main() -> int:
         limitations=["Synthetic verification text; not scientific evidence."],
     )
 
-    extraction, extraction_run = call_model(
-        Extraction,
-        "extraction",
-        {
-            "text": claim_text,
-            "intended_use": "topic understanding",
-            "context": {},
-            "source_urls": [],
-        },
-    )
-    if any(item.original_span not in claim_text for item in extraction.claims):
-        raise ValueError("Live extraction failed original-span validation.")
+    tasks_started = 0
+    try:
+        tasks_started += 1
+        extraction, extraction_run = call_model(
+            Extraction,
+            "extraction",
+            {
+                "text": claim_text,
+                "intended_use": "topic understanding",
+                "context": {},
+                "source_urls": [],
+            },
+        )
+        if any(item.original_span not in claim_text for item in extraction.claims):
+            raise ValueError("Live extraction failed original-span validation.")
 
-    assessment, assessment_run = call_model(
-        Assessment,
-        "assessment",
-        {
-            "claim": claim_text,
-            "intended_use": "topic understanding",
-            "user_reported_context": {},
-            "sources": [source.model_dump()],
-        },
-    )
-    deterministic_checks = validate_assessment(assessment, [source])
+        tasks_started += 1
+        assessment, assessment_run = call_model(
+            Assessment,
+            "assessment",
+            {
+                "claim": claim_text,
+                "intended_use": "topic understanding",
+                "user_reported_context": {},
+                "sources": [source.model_dump()],
+            },
+        )
+        deterministic_checks = validate_assessment(assessment, [source])
+    except ValueError as exc:
+        print(json.dumps({
+            "status": "blocked",
+            "provider": status.provider,
+            "state": "live_request_failed",
+            "detail": str(exc),
+            "model_tasks_started": tasks_started,
+            "note": "Provider 5xx retries are bounded inside each task. No fallback or demonstration result was used.",
+        }, indent=2))
+        return 2
     assessment_run.source_ids = [source.source_id]
     assessment_run.validation.extend(deterministic_checks)
 
@@ -94,6 +110,7 @@ def main() -> int:
             "extraction": extraction_run.validation + ["Original spans matched synthetic input."],
             "assessment": assessment_run.validation,
         },
+        "model_tasks_completed": 2,
     }, indent=2))
     return 0
 

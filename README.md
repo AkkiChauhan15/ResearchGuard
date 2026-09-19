@@ -1,19 +1,21 @@
 # Research Guard AI
 
-> **Migration notice:** Phase F implements Supabase Google sign-in and verified
-> backend ownership with fixtures. The real OAuth browser round trip is blocked until
-> the Supabase Free project and Google provider are configured. Persistent saved reviews
-> remain later work. Gemini live access is also still blocked pending its Free Tier
-> project check and server-side key. No billing
-> activation, paid fallback, public deployment, or later phase is authorized here.
+> **Phase H status:** the local public demonstration, current public-source retrieval,
+> application checks, and real local Supabase Auth/PostgREST/RLS paths are verified.
+> The linked hosted Supabase project reports migration `202609190001` applied, but the
+> Google OAuth browser round trip and hosted two-user check remain unverified. The
+> configured Gemini key can access `gemini-3.8-flash`, and the structured-output adapter
+> is repaired, but generation is temporarily blocked by repeated HTTP 503 high-demand
+> responses. No billing, paid fallback, or public deployment was used.
 
 A local research-review application for making claim-to-evidence relationships,
 experimental context, and limitations inspectable. Start with the clearly labeled
 CYTO-ID demonstration, or create a live review and retrieve public sources.
 
 This is a local preview. The former OpenAI adapter is disabled. The Gemini provider
-has passed controlled fixture tests but **has not made a successful live call in the
-user's project**. No API key or Free Tier project confirmation was available.
+has passed controlled fixture tests but **has not completed a successful live generation
+in the user's project**. Key/model metadata access is verified; the latest bounded
+generation attempts reached Google and returned HTTP 503 high demand.
 Scientific accuracy has not been measured. See `PROGRESS.md` for actual results
 and incomplete phase gates; read `context.md` before continuing any phase.
 
@@ -58,6 +60,22 @@ The public demonstration needs no account. Live review/model routes require Goog
 sign-in after configuring Supabase. Follow [`docs/AUTH_SETUP.md`](docs/AUTH_SETUP.md)
 for the exact public environment variables and the separate Google-to-Supabase and
 Supabase-to-application redirect settings. No OAuth secret belongs in frontend code.
+Apply the saved-review migration and configure the backend public project values by
+following [`docs/PERSISTENCE_SETUP.md`](docs/PERSISTENCE_SETUP.md). The app never
+autosaves: opening a saved record creates a temporary working copy, and changes persist
+only after choosing **Update saved copy**.
+
+For a disposable local Supabase verification environment, install Docker and the
+Supabase CLI, then run:
+
+```sh
+supabase start
+supabase test db
+.venv/bin/python -m scripts.verify_supabase_local
+```
+
+The last command uses two synthetic local email identities to exercise real asymmetric
+tokens, PostgREST and RLS. It is not a Google OAuth test and prints no keys or tokens.
 The demo and public-source retrieval do not require a model key. The manual
 adapter additionally requires Poppler's `pdftotext` utility (typically packaged
 as `poppler-utils` on Linux or `poppler` on macOS). Missing utility errors remain visible.
@@ -81,6 +99,11 @@ appropriate contact email for NCBI API requests. Requests are throttled below
 three/second per process; multiple processes on the same IP need coordinated rate
 limiting.
 
+The local server, Gemini verifier and evaluation CLI safely load the ignored root
+`.env`; existing exported shell variables take priority. They parse assignments without
+executing the file as shell code. Keep `.env` owner-readable only and never put Gemini
+credentials in `frontend/.env.local` or any `VITE_` variable.
+
 The FastAPI route, error, limit, local CORS, startup, and environment-variable
 contracts are documented in [`docs/API.md`](docs/API.md). Interactive OpenAPI docs
 are available at http://127.0.0.1:8000/api/docs while the server is running.
@@ -102,7 +125,8 @@ are available at http://127.0.0.1:8000/api/docs while the server is running.
 5. Inspect passages and original sources. Accept the suggestion, save edited wording,
    reject, or reset to pending. Use a decision button to record notes before exporting.
 6. Download JSON or the readable TXT review. TXT also contains the complete canonical
-   record so provenance is not lost. No import/restore feature is implemented yet.
+   record so provenance is not lost. Signed-in users may explicitly save, reopen,
+   update, export or delete their own records after the Phase G migration is applied.
 
 ## Supported public sources
 
@@ -137,6 +161,8 @@ npm run build --prefix frontend
 node --check web/app.js
 node --check scripts/browser_react_smoke.cjs
 .venv/bin/python -m scripts.evaluate
+supabase test db
+.venv/bin/python -m scripts.verify_supabase_local
 ```
 
 After the Free Tier project and environment are confirmed, run the minimal public-safe
@@ -149,6 +175,10 @@ live check explicitly:
 It performs one synthetic extraction and one synthetic evidence assessment, then
 prints model, prompt, source/access, and validation provenance without printing the
 key or passage body. It exits blocked without making calls when configuration is absent.
+
+Model evaluation is deliberately batched. After the minimal live check succeeds, use
+`--run-model --split dev --max-cases 2`; complete and review development runs before
+requesting a held-out batch. Do not increase the batch to consume quota or enable billing.
 
 HTTP tests require loopback socket access. In a restricted sandbox, request the
 appropriate execution permission; do not disable the tests or count them as passed.
@@ -174,15 +204,22 @@ explicit: do not run it until Free Tier/no billing and the minimal live check ar
 confirmed. Freeze development decisions before a held-out run. Never change expected
 labels merely to match outputs; record legitimate
 corrections and reasons. See `docs/EVALUATION.md` for the human grading rubric.
+Phase H's actual counts, source results and blockers are in
+[`docs/EVALUATION_PHASE_H.md`](docs/EVALUATION_PHASE_H.md). The competition script is
+[`docs/COMPETITION_WALKTHROUGH.md`](docs/COMPETITION_WALKTHROUGH.md), and
+[`docs/FEATURE_VERIFICATION.md`](docs/FEATURE_VERIFICATION.md) separates live,
+fixture, demonstration-only and blocked features.
 
 ## Privacy and limitations
 
-Reviews stay in browser memory and temporary server memory, expire one hour after
+Unsaved reviews stay in browser memory and temporary server memory, expire one hour after
 creation, and are bounded to 24 records / 5 MB per review. Reload starts a new browser
 draft session, while Supabase restores the Google login session separately. Live
 reviews are bound to both the draft session and the verified account. Restarting the
-server removes all reviews. There is no automatic disk storage
-of user input and no request-content logging. Only explicit downloads save reviews.
+server removes all unsaved working reviews. There is no automatic disk storage
+of user input and no request-content logging. Explicit downloads remain local files;
+signed-in users may explicitly create or update private Supabase saved records after
+the migration is applied. Sign-in and ordinary review edits never autosave.
 The PDF parser briefly writes the public manual to a temporary file and deletes it.
 
 Search terms and URLs go to public source services. Configured model actions send the

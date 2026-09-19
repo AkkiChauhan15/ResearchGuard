@@ -1,18 +1,18 @@
 # Research Guard AI migration plan
 
-Migration Phases A–D completed: 2026-09-18. Phase E is implemented and fixture-tested;
-its required live check is blocked. Phase F is implemented and fixture-tested; its
-real OAuth browser round trip is blocked by missing dashboard configuration.
-**No phase after F has been executed.**
+Migration Phases A–G are implemented. Phase H local verification and competition
+preparation ran on 2026-09-19. Gemini live calls and the Google OAuth browser round
+trip remain blocked. The linked hosted Supabase migration is applied; real local
+two-user JWT/PostgREST/RLS checks passed, while hosted authenticated two-user behavior
+remains unverified.
 
 The user approved FastAPI, React + TypeScript + Tailwind, Supabase Free for Google
 sign-in and explicit saves, and Gemini Developer API via an AI Studio Free Tier
 project. The application remains local. No paid services, billing activation,
 credit purchases, paid fallback, or public deployment are authorized.
 
-The user supplies Phases B–H sequentially, one phase at a time. Phases B–F were
-supplied; definitions and implementation order for G–H remain reserved
-for those instructions. Do not infer or execute later work. Preserve the original
+The user supplied Phases B–H sequentially, one phase at a time. Do not infer or execute
+work after H. Preserve the original
 scientific requirements in `context.md`.
 
 ## Phase A — repository audit and verified baseline
@@ -273,13 +273,12 @@ zero calls because no key or actual Free Tier confirmation was present.
 | D | Verify and narrowly repair existing retrieval adapters | Completed with fixture and live verification in Phase D |
 | E | Gemini Developer API Free Tier provider | Fixture-verified; live call blocked pending actual Free Tier project confirmation and key |
 | F | Supabase Free Google sign-in and verified backend identity | Fixture-verified; live OAuth blocked pending dashboard configuration and browser round trip |
-| G | Awaiting the user's Phase G instruction | Not started |
-| H | Awaiting the user's Phase H instruction | Not started |
+| G | User-owned Supabase Postgres persistence | Implemented; hosted migration applied, local two-user RLS/JWT path verified, hosted user journey pending |
+| H | End-to-end verification and competition demonstration | Local/public checks and artifacts complete; full Google → Gemini browser journey blocked |
 
-For each future phase: reread `context.md`, this plan, the architecture decision,
-repository instructions and `PROGRESS.md`; reconcile the supplied scope with actual
-code; implement only that phase; run relevant checks; record implementation and
-verification separately; report blockers/manual actions and stop at its gate.
+For any later authorized work: reread `context.md`, this plan, the architecture
+decision, repository instructions and `PROGRESS.md`; reconcile the supplied scope with
+actual code; run relevant checks; record implementation and verification separately.
 
 The following is an **unassigned migration backlog**, not a replacement E–H sequence:
 
@@ -287,11 +286,13 @@ The following is an **unassigned migration backlog**, not a replacement E–H se
   deliberate Supabase client session handling, refresh/logout/account-switch cleanup,
   public-demo separation and fixture user-isolation tests. Live OAuth remains blocked;
   login does not persist or claim a draft.
-- Prepare reviewable saved-record migrations/RLS, explicit save/update/list/load/delete,
-  schema/revision handling and revalidation. Verify owner-only access through both
-  backend and database API, immutable ownership, no autosave, concurrent-save behavior,
-  record/export round trips and quota/paused-service failure states.
-- Execute integration and scientific evaluation separately. Have a knowledgeable
+- Phase G added a versioned saved-record migration/RLS, explicit
+  save/update/list/open/export/delete routes and UI, schema/revision handling and
+  revalidation. Backend owner isolation, immutable-owner SQL contracts, no autosave,
+  stale-write handling and record/export round trips pass fixtures. The migration is
+  applied to the linked hosted project; local PostgreSQL and two-user API checks pass.
+  Hosted Google-authenticated owner isolation still needs its browser round trip.
+- Phase H executed integration and scientific fixture evaluation separately. Have a knowledgeable
   researcher review the 16 provisional references; freeze development choices before
   held-out runs. Report raw denominators, failures and unmeasured dimensions. No
   model-agreement or structural validation result substitutes for scientific review.
@@ -306,7 +307,7 @@ within the currently authorized phase. Never begin another phase automatically.
 
 ## Manual actions and unresolved decisions
 
-**Manual action is required to complete Phases E and F's external gates.** In Google AI Studio,
+**Manual action is required to complete the remaining E/F/H external gates.** In Google AI Studio,
 verify that the intended project is on Free Tier and has no linked billing, and that
 `gemini-3.8-flash` is available. Configure `GEMINI_API_KEY` only in the local backend
 environment, set `GEMINI_FREE_TIER_CONFIRMED=true`, and run
@@ -318,11 +319,14 @@ in `docs/AUTH_SETUP.md`, using `http://127.0.0.1:5173/` as the application URL, 
 complete sign-in, reload restoration, sign-out, cancellation and failure checks in a
 browser. No client secret or privileged Supabase key should be shared or committed.
 
-Later phases, supplied one at a time, will require:
+For hosted persistence verification, perform the two-user browser checks in
+`docs/PERSISTENCE_SETUP.md` after Google Auth works. Use the public publishable key
+with user access tokens; do not add a service-role key.
 
-1. The already-required user-controlled Supabase **Free** project will also need any
-   persistence schema and RLS explicitly authorized by a later phase. Phase F creates
-   no database table and saves no review.
+External verification and later phases will require:
+
+1. The linked Supabase **Free** project reports migration `202609190001` applied. It
+   still needs a hosted two-user authenticated verification after Google OAuth works.
 2. An AI Studio project verified to be on **Free Tier with no linked billing**, an
    eligible model and region, and its API key configured server-side. If the account
    requires billing or credits for the intended model, stop that integration rather
@@ -333,8 +337,9 @@ Later phases, supplied one at a time, will require:
 
 Precise project quota limits, auth token-storage strategy,
 Supabase region/schema deployment and current provider data terms must be verified
-at the relevant later phase. No project creation, OAuth console changes, SQL
-application, live provider calls, billing changes or deployment occurred through E.
+before public use. No live Gemini call, billing change or deployment occurred through
+H. The linked migration history and public JWKS were inspected without exposing keys;
+Google provider settings and authenticated hosted records were not verified.
 
 Official references inspected for planning and Phase E implementation, not proof of
 access in the user's project:
@@ -353,8 +358,7 @@ access in the user's project:
   enforce database ownership as well as application checks; privileged credentials
   must not bypass isolation in ordinary review requests.
 
-**Phase F outcome: blocked at the required live OAuth verification gate.** Token and
-HTTP behavior are fixture-verified, but actual project/provider setup and the browser
-round trip remain unverified. Phase E's Gemini live gate also remains blocked.
-Phases G–H await sequential user instructions. Persistence and scientific evaluation
-remain unverified. Stop here.
+**Current external gate:** Google OAuth's browser round trip and Gemini's live Free Tier
+call remain blocked. Phase G persistence and Phase H local evaluation work are complete
+within the limits recorded above; hosted Google-user isolation and scientific performance
+remain unverified. Stop after Phase H.

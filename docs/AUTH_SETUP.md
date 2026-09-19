@@ -15,6 +15,7 @@ Backend environment:
 
 ```sh
 export SUPABASE_URL='https://<PROJECT_REF>.supabase.co'
+export SUPABASE_PUBLISHABLE_KEY='sb_publishable_replace_with_project_value'
 ```
 
 Frontend `frontend/.env.local`:
@@ -24,8 +25,8 @@ VITE_SUPABASE_URL=https://<PROJECT_REF>.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_replace_with_project_value
 ```
 
-The publishable key may be labeled `anon` in an older project. It is a public browser
-credential and does not authorize privileged database access. Never put the Google
+Use the project's current `sb_publishable_...` key. It is a public browser credential
+and does not authorize privileged database access. Never put the Google
 client secret, Supabase secret/service-role key, JWT signing private key, or Gemini key
 in a `VITE_` variable, this file, source control, exports, or chat.
 
@@ -89,9 +90,10 @@ shows cancellation without creating a live review. An OAuth callback error must 
 an error and must never open demo content as a substitute.
 
 The public demo works with no token. Live review creation, live review reads/mutations,
-model requests, and future private saved-review routes require a verified user. The
+model requests, and private saved-review routes require a verified user. The
 temporary store binds each live review to both its browser draft session and the
-verified JWT subject. Phase F does not add persistent saved-review endpoints or tables.
+verified JWT subject. Follow `PERSISTENCE_SETUP.md` before expecting saved-review
+operations to work; authentication alone does not create the database table.
 
 Official references checked on 2026-09-18:
 

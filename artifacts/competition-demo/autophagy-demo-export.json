@@ -1,0 +1,169 @@
+{
+  "review_id": "review_dc5dcb97f45d425f94416059b4a1297a",
+  "created_at": "2026-09-19T09:52:18.730199+00:00",
+  "mode": "demo",
+  "original_input": {
+    "text": "More fluorescent puncta indicate increased autophagic activity.",
+    "intended_use": "assay interpretation",
+    "context": {
+      "organism_model": "",
+      "assay": "CYTO-ID",
+      "reagent": "",
+      "conditions": "Synthetic samples; one time point; no lysosomal-inhibition comparison."
+    },
+    "source_urls": []
+  },
+  "missing_fields": [
+    "organism_model",
+    "reagent"
+  ],
+  "extraction_method": "Curated demonstration; no runtime AI extraction",
+  "claims": [
+    {
+      "claim_id": "claim_1262508004b4415fafdb4d7ac057dd76",
+      "original_span": "More fluorescent puncta indicate increased autophagic activity.",
+      "text": "More fluorescent puncta indicate increased autophagic activity.",
+      "type": "mixed",
+      "observations": [
+        "Synthetic reported observation: more CYTO-ID-positive puncta at one time point."
+      ],
+      "inferences": [
+        "The original answer infers increased autophagic activity from puncta count."
+      ],
+      "missing_context": [
+        "Which exact kit and imaging conditions were used?",
+        "Was formation compared with clearance using a validated assay design?"
+      ],
+      "assessment": {
+        "status": "Insufficient evidence found",
+        "evidence": [
+          {
+            "source_id": "src_0b6c0ca62e7f45b195718fe98bd1cd13",
+            "passage": "distinguishes between the pathway along which there is a flow of material and the quantitative measure of this flow.",
+            "location": "Abstract, paragraph 1",
+            "relationship": "limitation"
+          },
+          {
+            "source_id": "src_fa3199d3ff0d4046be81bc8dcc76fb50",
+            "passage": "Induction of autophagic flux can be visualized by enhanced accumulation of autophagic vesicles if lysosomal function is inhibited",
+            "location": "HTML text block 28",
+            "relationship": "limitation"
+          }
+        ],
+        "explanation": "Curated interpretation: more visible compartments is a snapshot of abundance. Autophagic flux means the rate at which material moves through the degradation pathway. A larger pool could reflect increased formation, reduced clearance, or both. These short public extracts do not resolve the synthetic sample’s flux direction.",
+        "context_mismatches": [
+          "The synthetic comparison has one time point and no lysosomal-inhibition comparison; the manufacturer discusses flux under inhibition."
+        ],
+        "limitations": [
+          "Demonstration — not a live verification or an actual experimental result.",
+          "Only the Loos abstract and a short manufacturer-page extract were available here; full methods and a product manual were not reviewed.",
+          "A suggested comparison does not by itself guarantee a mechanistic conclusion."
+        ],
+        "suggested_wording": "The sample showed more CYTO-ID-positive puncta under the measured conditions. This observation alone does not establish whether autophagic flux increased or decreased.",
+        "next_verification_step": "Could an appropriately validated comparison of control and test conditions, each with and without lysosomal inhibition, help investigate formation and clearance? Review the exact kit, conditions, and interpretation with a knowledgeable researcher."
+      },
+      "assessment_error": null,
+      "decision": {
+        "status": "edited",
+        "final_wording": "Synthetic review: puncta count alone does not resolve autophagic flux.",
+        "notes": "Checked that the accessible paper material is abstract only."
+      }
+    }
+  ],
+  "attempts": [
+    {
+      "retrieval_run_id": "retrieval_b83d9cc7c0714037ad2d9b1756886df3",
+      "claim_id": "claim_1262508004b4415fafdb4d7ac057dd76",
+      "query_or_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4502790/",
+      "adapter": "pmc",
+      "access_state": "partial_access",
+      "timestamp": "2026-09-16T12:53:00.993814+00:00",
+      "detail": "Archived short extract for curated demonstration; not a new live retrieval.",
+      "source_ids": [
+        "src_0b6c0ca62e7f45b195718fe98bd1cd13"
+      ]
+    },
+    {
+      "retrieval_run_id": "retrieval_bd9b1e60d05c44e982b26f0e498e6d80",
+      "claim_id": "claim_1262508004b4415fafdb4d7ac057dd76",
+      "query_or_url": "https://www.enzo.com/product/cyto-id-autophagy-detection-kit/",
+      "adapter": "manufacturer",
+      "access_state": "partial_access",
+      "timestamp": "2026-09-16T12:53:15.615329+00:00",
+      "detail": "Archived short extract for curated demonstration; not a new live retrieval.",
+      "source_ids": [
+        "src_fa3199d3ff0d4046be81bc8dcc76fb50"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "source_id": "src_0b6c0ca62e7f45b195718fe98bd1cd13",
+      "retrieval_run_id": "retrieval_b83d9cc7c0714037ad2d9b1756886df3",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4502790/",
+      "category": "pmc",
+      "title": "Defining and measuring autophagosome flux—concept and reality",
+      "authors": [
+        "Ben Loos",
+        "André du Toit",
+        "Jan-Hendrik S Hofmeyr"
+      ],
+      "date": "18 12 2014",
+      "doi": "10.4161/15548627.2014.973338",
+      "pmid": "25484088",
+      "pmcid": "PMC4502790",
+      "access_level": "abstract",
+      "retrieved_at": "2026-09-16T12:53:00.993814+00:00",
+      "document_version": null,
+      "content_sha256": "5792568f73adf82c0b18af8321742fe341fb08a6ecedac813374cfc28edbaed2",
+      "passages": [
+        {
+          "text": "distinguishes between the pathway along which there is a flow of material and the quantitative measure of this flow.",
+          "location": "Abstract, paragraph 1"
+        }
+      ],
+      "limitations": [
+        "PMC supplied abstract/metadata only; full text and methods were not available through this endpoint.",
+        "Archived demonstration extract retrieved on 2026-09-16, not a live request. Only this short extract is redistributed."
+      ]
+    },
+    {
+      "source_id": "src_fa3199d3ff0d4046be81bc8dcc76fb50",
+      "retrieval_run_id": "retrieval_bd9b1e60d05c44e982b26f0e498e6d80",
+      "url": "https://www.enzo.com/product/cyto-id-autophagy-detection-kit/",
+      "category": "manufacturer",
+      "title": "CYTO-ID® Autophagy detection kit - Enzo",
+      "authors": [],
+      "date": null,
+      "doi": null,
+      "pmid": null,
+      "pmcid": null,
+      "access_level": "product document",
+      "retrieved_at": "2026-09-16T12:53:15.615329+00:00",
+      "document_version": null,
+      "content_sha256": "06ca88919f62959d4c62965e09e2402c6afa573e2d968294bb128e3b83f4b0c1",
+      "passages": [
+        {
+          "text": "Induction of autophagic flux can be visualized by enhanced accumulation of autophagic vesicles if lysosomal function is inhibited",
+          "location": "HTML text block 28"
+        }
+      ],
+      "limitations": [
+        "Product web page, not a complete manual review; extracted HTML blocks may include site navigation.",
+        "No page numbers or document revision were inferred.",
+        "Archived demonstration extract retrieved on 2026-09-16, not a live request. Only this short extract is redistributed."
+      ]
+    }
+  ],
+  "model_runs": [],
+  "validation_results": [
+    "Source IDs checked against claim retrieval.",
+    "Quotation and location membership checked using whitespace-only normalization.",
+    "Evidence relationships checked; scientific entailment still requires researcher review."
+  ],
+  "notices": [
+    "Reconstructed example, not an authenticated historical ChatGPT quotation.",
+    "Source extracts archived from actual public retrieval on 2026-09-16; opening the demo makes no external request.",
+    "No real cell identities, measurements, images, treatment outcomes, or private research are included."
+  ]
+}

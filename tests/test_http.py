@@ -10,7 +10,13 @@ import httpx
 from researchguard.api import create_app
 from researchguard.auth import AuthenticatedUser
 from researchguard.demo import demo_review
-from researchguard.schemas import Attempt
+from researchguard.persistence import (
+    PersistenceConflict,
+    PersistenceNotFound,
+    SavedReviewRecord,
+    SavedReviewSummary,
+)
+from researchguard.schemas import Attempt, ModelRun
 from researchguard.settings import Settings
 from researchguard.store import ReviewStore
 
@@ -27,6 +33,7 @@ def test_settings(**changes):
         assessment_timeout_seconds=2,
         auth_timeout_seconds=2,
         supabase_url="https://fixture.supabase.co",
+        supabase_publishable_key="sb_publishable_fixture_value",
     )
     values.update(changes)
     return Settings(**values)
@@ -54,6 +61,83 @@ def seed_assessment(review):
     claim = review.claims[0]
     claim.assessment = demo_review().claims[0].assessment.model_copy(deep=True)
     claim.assessment_error = None
+    review.model_runs.append(
+        ModelRun(
+            task="assessment",
+            claim_id=claim.claim_id,
+            source_ids=[item.source_id for item in review.sources],
+            requested_model="fixture-model",
+            returned_model="fixture-model-version",
+            prompt_version="fixture-phase-g",
+            validation=["Fixture structured output and evidence links validated."],
+        )
+    )
+
+
+class FakeSavedReviews:
+    configured = True
+
+    def __init__(self, token_users):
+        self.token_users = token_users
+        self.records = {}
+
+    async def close(self):
+        pass
+
+    def owner(self, token):
+        return self.token_users[token]
+
+    async def list(self, token):
+        owner = self.owner(token)
+        return [record.summary for stored_owner, record in self.records.values() if stored_owner == owner]
+
+    async def get(self, token, saved_id):
+        item = self.records.get(saved_id)
+        if item is None or item[0] != self.owner(token):
+            raise PersistenceNotFound("Saved review not found, or it belongs to another user.")
+        return item[1]
+
+    async def create(self, token, review):
+        owner = self.owner(token)
+        if any(existing_owner == owner and record.review.review_id == review.review_id for existing_owner, record in self.records.values()):
+            raise PersistenceConflict("This review already has a saved record.")
+        saved_id = str(uuid4())
+        summary = SavedReviewSummary(
+            saved_id=saved_id,
+            review_id=review.review_id,
+            schema_version=1,
+            revision=1,
+            mode=review.mode,
+            title=review.claims[0].text,
+            created_at="2026-09-19T00:00:00+00:00",
+            updated_at="2026-09-19T00:00:00+00:00",
+        )
+        record = SavedReviewRecord(summary=summary, review=review.model_copy(deep=True))
+        self.records[saved_id] = (owner, record)
+        return record
+
+    async def update(self, token, saved_id, expected_revision, review):
+        current = await self.get(token, saved_id)
+        if current.summary.revision != expected_revision:
+            raise PersistenceConflict("The saved review changed elsewhere.")
+        summary = SavedReviewSummary(
+            **{
+                **current.summary.as_dict(),
+                "revision": expected_revision + 1,
+                "title": review.claims[0].text,
+                "updated_at": "2026-09-19T00:01:00+00:00",
+            }
+        )
+        updated = SavedReviewRecord(summary=summary, review=review.model_copy(deep=True))
+        self.records[saved_id] = (self.owner(token), updated)
+        return updated
+
+    async def delete(self, token, saved_id, expected_revision):
+        current = await self.get(token, saved_id)
+        if current.summary.revision != expected_revision:
+            raise PersistenceConflict("The saved review changed elsewhere.")
+        del self.records[saved_id]
+        return current.summary
 
 
 class AsyncAppClient:
@@ -82,10 +166,15 @@ class HTTPTests(unittest.IsolatedAsyncioTestCase):
         self.client = self.app_client.client
         self.session = str(uuid4())
         self.user_id = str(uuid4())
-        self.app_client.app.state.auth_verifier.verify = lambda _token: AuthenticatedUser(
-            user_id=self.user_id,
+        self.other_user_id = str(uuid4())
+        self.token_users = {"fixture-token": self.user_id, "other-token": self.other_user_id}
+        self.app_client.app.state.auth_verifier.verify = lambda token: AuthenticatedUser(
+            user_id=self.token_users[token],
             email="researcher@example.test",
         )
+        await self.app_client.app.state.saved_reviews.close()
+        self.saved = FakeSavedReviews(self.token_users)
+        self.app_client.app.state.saved_reviews = self.saved
 
     async def asyncTearDown(self):
         await self.app_client.__aexit__(None, None, None)
@@ -115,6 +204,7 @@ class HTTPTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(config.json()["extraction_model"], "gemini-3.8-flash")
         self.assertTrue(config.json()["auth_configured"])
         self.assertTrue(config.json()["live_auth_required"])
+        self.assertTrue(config.json()["persistence_configured"])
         self.assertNotIn("test-secret", json.dumps(config.json()))
         root = await self.client.get("/")
         self.assertEqual(root.status_code, 200)
@@ -132,6 +222,16 @@ class HTTPTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(preflight.status_code, 200)
         self.assertEqual(preflight.headers["access-control-allow-origin"], "http://127.0.0.1:5173")
         self.assertNotEqual(preflight.headers.get("access-control-allow-credentials"), "true")
+        delete_preflight = await self.client.options(
+            "/api/saved-reviews/00000000-0000-4000-8000-000000000000",
+            headers={
+                "Origin": "http://127.0.0.1:5173",
+                "Access-Control-Request-Method": "DELETE",
+                "Access-Control-Request-Headers": "authorization",
+            },
+        )
+        self.assertEqual(delete_preflight.status_code, 200)
+        self.assertIn("DELETE", delete_preflight.headers["access-control-allow-methods"])
         same_origin = await self.client.post(
             "/api/reviews/demo", headers={**self.headers(), "Origin": "http://testserver"}, json={}
         )
@@ -179,6 +279,149 @@ class HTTPTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await self.client.get(
             f"/api/reviews/{review_id}", headers=self.headers()
         )).status_code, 404)
+
+    async def test_saved_review_crud_owner_isolation_and_export(self):
+        demo = (await self.client.post("/api/reviews/demo", headers=self.headers(authenticated=False), json={})).json()
+        claim_id = demo["claims"][0]["claim_id"]
+        decided = await self.client.put(
+            f"/api/reviews/{demo['review_id']}/claims/{claim_id}/decision",
+            headers=self.headers(authenticated=False),
+            json={
+                "decision": {
+                    "status": "edited",
+                    "final_wording": "Researcher-qualified fixture wording.",
+                    "notes": "Keep the original suggestion and this edit.",
+                }
+            },
+        )
+        self.assertEqual(decided.status_code, 200, decided.text)
+        demo = decided.json()
+        self.assertNotEqual(
+            demo["claims"][0]["assessment"]["suggested_wording"],
+            demo["claims"][0]["decision"]["final_wording"],
+        )
+        unauthenticated = await self.client.post(
+            "/api/saved-reviews", headers=self.headers(authenticated=False), json={"review_id": demo["review_id"]}
+        )
+        self.assertEqual(unauthenticated.status_code, 401)
+        forged_owner = await self.client.post(
+            "/api/saved-reviews", headers=self.headers(),
+            json={"review_id": demo["review_id"], "owner_id": self.other_user_id},
+        )
+        self.assertEqual(forged_owner.status_code, 400)
+
+        created = await self.client.post(
+            "/api/saved-reviews", headers=self.headers(), json={"review_id": demo["review_id"]}
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        saved = created.json()
+        saved_id = saved["saved_id"]
+        self.assertEqual(saved["review"], demo)
+        self.assertEqual((await self.client.get("/api/saved-reviews", headers=self.headers())).json()["items"][0]["saved_id"], saved_id)
+
+        other_headers = {"X-Review-Session": self.session, "Authorization": "Bearer other-token"}
+        self.assertEqual((await self.client.get("/api/saved-reviews", headers=other_headers)).json()["items"], [])
+        self.assertEqual((await self.client.post(
+            f"/api/saved-reviews/{saved_id}/open", headers=other_headers
+        )).status_code, 404)
+        self.assertEqual((await self.client.get(
+            f"/api/saved-reviews/{saved_id}/export?format=json", headers=other_headers
+        )).status_code, 404)
+        self.assertEqual((await self.client.put(
+            f"/api/saved-reviews/{saved_id}", headers=other_headers,
+            json={"review_id": demo["review_id"], "expected_revision": 1},
+        )).status_code, 404)
+        self.assertEqual((await self.client.delete(
+            f"/api/saved-reviews/{saved_id}?expected_revision=1", headers=other_headers
+        )).status_code, 404)
+        self.assertEqual((await self.client.get(
+            "/api/saved-reviews/not-a-uuid/export", headers=self.headers()
+        )).status_code, 400)
+        signed_out = self.headers(authenticated=False)
+        self.assertEqual((await self.client.get("/api/saved-reviews", headers=signed_out)).status_code, 401)
+        self.assertEqual((await self.client.post(
+            f"/api/saved-reviews/{saved_id}/open", headers=signed_out
+        )).status_code, 401)
+        self.assertEqual((await self.client.get(
+            f"/api/saved-reviews/{saved_id}/export?format=json", headers=signed_out
+        )).status_code, 401)
+        self.assertEqual((await self.client.put(
+            f"/api/saved-reviews/{saved_id}", headers=signed_out,
+            json={"review_id": demo["review_id"], "expected_revision": 1},
+        )).status_code, 401)
+        self.assertEqual((await self.client.delete(
+            f"/api/saved-reviews/{saved_id}?expected_revision=1", headers=signed_out
+        )).status_code, 401)
+
+        exported = await self.client.get(
+            f"/api/saved-reviews/{saved_id}/export?format=json", headers=self.headers()
+        )
+        self.assertEqual(exported.status_code, 200, exported.text)
+        self.assertEqual(exported.json(), demo)
+
+        new_session = str(uuid4())
+        opened = await self.client.post(
+            f"/api/saved-reviews/{saved_id}/open", headers=self.headers(new_session)
+        )
+        self.assertEqual(opened.status_code, 200, opened.text)
+        self.assertEqual((await self.client.get(
+            f"/api/reviews/{demo['review_id']}", headers=self.headers(new_session)
+        )).json(), demo)
+
+        deleted = await self.client.delete(
+            f"/api/saved-reviews/{saved_id}?expected_revision=1", headers=self.headers()
+        )
+        self.assertEqual(deleted.status_code, 200, deleted.text)
+        self.assertEqual((await self.client.get("/api/saved-reviews", headers=self.headers())).json()["items"], [])
+
+    async def test_saved_update_preserves_invalidation_provenance_and_rejects_stale_revision(self):
+        review = await self.create_live()
+        review_id = review["review_id"]
+        claim_id = review["claims"][0]["claim_id"]
+        with patch("researchguard.api.retrieve", side_effect=lambda current, _claim, _query: seed_accessible_sources(current)):
+            await self.client.post(
+                f"/api/reviews/{review_id}/claims/{claim_id}/retrievals",
+                headers=self.headers(), json={"query": "fixture evidence"},
+            )
+        with patch("researchguard.api.assess", side_effect=lambda current, _claim: seed_assessment(current)):
+            await self.client.post(
+                f"/api/reviews/{review_id}/claims/{claim_id}/assessment", headers=self.headers()
+            )
+        await self.client.put(
+            f"/api/reviews/{review_id}/claims/{claim_id}/decision", headers=self.headers(),
+            json={"decision": {"status": "accepted", "notes": "preserve original suggestion"}},
+        )
+        saved = (await self.client.post(
+            "/api/saved-reviews", headers=self.headers(), json={"review_id": review_id}
+        )).json()
+
+        edited = (await self.client.patch(
+            f"/api/reviews/{review_id}/claims/{claim_id}", headers=self.headers(),
+            json={"text": "A materially revised synthetic claim."},
+        )).json()
+        self.assertIsNone(edited["claims"][0]["assessment"])
+        self.assertEqual(edited["claims"][0]["decision"]["status"], "pending")
+        updated = await self.client.put(
+            f"/api/saved-reviews/{saved['saved_id']}", headers=self.headers(),
+            json={"review_id": review_id, "expected_revision": 1},
+        )
+        self.assertEqual(updated.status_code, 200, updated.text)
+        self.assertEqual(updated.json()["revision"], 2)
+        self.assertEqual(updated.json()["review"], edited)
+        self.assertGreater(len(updated.json()["review"]["sources"]), 0)
+        self.assertGreater(len(updated.json()["review"]["model_runs"]), 0)
+
+        stale = await self.client.put(
+            f"/api/saved-reviews/{saved['saved_id']}", headers=self.headers(),
+            json={"review_id": review_id, "expected_revision": 1},
+        )
+        self.assertEqual(stale.status_code, 409)
+        local = await self.client.get(f"/api/reviews/{review_id}", headers=self.headers())
+        self.assertEqual(local.json(), edited)
+        saved_export = await self.client.get(
+            f"/api/saved-reviews/{saved['saved_id']}/export?format=json", headers=self.headers()
+        )
+        self.assertEqual(saved_export.json(), edited)
 
     async def test_demo_retrieval_decision_and_canonical_exports(self):
         created = await self.client.post("/api/reviews/demo", headers=self.headers(), json={})
@@ -372,6 +615,15 @@ class StoreTests(unittest.IsolatedAsyncioTestCase):
     async def test_wildcard_frontend_origin_is_rejected(self):
         with patch.dict(os.environ, {"RESEARCHGUARD_FRONTEND_ORIGINS": "*"}):
             with self.assertRaises(ValueError):
+                Settings.from_env()
+
+    async def test_secret_supabase_key_is_rejected(self):
+        with patch.dict(
+            os.environ,
+            {"SUPABASE_PUBLISHABLE_KEY": "sb_secret_must_never_be_used_here"},
+            clear=True,
+        ):
+            with self.assertRaisesRegex(ValueError, "publishable key"):
                 Settings.from_env()
 
 

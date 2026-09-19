@@ -750,3 +750,312 @@ passes. No Phase G work has started.
   Public origins remain inactive until a later phase explicitly authorizes deployment
   and updates/tests the code allowlists.
 - Phase G has not started because its concrete instructions have not yet been supplied.
+
+## 2026-09-19 — Migration Phase G: user-owned Supabase Postgres persistence
+
+Status: **BLOCKED at remote migration and live two-user verification.** The application,
+repository adapter, saved-review UI, versioned migration and fixture checks are complete.
+The migration is **prepared, not applied**. No live Supabase database or authenticated
+saved-review browser claim is made.
+
+### Changes made
+
+- Reread `context.md`, `PROGRESS.md`, `MIGRATION_PLAN.md`, `ARCHITECTURE.md`, repository
+  code and applicable instructions before resuming Phase G. Updated context, architecture,
+  migration plan, README and API documentation to reflect the actual Phase G boundary.
+- Read current official Supabase database migration, RLS, API security/key, PostgREST
+  and pgTAP guidance. The backend uses asynchronous HTTPX PostgREST requests with the
+  verified user's bearer token plus the public `SUPABASE_PUBLISHABLE_KEY`. There is no
+  service-role/secret key, privileged RLS bypass or client-supplied owner ID.
+- Added `researchguard/persistence.py`. It lists, creates, loads, updates and deletes
+  schema-versioned saved envelopes while preserving the unchanged canonical `Review`.
+  Returned records are reparsed with Pydantic and the existing evidence/provenance
+  validator before display or export. HTTP timeouts and connection limits are bounded.
+- Added authenticated FastAPI routes under `/api/saved-reviews` for explicit save,
+  list, open as a temporary working copy, optimistic update, canonical JSON/TXT export
+  and revision-checked deletion. HTTP 409 preserves the local review on stale updates;
+  unavailable persistence returns a clear 503. Saved operations never autosave ordinary
+  edits. Development CORS now includes DELETE for the two exact local frontend origins.
+- Changed the temporary store key to `(session_id, review_id)` so the same saved canonical
+  review can be opened independently in different browser sessions while retaining user
+  ownership checks, expiry, capacity bounds and per-entry locks.
+- Added React signed-in states for private saved lists, empty/loading/error/unavailable
+  states, explicit Save/Update, Open, JSON/TXT export and Delete. Opening creates a local
+  copy; save/update failures and stale conflicts keep that copy. Logout clears private
+  saved state while the public demo remains available.
+- Added `supabase/migrations/202609190001_create_saved_reviews.sql`. It creates the
+  owner UUID/canonical review envelope, schema version and revision; enables and forces
+  RLS; removes anonymous privileges; gives authenticated users only required column
+  grants; defines separate owner-only SELECT/INSERT/UPDATE/DELETE policies; derives
+  ownership from `auth.uid()`; and prevents ownership/identity changes with both column
+  permissions and a trigger. No Google profile table or profile fields were added.
+- Added a prepared two-user pgTAP policy test under `supabase/tests/` and static migration
+  contract tests. Added `docs/PERSISTENCE_SETUP.md` with CLI migration application,
+  public environment values and exact two-account verification steps. Restored/updated
+  both reviewed `.env.example` files; real values remain untracked.
+- Preserved source records, passages, locations, access levels, retrieval hashes,
+  demo/live labels, model runs and requested/returned model identifiers because the
+  complete canonical record is stored. HTTP fixtures verify that original assessment
+  suggestions and researcher-edited wording both survive saved export. Material claim
+  edits still invalidate the current assessment, evidence links and approval before the
+  explicit saved update.
+
+### Checks actually executed
+
+- `.venv/bin/python -m unittest discover -s tests -v`: **66/66 passed**, no skips.
+  Saved-review HTTP/repository fixtures cover explicit create/list/open/update/export/
+  delete, two distinct users, forged UUID/owner fields, every signed-out private action,
+  stale revision conflict with the local copy retained, service unavailable states,
+  canonical JSON equality, provenance/model preservation, and saved invalidation.
+  Existing token, source transport/retrieval, evidence validation, Gemini provider,
+  temporary isolation, request-size and export tests remained green.
+- Migration contract test passed: four separate authenticated RLS policies, RLS enabled
+  and forced, no anonymous grants, owner derived by default, immutable owner/identity,
+  restricted update columns and revision field are present. The pgTAP SQL was inspected
+  by the test suite but **not executed against PostgreSQL**.
+- `npm run test:auth`, `npm run typecheck`, `npm run lint` and `npm run build` in
+  `frontend/`: passed. Vite 8.3.0 built 62 modules; output was 0.64 kB HTML, 25.72 kB
+  CSS and 476.30 kB JavaScript before gzip.
+- Built-bundle secret scan found no Gemini API key, Supabase secret/service-role key,
+  Google client secret or private key. One `sb_publishable_...` value and the project
+  URL are present as expected public SPA configuration; they are not privileged secrets.
+- `.venv/bin/python -m compileall -q researchguard scripts tests`,
+  `.venv/bin/python -m pip check`, `node --check scripts/browser_smoke.cjs`, and
+  `node --check web/app.js`: passed. `git diff --check`: passed before final progress
+  documentation and is rerun in the final check.
+- Headless Chrome against the rebuilt FastAPI-served React bundle passed the signed-out
+  state, public demo/evidence/access, edited decision/export, failed API state, keyboard/
+  mobile layout and no-page-error regression. The corrected legacy smoke also passed its
+  public demo/export and signed-out live rejection. These runs do not exercise the
+  authenticated saved-review UI.
+- The first browser invocation lacked a root `playwright-core`; rerunning with the
+  existing installation then required loopback/browser sandbox permission. A legacy
+  smoke assertion also still expected pre-auth live access; it was updated to assert the
+  current signed-out rejection and the final run passed. These were environment/stale
+  test-harness issues, not claimed product passes.
+
+### Prepared versus applied migrations
+
+- **Prepared:** `202609190001_create_saved_reviews.sql` and
+  `001_saved_reviews_rls.test.sql` are present and pass static contract inspection.
+- **Applied:** none. The Supabase CLI is absent and no local Supabase database is
+  running. Ignored local files contain frontend public Supabase configuration and a
+  backend URL entry, but the backend publishable-key variable is absent and this app
+  does not auto-load the root `.env`. No project database connection was made, and no
+  remote table, policy, trigger or migration-history entry was inspected.
+
+### Blockers and unverified assumptions
+
+- A real Google OAuth round trip from Phase F remains unverified. Consequently real
+  access-token forwarding, PostgREST acceptance, token refresh during saved operations,
+  account switching and the authenticated saved-review browser journey are unverified.
+- Two actual Supabase users have not tested RLS through the project API. Remote SELECT,
+  INSERT, UPDATE and DELETE isolation; forged owner attempts; migration compatibility;
+  paused-project behavior; quotas; and deletion in the actual project remain unverified.
+- The prepared pgTAP test uses Supabase's documented community test-helper package, but
+  that helper/local stack is not installed here. Static SQL assertions and backend fake
+  repositories do not prove deployed PostgreSQL policy behavior.
+- The public Supabase URL and publishable key are intentionally compiled into the SPA;
+  this does not establish that Google provider settings or the database migration are
+  correct. No database, Google or Gemini secret was built into the frontend. No account
+  identity is added to the canonical review or sent to Gemini.
+
+### Manual action required
+
+1. Finish the Free-project Google Auth setup in `docs/AUTH_SETUP.md`; GitHub repository
+   integration is not required for local Auth or database migrations.
+2. Copy the project URL and current `sb_publishable_...` key into the backend shell and
+   `frontend/.env.local` exactly as shown in `docs/PERSISTENCE_SETUP.md`. Do not provide
+   or configure a service-role/secret key.
+3. Install/use the Supabase CLI, run `supabase init`, `supabase login`, `supabase link`,
+   inspect `supabase migration list`, then run `supabase db push` from this repository.
+   Confirm migration `202609190001` appears applied. Do not create the remote table by
+   hand because that bypasses migration history.
+4. Use two test Google accounts and complete the owner isolation, stale update, saved
+   invalidation, export and deletion checklist in `docs/PERSISTENCE_SETUP.md` with only
+   public/synthetic content.
+
+Do not enable billing, add a privileged backend key, connect a public deployment, or
+begin Phase H to complete this gate. Phase G remains **BLOCKED** until the migration is
+applied and the real two-user checks pass. Stop after Phase G.
+
+## 2026-09-19 — Migration Phase H: end-to-end verification and competition demonstration
+
+Status: **BLOCKED for the complete Google → Gemini browser journey.** All independent
+local work is complete. The public demonstration, current supported-source retrieval,
+backend/frontend regressions, local PostgreSQL RLS and real local Supabase token/
+PostgREST persistence paths passed. Google OAuth and Gemini remain external blockers;
+no substitute result, billing, paid fallback or deployment was used.
+
+### Changes made
+
+- Reread `context.md`, this progress log, `MIGRATION_PLAN.md`, architecture/code/tests
+  and repository state before Phase H and after resuming it. Updated the current records
+  to replace stale Phase G claims with verified migration and local database status.
+- Started the repository's local Supabase stack. Migration
+  `202609190001_create_saved_reviews.sql` applied locally. Replaced the RLS test's
+  unavailable community helper with standalone pgTAP setup and two transaction-scoped
+  `auth.users` fixtures. The test now covers forced RLS, anonymous denial, owner derivation,
+  owner-column restrictions, forged ownership, cross-user read/update/delete, own CRUD
+  and revision increments.
+- Added `scripts/verify_supabase_local.py`. It obtains local public configuration without
+  printing it, creates two disposable local Auth identities, verifies their real ES256
+  access tokens through FastAPI/JWKS, exercises PostgREST with RLS, and prints no keys,
+  passwords, tokens, account IDs or review bodies. This test is explicitly not Google OAuth.
+- Updated `scripts/evaluate.py` with split/case IDs and actual selected denominators.
+  Live evaluation now defaults to bounded two-case batches through `--max-cases 2`.
+  It still never rewrites references or calls a model unless `--run-model` is explicit.
+- Updated the React browser smoke so competition screenshots and the actual downloaded
+  canonical JSON can be retained under a caller-selected directory. The output records
+  a capture timestamp and explicitly states that the reconstructed demo made no model call.
+- Added `scripts/capture_autophagy_case.py` and generated a bounded public autophagy
+  artifact. It retains reconstructed input, the browser researcher edit, source IDs,
+  URLs, access levels, timestamps, versions, hashes, exact selected passages, and a null
+  model output with zero attempted calls. Fresh retrieval is kept separate from archived
+  curated demo content.
+- Added `docs/EVALUATION_PHASE_H.md`, `docs/COMPETITION_WALKTHROUGH.md`, and
+  `docs/FEATURE_VERIFICATION.md`. Updated README, architecture, migration and persistence
+  setup records with exact startup/test commands, actual denominators and live-versus-
+  fixture/demo/blocked labels.
+
+### Checks actually executed
+
+- `.venv/bin/python -m unittest discover -s tests -v`: **66/66 passed**, no skips.
+  This includes exact source-ID/quotation/location checks, claim-edit invalidation,
+  partial results, unsafe URL/DNS/redirect/size/timeout controls, provider failures,
+  token validation, session/user isolation, saved invalidation, canonical exports and
+  stale revisions.
+- `npm run test:auth --prefix frontend`: **1/1 passed**.
+  `npm run typecheck`, `npm run lint` and `npm run build`: passed. Vite 8.3.0 built
+  62 modules; output was 0.64 kB HTML, 25.72 kB CSS and 476.30 kB JavaScript before gzip.
+- `.venv/bin/python -m compileall -q researchguard scripts tests`,
+  `.venv/bin/python -m pip check`, and Node syntax checks: passed.
+- `supabase test db`: initial run exposed a wrong planned count after the standalone
+  conversion; after changing 14 to the actual 16, **16/16 pgTAP checks passed**.
+- `.venv/bin/python -m scripts.verify_supabase_local`: after correcting the synthetic
+  fixture field from `organism` to canonical `organism_model`, passed with **2 real local
+  access tokens**. Public demo, signed-out live rejection, tampered token, forged owner,
+  cross-owner read/export/delete, owner list/open/update/export/delete, stale update and
+  canonical saved export all behaved as required.
+- Supabase CLI migration history showed local and linked remote version `202609190001`.
+  The hosted JWKS endpoint returned JSON and an anonymous REST read returned HTTP 401.
+  This establishes applied migration history and anonymous denial, not hosted user isolation.
+- `.venv/bin/python -m scripts.verify_retrieval_live`: passed. PubMed returned three
+  individual abstract records (PMIDs 17611390, 27818143, 29909716). PMID 25484088
+  resolved to PMC4502790 as abstract access. PMC8270360 returned 39 passages including
+  35 body passages. PMC4502790 returned one abstract passage and no body; its full-text
+  OAI request returned HTTP 400. The Enzo page returned 160 bounded blocks with visible
+  May 29, 2024 version, and the manual returned 22 physical-page extracts with its HTTP
+  Last-Modified value. Hashes are retained in the case artifact/evaluation report.
+- Public React browser journey against an isolated FastAPI-served build: passed signed-
+  out/empty state, demonstration label, observation/inference, evidence and access labels,
+  edited decision/notes, canonical JSON download, failed API state, skip-link/form focus,
+  390 px readable layout/no overflow and zero page errors. Three actual screenshots,
+  browser metadata and export are under `artifacts/competition-demo/`.
+- Fixture evaluation: **16/16 consistent**, separated as 10/10 development and 6/6
+  held-out. Gemini attempted 0/16 and completed 0/16. Knowledgeable human review is
+  0/16. Scientific support, context matching, false alarms and uncertainty performance
+  remain unmeasured; no accuracy or time-saving percentage is reported.
+- `.venv/bin/python -m scripts.verify_gemini_live`: **blocked before any call** with
+  `unavailable_missing_credentials`; `live_calls_attempted` was 0 and no demo result was
+  substituted.
+- The temporary local Supabase stack was stopped after verification with its local state
+  preserved; no unrelated containers were changed.
+
+### Concrete failures resolved
+
+1. The prepared RLS test depended on an uninstalled helper. It is now standalone and
+   passed against actual local PostgreSQL.
+2. The first revised pgTAP run planned 14 tests but emitted 16. The plan was corrected;
+   all 16 passed.
+3. The first local integration fixture used a nonexistent `organism` field. It now uses
+   canonical `organism_model`; the complete run passed.
+4. Autophagy artifact passage selection initially assumed phrases absent from current
+   extracts and did not normalize PDF layout whitespace. It now selects only exact phrases
+   inspected in the current sources while preserving original passage text.
+
+### Blockers and unverified assumptions
+
+- Google sign-in, cancellation, callback failure, session restoration/refresh, account
+  switching and sign-out have not completed a real hosted browser round trip. Therefore
+  the requested browser journey cannot pass as a whole.
+- No Gemini key or operator confirmation of a no-billing AI Studio Free Tier project is
+  present. Live extraction, assessment, returned model ID, live prompt-injection behavior,
+  and real quota exhaustion are unverified. The requested autophagy model output is null.
+- Hosted authenticated RLS behavior with two Google accounts is unverified even though
+  local real-token/RLS checks passed and the linked migration is applied.
+- Structural citation validation passed, but meaningful scientific entailment is not
+  established by string matching. The curated autophagy reasoning is demonstration-only,
+  and all 16 reference assessments still await a knowledgeable human reviewer.
+- Browser checks cover keyboard focus and a 390 px layout, not a comprehensive WCAG or
+  assistive-technology audit.
+
+### Manual action required
+
+1. In Supabase and Google Cloud, complete `docs/AUTH_SETUP.md` for
+   `http://127.0.0.1:5173/`, then perform the real Google sign-in/cancel/reload/sign-out
+   and two-Google-user saved-review checklist. Do not add a service-role/secret key.
+2. In Google AI Studio, verify the project is Free Tier with no linked billing and that
+   `gemini-3.8-flash` is available. Put `GEMINI_API_KEY` only in the backend environment,
+   set `GEMINI_FREE_TIER_CONFIRMED=true`, run the two-call live verifier, then run the
+   development evaluation in batches of at most two. Do not enable billing if unavailable.
+3. Have a knowledgeable researcher review and date the 16 draft references before any
+   scientific accuracy report. Freeze development decisions before model-running held-out cases.
+
+### Phase outcome
+
+**BLOCKED.** The local application is ready for a competition demonstration of the
+clearly labeled curated workflow. It is not ready to claim a complete live Google +
+Gemini + hosted-save journey or measured scientific performance. Stop after Phase H.
+
+## 2026-09-19 — Gemini credential verification follow-up
+
+Status: **KEY AND MODEL ACCESS VERIFIED; GENERATION BLOCKED BY PROVIDER HTTP 503.**
+
+### Changes made
+
+- Confirmed without printing the value that `GEMINI_API_KEY`, the operator Free Tier
+  attestation and both `gemini-3.8-flash` model identifiers are present in the ignored
+  root `.env`. Confirmed `.env` is ignored by git and changed its permissions from 0644
+  to 0600.
+- Added `researchguard/local_env.py`. The loopback server, Gemini live verifier and
+  evaluation CLI now load the ignored root `.env` without shell evaluation. Existing
+  process variables retain priority so deployment/test launchers remain authoritative.
+- The first live call reached Google but failed HTTP 400 because the SDK's older
+  `response_schema` conversion sent strict Pydantic `additionalProperties` fields through
+  an incompatible OpenAPI schema path. Changed the adapter to the official
+  `response_json_schema` field using `model_json_schema()` and explicitly disabled
+  automatic function calling. Application-side Pydantic and evidence validation remain.
+- Split HTTP 400 request/schema failures from 401/403 authentication failures. Updated
+  the live verifier to return structured blocked JSON for provider failures rather than
+  a traceback. No model/provider fallback was added.
+- Updated README, context and Phase H verification records with the current live status.
+
+### Checks actually executed
+
+- Current official Gemini documentation confirms `gemini-3.8-flash` is the stable model
+  code, supports structured output, and is listed with Free Tier input/output. This does
+  not independently inspect the user's billing state.
+- Non-generative `client.models.get('gemini-3.8-flash')`: **passed**. The configured key
+  is accepted and the model is visible to the project.
+- Original bounded structured-output request: reached Google and returned HTTP 400 with
+  `additional_properties` rejected under `generation_config.response_schema`.
+- Repaired `response_json_schema` diagnostic: schema was accepted and generation reached
+  the model, then returned HTTP 503 high demand.
+- Two complete verifier attempts after the repair: both stopped during extraction after
+  the adapter's bounded 5xx retries with HTTP 503/high demand. Assessment was not started,
+  no output was produced, and no paid or demonstration fallback was used.
+- Temporary loopback server on port 8011 loaded `.env`; `/api/config` reported
+  `model_configured=true`, provider `gemini`, and both models `gemini-3.8-flash`.
+- Targeted provider/environment tests: **17/17 passed** before the final regression run.
+- Full regression after all fixes: **68/68 passed**, no skips. Compileall, dependency
+  check and `git diff --check` passed. The live verifier's failure path was separately
+  checked to emit structured blocked JSON without a traceback.
+- Secret hygiene check passed: the ignored `.env` is mode 0600, and no credential-shaped
+  values were found in `frontend/dist` or competition artifacts.
+
+### Remaining action
+
+Retry `.venv/bin/python -m scripts.verify_gemini_live` later. A passing gate requires
+both the synthetic extraction and evidence assessment plus deterministic validation.
+Do not switch models, enable billing, or add a fallback to work around HTTP 503.

@@ -1,6 +1,6 @@
 # Research Guard AI — Project context
 
-Version: 1.5
+Version: 1.7
 Prepared: 2026-09-15; migration status updated 2026-09-19
 Purpose: Reference for the coding agent implementing the agreed phased build.
 
@@ -19,17 +19,20 @@ No public deployment, paid services, billing activation, paid fallbacks, or cred
 purchases are authorized. Exhausted free quotas or unavailable free access must
 produce an explicit unavailable state, never an upgrade or provider fallback.
 
-Migration Phases A–D are complete. Phase E adds the Gemini provider boundary and
-fixture verification. Phase F implements the local Supabase Google-auth boundary;
-its real browser OAuth round trip remains blocked until the user configures a Free
-project and Google provider. A live Gemini extraction/assessment remains blocked until the user
-confirms an AI Studio Free Tier project with no billing and provides its API key only
-through the server environment. Do not claim either external integration works live
-until its check passes. No phase after F is authorized. Persistent saved reviews and
-public deployment remain later phases and are not implemented or verified features.
+Migration Phases A–G are implemented. Phase H was authorized on 2026-09-19 and performs
+local end-to-end verification and competition preparation. The linked hosted Supabase
+project reports migration `202609190001` applied. Its JWKS is reachable and anonymous
+saved-review REST access is denied. A local Supabase stack additionally passed real
+two-user JWT/PostgREST/RLS checks, but the Google OAuth browser round trip and hosted
+authenticated two-user journey remain blocked. The locally configured Gemini key and
+`gemini-3.8-flash` metadata access were verified on 2026-09-19. The adapter's Gemini 3.8
+JSON Schema incompatibility was repaired, but bounded live generation attempts returned
+HTTP 503 high demand before producing output. Do not claim those
+external browser/model integrations work until their checks pass. Public deployment is
+not authorized and is not an implemented or verified feature.
 The user plans to complete Supabase/Google dashboard setup when deployment is handled;
 until then retain safe configuration placeholders and keep live OAuth marked unverified.
-This sequencing note does not itself authorize deployment or Phase G implementation.
+This sequencing note does not authorize deployment or work after Phase H.
 
 Preserve working Pydantic schemas, retrieval adapters, evidence validation, curated
 demo sources, review decisions, and exports. Adapt framework/provider boundaries
@@ -65,8 +68,8 @@ Inspect the repository before describing its state. Do not infer that the applic
 | Target deliverable | Working web application with evidence-linked reviews and exports. |
 | Framework and hosting | FastAPI is the local HTTP adapter. Phase C implements a Vite React/TypeScript/Tailwind interface; the pre-React frontend remains available at `/legacy`. Local development only. |
 | Existing implementation | FastAPI/Uvicorn backend, React/TypeScript/Tailwind SPA, preserved legacy interface, process-local transient store, and reusable Pydantic/core modules. Verify against code and tests before claiming behavior. |
-| Authentication and saving | Phase F implements Supabase Google sign-in, token verification and owner binding for transient live reviews. Real OAuth remains unverified pending dashboard setup. Explicit persistent saves remain absent; unsaved drafts are transient. |
-| API keys and account access | Gemini/Supabase environment configuration absent at Phase A inspection. Account existence, eligibility, quotas, and project configuration unverified. Never display secrets. |
+| Authentication and saving | Phase F implements Supabase Google sign-in, token verification and owner binding for transient live reviews. Phase G adds explicit saved-review CRUD and versioned RLS. The linked hosted migration is applied; local two-user RLS/token behavior passed. Google OAuth and hosted authenticated two-user behavior remain unverified. Unsaved drafts stay transient. |
+| API keys and account access | Gemini key/model metadata access verified on 2026-09-19 without displaying the key. Free Tier is operator-attested in local configuration; billing state cannot be inspected by code. Generation remains blocked by HTTP 503 high demand. Never display secrets. |
 | Model choices | Gemini Developer API Free Tier is the approved provider. `gemini-3.8-flash` was selected from the official 2026-09-18 Free Tier pricing/model documentation, but access in the user's actual project is unverified. OpenAI models are previous candidates and the adapter is disabled. |
 | Cost boundary | Free tiers only. No billing activation, purchases, paid services, upgrades, or paid fallback. |
 | Performance, user adoption, savings | Unmeasured; do not invent results. |
@@ -88,7 +91,7 @@ Include:
 - Researcher accept/edit/reject decisions and notes.
 - Google authentication through Supabase Free (implemented with fixture verification;
   live OAuth unverified) and saving/loading a review only after an explicit researcher
-  save action (persistence target; not yet implemented).
+  save action (Phase G implemented with fixtures; remote migration unverified).
 - Readable and structured JSON review exports.
 - Clearly separated demonstration and live modes.
 
@@ -251,10 +254,9 @@ These URLs identify material to inspect. This context file is not a substitute f
 
 The numbered phases below are the original product gates and remain requirements,
 not claims of completion. The later migration uses letters A–H to avoid confusing
-the two sequences. Migration Phases A–D are complete. Phase E is fixture-verified but
-live-blocked, and Phases F–H remain reserved
-in `MIGRATION_PLAN.md` for the user's sequential instructions. Do not begin a later
-phase without the user's next phase instruction.
+the two sequences. Migration Phases A–H have been supplied and executed within their
+recorded limits. External Google OAuth and successful Gemini generation gates remain
+blocked. Do not begin later work without the user's next instruction.
 
 | Phase | Deliverable | Completion evidence |
 | --- | --- | --- |

@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 import os
 from urllib.parse import urlsplit
+import re
 
 
 DEFAULT_FRONTEND_ORIGINS = (
@@ -28,6 +29,15 @@ def _supabase_url(value: str | None) -> str | None:
         or parsed.password
     ):
         raise ValueError("SUPABASE_URL must be an exact https://<project-ref>.supabase.co origin.")
+    return candidate
+
+
+def _supabase_publishable_key(value: str | None) -> str | None:
+    if value is None or not value.strip():
+        return None
+    candidate = value.strip()
+    if not re.fullmatch(r"sb_publishable_[A-Za-z0-9_-]{10,}", candidate):
+        raise ValueError("SUPABASE_PUBLISHABLE_KEY must be a publishable key, never a secret key.")
     return candidate
 
 
@@ -76,7 +86,9 @@ class Settings:
     retrieval_timeout_seconds: float = 90
     assessment_timeout_seconds: float = 130
     auth_timeout_seconds: float = 10
+    persistence_timeout_seconds: float = 10
     supabase_url: str | None = None
+    supabase_publishable_key: str | None = None
     supabase_audience: str = "authenticated"
 
     @classmethod
@@ -91,6 +103,8 @@ class Settings:
             retrieval_timeout_seconds=_positive_int("RESEARCHGUARD_RETRIEVAL_TIMEOUT_SECONDS", 90, 1, 300),
             assessment_timeout_seconds=_positive_int("RESEARCHGUARD_ASSESSMENT_TIMEOUT_SECONDS", 130, 1, 300),
             auth_timeout_seconds=_positive_int("RESEARCHGUARD_AUTH_TIMEOUT_SECONDS", 10, 1, 30),
+            persistence_timeout_seconds=_positive_int("RESEARCHGUARD_PERSISTENCE_TIMEOUT_SECONDS", 10, 1, 30),
             supabase_url=_supabase_url(os.environ.get("SUPABASE_URL")),
+            supabase_publishable_key=_supabase_publishable_key(os.environ.get("SUPABASE_PUBLISHABLE_KEY")),
             supabase_audience="authenticated",
         )

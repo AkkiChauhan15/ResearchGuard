@@ -21,7 +21,9 @@ JSON request bodies use `application/json`. Validation and service-rule failures
 `400 {"error": "..."}`; inaccessible/expired reviews return `404`; bodies over the
 configured request limit return `413`; an external operation that exceeds its route
 deadline returns `504` without committing its working copy. Unexpected failures return
-a generic `500` envelope without provider details or a fabricated assessment.
+a generic `500` envelope without provider details or a fabricated assessment. Saved
+record revision conflicts return `409`; unavailable Supabase persistence returns `503`
+and leaves the temporary working review intact.
 
 ## Routes
 
@@ -30,6 +32,12 @@ a generic `500` envelope without provider details or a fabricated assessment.
 | `GET /api/health` | None | Service status and temporary-storage mode |
 | `GET /api/config` | None | Local mode, retention, Gemini state plus public auth availability; never credential values |
 | `GET /api/auth/me` | Verified Supabase bearer token | Verified `user_id` and optional email |
+| `GET /api/saved-reviews` | Bearer token; no draft session required | `{items: SavedReviewSummary[]}` for the verified owner only |
+| `POST /api/saved-reviews` | Bearer token, draft session and `{"review_id":"review_..."}` | HTTP 201 `SavedReviewRecord`; explicit snapshot of that canonical temporary review |
+| `POST /api/saved-reviews/{saved_id}/open` | Bearer token and draft session | `SavedReviewRecord`; also creates an owner-bound temporary working copy in that session |
+| `PUT /api/saved-reviews/{saved_id}` | Bearer token, draft session and `{"review_id":"review_...","expected_revision":1}` | Updated `SavedReviewRecord`; HTTP 409 if the saved revision changed |
+| `GET /api/saved-reviews/{saved_id}/export?format=json\|txt` | Bearer token | Validated canonical saved review attachment |
+| `DELETE /api/saved-reviews/{saved_id}?expected_revision=1` | Bearer token | `{deleted: SavedReviewSummary}`; HTTP 409 on a stale revision |
 | `POST /api/reviews` | Bearer token plus existing `ReviewInput`: `text`, `intended_use`, optional `context` and up to three `source_urls` | User-owned transient live `Review`; client-supplied mode/IDs/user IDs are rejected |
 | `POST /api/reviews/demo` | No semantic body | New curated demo `Review`; no retrieval or model call |
 | `GET /api/reviews/{review_id}` | Session header | Canonical current `Review` |
@@ -48,6 +56,14 @@ Gemini provider. Missing credentials, unconfirmed Free Tier, disallowed models,
 authentication failures, and quota exhaustion are explicit unavailable states.
 Extraction returns an error and assessment records the error on the claim. OpenAI
 selection is rejected.
+
+`SavedReviewSummary` contains `saved_id`, canonical `review_id`, `schema_version`,
+`revision`, `mode`, `title`, `created_at` and `updated_at`. `SavedReviewRecord` adds the
+unchanged canonical `review`. Saved records never accept an owner ID from the browser.
+The backend forwards the verified access token to Supabase PostgREST with the public
+publishable key, so database RLS derives ownership from `auth.uid()`. No privileged key
+or UI-only owner filter is used. Opening does not autosave later edits; the user must
+choose Update saved copy.
 
 ## Limits and concurrency
 
@@ -103,12 +119,16 @@ change local limits without putting secrets in source control:
 | `GEMINI_EXTRACTION_MODEL` | `gemini-3.8-flash` |
 | `GEMINI_ASSESSMENT_MODEL` | `gemini-3.8-flash` |
 | `SUPABASE_URL` | unset; exact server-side `https://<project-ref>.supabase.co` origin |
+| `SUPABASE_PUBLISHABLE_KEY` | unset public `sb_publishable_...` key used with the user bearer token; secret/service-role keys are rejected |
 | `RESEARCHGUARD_AUTH_TIMEOUT_SECONDS` | `10` |
+| `RESEARCHGUARD_PERSISTENCE_TIMEOUT_SECONDS` | `10` |
 
 The React build reads only `VITE_SUPABASE_URL` and
 `VITE_SUPABASE_PUBLISHABLE_KEY`. These are public project values. Full dashboard and
 redirect setup is documented in `docs/AUTH_SETUP.md`. Google secrets, Supabase
 secret/service-role keys and JWT signing keys are not backend settings for this app.
+Migration application and saved-review RLS checks are documented in
+`docs/PERSISTENCE_SETUP.md`.
 
 The provider limits serialized model input to 120,000 bytes, output to 64,000 bytes,
 and local Gemini concurrency to two calls. Extraction and assessment request at most

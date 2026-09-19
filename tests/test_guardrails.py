@@ -142,10 +142,12 @@ class RuntimeTests(unittest.TestCase):
         call=client_class.return_value.models.generate_content.call_args
         config=call.kwargs['config']
         self.assertEqual(config.response_mime_type,'application/json')
-        self.assertIs(config.response_schema,Assessment)
+        self.assertIsNone(config.response_schema)
+        self.assertEqual(config.response_json_schema,Assessment.model_json_schema())
         self.assertEqual(config.max_output_tokens,4096)
         self.assertIsNone(config.tools)
         self.assertIsNone(config.cached_content)
+        self.assertTrue(config.automatic_function_calling.disable)
         retry=client_class.call_args.kwargs['http_options'].retry_options
         self.assertEqual(retry.attempts,2)
         self.assertNotIn(429,retry.http_status_codes)
@@ -189,7 +191,7 @@ class RuntimeTests(unittest.TestCase):
     @patch.dict(os.environ,gemini_env,clear=True)
     @patch('researchguard.providers.gemini.genai.Client')
     def test_invalid_key_and_quota_messages(self,client_class):
-        for code,text in [(401,'authentication'),(429,'quota')]:
+        for code,text in [(400,'configuration'),(401,'authentication'),(429,'quota')]:
             client_class.return_value.models.generate_content.side_effect=errors.APIError(code,{'error':{'message':'provider detail'}})
             with self.subTest(code=code),self.assertRaisesRegex(ValueError,text):
                 call_model(Assessment,'assessment',{})

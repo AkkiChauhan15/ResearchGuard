@@ -140,7 +140,13 @@ class GeminiProvider:
                     candidate_count=1,
                     max_output_tokens=MAX_OUTPUT_TOKENS[task],
                     response_mime_type="application/json",
-                    response_schema=output_type,
+                    # The API's JSON Schema path supports Pydantic's strict
+                    # additionalProperties fields. The older response_schema/OpenAPI
+                    # conversion rejects them for Gemini 3.8 Flash.
+                    response_json_schema=output_type.model_json_schema(),
+                    automatic_function_calling=types.AutomaticFunctionCallingConfig(
+                        disable=True
+                    ),
                 ),
             )
             if not response.candidates or response.candidates[0].finish_reason != types.FinishReason.STOP:
@@ -175,12 +181,14 @@ class GeminiProvider:
 
 
 def _api_error_message(code: int) -> str:
-    if code in {400, 401, 403}:
+    if code == 400:
+        return "Gemini rejected the request configuration or structured-output schema. Check the server adapter; no fallback was used."
+    if code in {401, 403}:
         return "Gemini authentication or request access failed. Check the server API key and Free Tier project permissions; no fallback was used."
     if code == 404:
         return "The configured Gemini model is unavailable in this project. Check Free Tier model access; no paid model or fallback was used."
     if code == 429:
         return "Gemini Free Tier rate limit or quota is exhausted. Wait for quota reset; no paid fallback or demonstration result was used."
     if code in {500, 502, 503, 504}:
-        return "Gemini is temporarily unavailable after bounded retries. Retry later; no fallback result was used."
+        return "Gemini is temporarily unavailable or experiencing high demand after bounded retries. Retry later; no fallback result was used."
     return "Gemini request failed without producing a result. Check the local server configuration; no fallback was used."

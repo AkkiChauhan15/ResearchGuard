@@ -7,7 +7,9 @@ from contextlib import asynccontextmanager
 import mimetypes
 from pathlib import Path
 import re
+from dataclasses import dataclass
 from typing import Annotated, Callable, Literal
+from uuid import UUID
 
 from fastapi import FastAPI, Header, HTTPException, Path as ApiPath, Query, Request
 from fastapi.exceptions import RequestValidationError
@@ -25,6 +27,13 @@ from .auth import (
     bearer_token,
 )
 from .providers import provider_status
+from .persistence import (
+    PersistenceConflict,
+    PersistenceNotFound,
+    PersistencePermissionDenied,
+    PersistenceUnavailable,
+    SupabaseReviewRepository,
+)
 from .demo import demo_review
 from .export import export_review, validate_review
 from .retrieval import classify_url, retrieve
@@ -43,6 +52,7 @@ ReviewId = Annotated[str, ApiPath(pattern=REVIEW_ID_PATTERN)]
 ClaimId = Annotated[str, ApiPath(pattern=CLAIM_ID_PATTERN)]
 SessionId = Annotated[str, Header(alias=SESSION_HEADER)]
 Authorization = Annotated[str | None, Header(alias="Authorization")]
+SavedReviewId = Annotated[UUID, ApiPath()]
 
 
 class ClaimEdit(Strict):
@@ -55,6 +65,21 @@ class RetrievalRequest(Strict):
 
 class DecisionRequest(Strict):
     decision: Decision
+
+
+class SaveReviewRequest(Strict):
+    review_id: str = Field(pattern=f"^{REVIEW_ID_PATTERN}$")
+
+
+class UpdateSavedReviewRequest(Strict):
+    review_id: str = Field(pattern=f"^{REVIEW_ID_PATTERN}$")
+    expected_revision: int = Field(ge=1)
+
+
+@dataclass(frozen=True)
+class AuthenticatedRequest:
+    user: AuthenticatedUser
+    access_token: str
 
 
 def _error(status: int, detail: str, headers: dict[str, str] | None = None) -> JSONResponse:
@@ -135,16 +160,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             settings.supabase_url,
             settings.supabase_audience,
         )
+        application.state.saved_reviews = SupabaseReviewRepository(
+            settings.supabase_url,
+            settings.supabase_publishable_key,
+            timeout_seconds=settings.persistence_timeout_seconds,
+        )
         application.state.external_executor = ThreadPoolExecutor(
             max_workers=settings.external_concurrency,
             thread_name_prefix="researchguard-external",
         )
-        yield
-        application.state.external_executor.shutdown(wait=True, cancel_futures=True)
+        try:
+            yield
+        finally:
+            await application.state.saved_reviews.close()
+            application.state.external_executor.shutdown(wait=True, cancel_futures=True)
 
     application = FastAPI(
         title="Research Guard AI local API",
-        version="0.3.0",
+        version="0.5.0",
         lifespan=lifespan,
         docs_url="/api/docs",
         openapi_url="/api/openapi.json",
@@ -156,7 +189,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         CORSMiddleware,
         allow_origins=list(settings.frontend_origins),
         allow_credentials=False,
-        allow_methods=["GET", "POST", "PUT", "PATCH", "OPTIONS"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", SESSION_HEADER],
         max_age=600,
     )
@@ -206,6 +239,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def unexpected_error(_request: Request, _exc: Exception):
         return _error(500, "Local service failed. No assessment was fabricated. Retry or inspect the local setup.")
 
+    @application.exception_handler(PersistenceNotFound)
+    async def persistence_not_found(_request: Request, exc: PersistenceNotFound):
+        return _error(404, str(exc))
+
+    @application.exception_handler(PersistenceConflict)
+    async def persistence_conflict(_request: Request, exc: PersistenceConflict):
+        return _error(409, str(exc))
+
+    @application.exception_handler(PersistencePermissionDenied)
+    async def persistence_permission(_request: Request, exc: PersistencePermissionDenied):
+        return _error(403, str(exc))
+
+    @application.exception_handler(PersistenceUnavailable)
+    async def persistence_unavailable(_request: Request, exc: PersistenceUnavailable):
+        return _error(503, str(exc))
+
     def session(value: str) -> str:
         if not SESSION_PATTERN.fullmatch(value):
             raise ValueError("A valid browser review session is required.")
@@ -230,14 +279,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             await asyncio.sleep(min(0.01, remaining))
         return future.result()
 
-    async def authenticated_user(authorization: str | None) -> AuthenticatedUser:
+    async def authenticated_request(authorization: str | None) -> AuthenticatedRequest:
         try:
             token = bearer_token(authorization)
-            return await run_in_external_pool(
+            user = await run_in_external_pool(
                 application.state.auth_verifier.verify,
                 token,
                 timeout=settings.auth_timeout_seconds,
             )
+            return AuthenticatedRequest(user=user, access_token=token)
         except AuthenticationError as exc:
             raise HTTPException(
                 401,
@@ -247,13 +297,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         except AuthenticationUnavailable as exc:
             raise HTTPException(503, str(exc)) from None
 
+    async def authenticated_user(authorization: str | None) -> AuthenticatedUser:
+        return (await authenticated_request(authorization)).user
+
     async def review_owner(
         session_id: str,
         review_id: str,
         authorization: str | None,
     ) -> str | None:
         entry = await application.state.store.get_session_entry(session_id, review_id)
-        if entry.review.mode == "demo":
+        if entry.review.mode == "demo" and entry.owner_id is None:
             return None
         user = await authenticated_user(authorization)
         if entry.owner_id != user.user_id:
@@ -331,12 +384,94 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "auth_state": "configured" if settings.supabase_url else "unavailable_missing_configuration",
             "auth_provider": "supabase_google",
             "live_auth_required": True,
+            "persistence_configured": application.state.saved_reviews.configured,
+            "persistence_state": (
+                "configured" if application.state.saved_reviews.configured
+                else "unavailable_missing_configuration"
+            ),
         }
 
     @application.get("/api/auth/me")
     async def auth_me(authorization: Authorization = None):
         user = await authenticated_user(authorization)
         return {"user_id": user.user_id, "email": user.email}
+
+    async def local_review_for_save(
+        session_id: str,
+        review_id: str,
+        user: AuthenticatedUser,
+    ) -> Review:
+        session_id = session(session_id)
+        entry = await application.state.store.get_session_entry(session_id, review_id)
+        if entry.owner_id is not None and entry.owner_id != user.user_id:
+            raise LookupError("Review not found in this session, or expired. Start a new review.")
+        owner_id = entry.owner_id
+        review = await application.state.store.snapshot(session_id, review_id, owner_id)
+        validate_review(review)
+        return review
+
+    @application.get("/api/saved-reviews")
+    async def list_saved_reviews(authorization: Authorization = None):
+        identity = await authenticated_request(authorization)
+        records = await application.state.saved_reviews.list(identity.access_token)
+        return {"items": [record.as_dict() for record in records]}
+
+    @application.post("/api/saved-reviews", status_code=201)
+    async def save_review(payload: SaveReviewRequest, session_id: SessionId, authorization: Authorization = None):
+        identity = await authenticated_request(authorization)
+        review = await local_review_for_save(session_id, payload.review_id, identity.user)
+        saved = await application.state.saved_reviews.create(identity.access_token, review)
+        return saved.as_dict()
+
+    @application.post("/api/saved-reviews/{saved_id}/open")
+    async def open_saved_review(saved_id: SavedReviewId, session_id: SessionId, authorization: Authorization = None):
+        identity = await authenticated_request(authorization)
+        saved = await application.state.saved_reviews.get(identity.access_token, str(saved_id))
+        await add_review(session(session_id), saved.review.model_copy(deep=True), identity.user.user_id)
+        return saved.as_dict()
+
+    @application.put("/api/saved-reviews/{saved_id}")
+    async def update_saved_review(saved_id: SavedReviewId, payload: UpdateSavedReviewRequest, session_id: SessionId, authorization: Authorization = None):
+        identity = await authenticated_request(authorization)
+        review = await local_review_for_save(session_id, payload.review_id, identity.user)
+        current = await application.state.saved_reviews.get(identity.access_token, str(saved_id))
+        if current.summary.review_id != review.review_id:
+            raise ValueError("The open review does not match this saved record.")
+        if current.summary.revision != payload.expected_revision:
+            raise PersistenceConflict(
+                "The saved review changed elsewhere. Your local review was kept; reopen the saved copy before updating."
+            )
+        saved = await application.state.saved_reviews.update(
+            identity.access_token,
+            str(saved_id),
+            payload.expected_revision,
+            review,
+        )
+        return saved.as_dict()
+
+    @application.get("/api/saved-reviews/{saved_id}/export")
+    async def export_saved_review(saved_id: SavedReviewId, authorization: Authorization = None, format: Annotated[Literal["json", "txt"], Query()] = "json"):
+        identity = await authenticated_request(authorization)
+        saved = await application.state.saved_reviews.get(identity.access_token, str(saved_id))
+        content = await run_in_external_pool(
+            export_review,
+            saved.review,
+            format,
+            timeout=settings.assessment_timeout_seconds,
+        )
+        media_type = "application/json" if format == "json" else "text/plain"
+        headers = {"Content-Disposition": f'attachment; filename="research-guard-saved-{saved.review.mode}.{format}"'}
+        return Response(content=content, media_type=media_type, headers=headers)
+
+    @application.delete("/api/saved-reviews/{saved_id}")
+    async def delete_saved_review(saved_id: SavedReviewId, expected_revision: Annotated[int, Query(ge=1)], authorization: Authorization = None):
+        identity = await authenticated_request(authorization)
+        deleted = await application.state.saved_reviews.delete(
+            identity.access_token,
+            str(saved_id),
+            expected_revision,
+        )
+        return {"deleted": deleted.as_dict()}
 
     @application.post("/api/reviews", response_model=Review)
     async def create_live_review(payload: ReviewInput, session_id: SessionId, authorization: Authorization = None):

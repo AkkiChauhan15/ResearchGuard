@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { api, downloadExport } from './api'
+import { api, downloadExport, downloadSavedExport } from './api'
 import {
   clearLocalSession,
   clearOAuthErrorFromUrl,
@@ -19,6 +19,7 @@ import type {
   ExperimentalContext,
   IntendedUse,
   Review,
+  SavedReviewSummary,
   Source,
 } from './types'
 
@@ -445,7 +446,12 @@ function App() {
   const [authReady, setAuthReady] = useState(false)
   const [authBusy, setAuthBusy] = useState(false)
   const [authMessage, setAuthMessage] = useState<string | null>(null)
+  const [savedReviews, setSavedReviews] = useState<SavedReviewSummary[]>([])
+  const [activeSaved, setActiveSaved] = useState<SavedReviewSummary | null>(null)
+  const [savedLoading, setSavedLoading] = useState(false)
+  const [savedError, setSavedError] = useState<string | null>(null)
 
+  // oxlint-disable react/set-state-in-effect -- authentication and remote persistence are external state
   useEffect(() => {
     let active = true
     api.config()
@@ -497,15 +503,59 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (authReady && !authSession && review?.mode === 'live') {
-      // oxlint-disable-next-line react/set-state-in-effect -- an external auth expiry closes user-owned data
+    if (authReady && !authSession && (review?.mode === 'live' || activeSaved)) {
       setReview(null)
+      setActiveSaved(null)
+      setSavedReviews([])
       setNotice('The live review was closed because the sign-in session ended.')
     }
-  }, [authReady, authSession, review])
+  }, [authReady, authSession, review, activeSaved])
+
+  useEffect(() => {
+    if (!authSession || !config?.persistence_configured) {
+      setSavedReviews([])
+      return
+    }
+    let active = true
+    setSavedLoading(true)
+    setSavedError(null)
+    api.listSavedReviews()
+      .then((result) => {
+        if (active) setSavedReviews(result.items)
+      })
+      .catch((reason) => {
+        if (active) setSavedError(reason instanceof Error ? reason.message : 'Saved reviews could not be listed.')
+      })
+      .finally(() => {
+        if (active) setSavedLoading(false)
+      })
+    return () => { active = false }
+  }, [authSession, config?.persistence_configured])
+
+  useEffect(() => {
+    if (activeSaved && review && activeSaved.review_id !== review.review_id) setActiveSaved(null)
+  }, [activeSaved, review])
+  // oxlint-enable react/set-state-in-effect
 
   const busy = busyLabel !== null
   const authAvailable = Boolean(config?.auth_configured && frontendAuthConfigured)
+  const refreshSavedReviews = async () => {
+    if (!authSession || !config?.persistence_configured || savedLoading) return
+    setSavedLoading(true)
+    setSavedError(null)
+    try {
+      const result = await api.listSavedReviews()
+      setSavedReviews(result.items)
+      if (activeSaved) {
+        const current = result.items.find((item) => item.saved_id === activeSaved.saved_id)
+        if (current) setActiveSaved(current)
+      }
+    } catch (reason) {
+      setSavedError(reason instanceof Error ? reason.message : 'Saved reviews could not be refreshed.')
+    } finally {
+      setSavedLoading(false)
+    }
+  }
   const activeEvidenceCount = useMemo(() => {
     if (!review) return 0
     const currentClaimIds = new Set(review.claims.map((claim) => claim.claim_id))
@@ -547,6 +597,79 @@ function App() {
     }
   }
 
+  const updateSavedList = (saved: SavedReviewSummary) => {
+    setSavedReviews((items) => [saved, ...items.filter((item) => item.saved_id !== saved.saved_id)])
+  }
+
+  const saveCurrentReview = async () => {
+    if (!review || busy) return
+    setBusyLabel(activeSaved ? 'Updating the saved review…' : 'Saving this review…')
+    setError(null)
+    try {
+      const saved = activeSaved
+        ? await api.updateSavedReview(activeSaved.saved_id, review.review_id, activeSaved.revision)
+        : await api.saveReview(review.review_id)
+      setActiveSaved(saved)
+      updateSavedList(saved)
+      setNotice(activeSaved ? `Saved copy updated to revision ${saved.revision}.` : 'Review saved explicitly to your private Supabase records.')
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'The review could not be saved. Your local review was kept.')
+      setNotice('Save failed. Your local review remains open and unchanged.')
+    } finally {
+      setBusyLabel(null)
+    }
+  }
+
+  const openSaved = async (summary: SavedReviewSummary) => {
+    if (busy) return
+    setBusyLabel('Opening the saved review as a temporary working copy…')
+    setError(null)
+    try {
+      const saved = await api.openSavedReview(summary.saved_id)
+      setReview(saved.review)
+      setActiveSaved(saved)
+      updateSavedList(saved)
+      setNotice(`Saved revision ${saved.revision} opened. Changes remain temporary until you choose Update saved copy.`)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'The saved review could not be opened.')
+      setNotice('Open failed. The current local review was kept.')
+    } finally {
+      setBusyLabel(null)
+    }
+  }
+
+  const deleteSaved = async (summary: SavedReviewSummary) => {
+    if (busy) return
+    setBusyLabel('Deleting the selected saved copy…')
+    setError(null)
+    try {
+      await api.deleteSavedReview(summary.saved_id, summary.revision)
+      setSavedReviews((items) => items.filter((item) => item.saved_id !== summary.saved_id))
+      if (activeSaved?.saved_id === summary.saved_id) setActiveSaved(null)
+      setNotice('Saved copy deleted. Any open local working copy was kept.')
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'The saved copy could not be deleted.')
+      setNotice('Delete failed. No local review was removed.')
+    } finally {
+      setBusyLabel(null)
+    }
+  }
+
+  const exportSaved = async (summary: SavedReviewSummary, format: 'json' | 'txt') => {
+    if (busy) return
+    setBusyLabel('Validating and exporting the saved canonical record…')
+    setError(null)
+    try {
+      await downloadSavedExport(summary.saved_id, summary.mode, format)
+      setNotice(`Saved ${format.toUpperCase()} export downloaded.`)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'The saved export failed.')
+      setNotice('Saved export failed. No incomplete download was presented.')
+    } finally {
+      setBusyLabel(null)
+    }
+  }
+
   const submitReview = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     await runReviewAction(
@@ -578,11 +701,15 @@ function App() {
     try {
       await signOut()
       setAuthSession(null)
-      if (review?.mode === 'live') setReview(null)
+      if (review?.mode === 'live' || activeSaved) setReview(null)
+      setActiveSaved(null)
+      setSavedReviews([])
       setNotice('Signed out. The public demonstration remains available.')
     } catch (reason) {
       setAuthSession(null)
-      if (review?.mode === 'live') setReview(null)
+      if (review?.mode === 'live' || activeSaved) setReview(null)
+      setActiveSaved(null)
+      setSavedReviews([])
       setAuthMessage(reason instanceof Error ? reason.message : 'The browser session was cleared.')
     } finally {
       setAuthBusy(false)
@@ -663,6 +790,13 @@ function App() {
           </div>
         )}
 
+        {authSession && config && !config.persistence_configured && (
+          <div className="mb-5 rounded-xl border border-warm-ink/20 bg-warm/55 px-4 py-3 text-sm leading-6 text-warm-ink">
+            <strong>Saved-review service unavailable.</strong>{' '}
+            Configure the backend Supabase publishable key and apply the Phase G migration. Unsaved reviews remain temporary.
+          </div>
+        )}
+
         <div className="grid items-start gap-6 lg:grid-cols-[22rem_minmax(0,1fr)] xl:grid-cols-[24rem_minmax(0,1fr)]">
           <aside className="rounded-2xl border border-line bg-paper p-5 shadow-card lg:sticky lg:top-5 sm:p-6">
             <SectionLabel>01 / Define</SectionLabel>
@@ -709,6 +843,34 @@ function App() {
             <h3 className="mt-3 text-lg font-black leading-snug text-ink">More fluorescent spots.<br />More cellular activity?</h3>
             <p className="mt-2 text-sm leading-6 text-muted">Synthetic context with archived public extracts. It makes no live request.</p>
             <button type="button" disabled={busy} className={cx(secondaryButton, 'mt-4 w-full gap-2')} onClick={() => runReviewAction('Opening the curated demonstration…', api.createDemo, 'Demonstration loaded. Its assessment is predefined and clearly labeled.')}>Open demonstration <ArrowIcon /></button>
+
+            {authSession && (
+              <section className="mt-6 border-t border-line pt-6" aria-labelledby="saved-reviews-title">
+                <SectionLabel>Private records</SectionLabel>
+                <h3 id="saved-reviews-title" className="mt-3 text-lg font-black text-ink">Your saved reviews</h3>
+                <p className="mt-2 text-sm leading-6 text-muted">Opening creates a temporary working copy. Changes are stored only when you choose Update saved copy.</p>
+                <button type="button" className={cx(quietButton, 'mt-2')} disabled={busy || savedLoading || !config?.persistence_configured} onClick={refreshSavedReviews}>Refresh saved reviews</button>
+                {savedLoading && <p role="status" className="mt-3 text-sm text-muted">Loading saved reviews…</p>}
+                {savedError && <p role="alert" className="mt-3 text-sm font-bold text-danger">{savedError}</p>}
+                {!savedLoading && !savedError && savedReviews.length === 0 && (
+                  <p className="mt-3 rounded-lg border border-dashed border-line p-3 text-sm text-muted">No reviews have been explicitly saved.</p>
+                )}
+                <div className="mt-3 space-y-3">
+                  {savedReviews.map((saved) => (
+                    <article key={saved.saved_id} className="rounded-xl border border-line bg-white p-3">
+                      <p className="break-words text-sm font-black text-ink">{saved.title}</p>
+                      <p className="mt-1 text-xs text-muted">{saved.mode} · revision {saved.revision} · schema {saved.schema_version}</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button type="button" className={quietButton} disabled={busy || activeSaved?.saved_id === saved.saved_id} onClick={() => openSaved(saved)}>Open</button>
+                        <button type="button" className={quietButton} disabled={busy} onClick={() => exportSaved(saved, 'json')}>JSON</button>
+                        <button type="button" className={quietButton} disabled={busy} onClick={() => exportSaved(saved, 'txt')}>TXT</button>
+                        <button type="button" className={cx(quietButton, 'text-danger')} disabled={busy} onClick={() => deleteSaved(saved)}>Delete saved copy</button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            )}
           </aside>
 
           <section aria-busy={busy} className="min-w-0">
@@ -725,6 +887,11 @@ function App() {
                       <p className="mt-2 text-xs font-bold text-muted">{activeEvidenceCount} current source record{activeEvidenceCount === 1 ? '' : 's'} · {review.mode === 'demo' ? 'curated result' : 'retrieved material only'}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
+                      {authSession && config?.persistence_configured && (
+                        <button type="button" disabled={busy} className={primaryButton} onClick={saveCurrentReview}>
+                          {activeSaved ? `Update saved copy (revision ${activeSaved.revision})` : 'Save this review'}
+                        </button>
+                      )}
                       <button type="button" disabled={busy} className={secondaryButton} onClick={() => runExport('json')}>Export JSON</button>
                       <button type="button" disabled={busy} className={secondaryButton} onClick={() => runExport('txt')}>Export readable TXT</button>
                     </div>
@@ -777,7 +944,7 @@ function App() {
       <footer className="mt-10 border-t border-line bg-paper/60">
         <div className="mx-auto flex max-w-[94rem] flex-wrap justify-between gap-3 px-4 py-6 text-xs leading-5 text-muted sm:px-7">
           <span>Research support with researcher judgment at every step.</span>
-          <span>Temporary local drafts · explicit downloads only</span>
+          <span>Temporary local drafts · explicit private saves only</span>
         </div>
       </footer>
     </div>

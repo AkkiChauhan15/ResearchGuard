@@ -1,0 +1,10 @@
+{
+  "captured_at": "2026-09-19T09:52:20.733Z",
+  "application_url": "http://127.0.0.1:8010",
+  "journey": "public demonstration without authentication",
+  "input_origin": "reconstructed synthetic input shown by the curated demonstration",
+  "model_output": null,
+  "model_status": "not called; curated demonstration only",
+  "researcher_edit_preserved": true,
+  "exported_review_created_at": "2026-09-19T09:52:18.730199+00:00"
+}

@@ -1,0 +1,153 @@
+{
+  "artifact_generated_at": "2026-09-19T09:55:56.446498+00:00",
+  "case": "When more fluorescent spots do not mean more cellular activity",
+  "input_origin": "reconstructed synthetic competition input; not a historical transcript",
+  "input": {
+    "text": "More fluorescent puncta indicate increased autophagic activity.",
+    "intended_use": "assay interpretation",
+    "context": {
+      "organism_model": "",
+      "assay": "CYTO-ID",
+      "reagent": "",
+      "conditions": "Synthetic samples; one time point; no lysosomal-inhibition comparison."
+    },
+    "source_urls": []
+  },
+  "browser_demo_review_id": "review_dc5dcb97f45d425f94416059b4a1297a",
+  "browser_demo_created_at": "2026-09-19T09:52:18.730199+00:00",
+  "researcher_decision": {
+    "status": "edited",
+    "final_wording": "Synthetic review: puncta count alone does not resolve autophagic flux.",
+    "notes": "Checked that the accessible paper material is abstract only."
+  },
+  "curated_suggested_wording": "The sample showed more CYTO-ID-positive puncta under the measured conditions. This observation alone does not establish whether autophagic flux increased or decreased.",
+  "fresh_retrieval_scope": "Read-only adapter verification performed after the browser demo. These fresh records are not represented as the curated demo's runtime retrieval.",
+  "sources": [
+    {
+      "source_id": "src_533a66aeadbd4166a6dc8c884027e13c",
+      "retrieval_run_id": "phase_h_autophagy_a46df3d17a7f447ca5959b5f47b10366",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/25484088/",
+      "category": "pubmed",
+      "title": "Defining and measuring autophagosome flux—concept and reality.",
+      "authors": [
+        "Ben Loos",
+        "André du Toit",
+        "Jan-Hendrik S Hofmeyr"
+      ],
+      "date": "2014",
+      "doi": "10.4161/15548627.2014.973338",
+      "pmid": "25484088",
+      "pmcid": "PMC4502790",
+      "access_level": "abstract",
+      "retrieved_at": "2026-09-19T09:55:54.020634+00:00",
+      "document_version": null,
+      "content_sha256": "bbb1b34b4aceaf1876ac8abbd2feee8d8ac7b91befcae892b4e91ef369d02b46",
+      "passage_count": 1,
+      "evidence_passages": [
+        {
+          "text": "The autophagic system is involved in both bulk degradation of primarily long-lived cytoplasmic proteins as well as in selective degradation of cytoplasmic organelles. Autophagic flux is often defined as a measure of autophagic degradation activity, and a number of methods are currently utilized to assess autophagic flux. However, despite major advances in measuring various molecular aspects of the autophagic machinery, we remain less able to express autophagic flux in a highly sensitive, robust, and well-quantifiable manner. Here, we describe a conceptual framework for defining and measuring autophagosome flux at the single-cell level. The concept discussed here is based on the theoretical framework of metabolic control analysis, which distinguishes between the pathway along which there is a flow of material and the quantitative measure of this flow. By treating the autophagic system as a multistep pathway with each step characterized by a particular rate, we are able to provide a single-cell fluorescence live-cell imaging-based approach that describes the accurate assessment of the complete autophagosome pool size, the autophagosome flux, and the transition time required to turn over the intracellular autophagosome pool. In doing so, this perspective provides clarity on whether the system is at steady state or in a transient state moving towards a new steady state. It is hoped that this theoretical account of quantitatively measuring autophagosome flux may contribute towards a new direction in the field of autophagy, a standardized approach that allows the establishment of systematic flux databases of clinically relevant cell and tissue types that serve as important model systems for human pathologies.",
+          "location": "Abstract"
+        }
+      ],
+      "limitations": [
+        "Abstract only; full text and methods have not been reviewed."
+      ]
+    },
+    {
+      "source_id": "src_bf569124b1484f7da744a906b67657eb",
+      "retrieval_run_id": "phase_h_autophagy_a46df3d17a7f447ca5959b5f47b10366",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4502790/",
+      "category": "pmc",
+      "title": "Defining and measuring autophagosome flux—concept and reality",
+      "authors": [
+        "Ben Loos",
+        "André du Toit",
+        "Jan-Hendrik S Hofmeyr"
+      ],
+      "date": "18 12 2014",
+      "doi": "10.4161/15548627.2014.973338",
+      "pmid": "25484088",
+      "pmcid": "PMC4502790",
+      "access_level": "abstract",
+      "retrieved_at": "2026-09-19T09:55:55.379547+00:00",
+      "document_version": null,
+      "content_sha256": "5792568f73adf82c0b18af8321742fe341fb08a6ecedac813374cfc28edbaed2",
+      "passage_count": 1,
+      "evidence_passages": [
+        {
+          "text": "The autophagic system is involved in both bulk degradation of primarily long-lived cytoplasmic proteins as well as in selective degradation of cytoplasmic organelles. Autophagic flux is often defined as a measure of autophagic degradation activity, and a number of methods are currently utilized to assess autophagic flux. However, despite major advances in measuring various molecular aspects of the autophagic machinery, we remain less able to express autophagic flux in a highly sensitive, robust, and well-quantifiable manner. Here, we describe a conceptual framework for defining and measuring autophagosome flux at the single-cell level. The concept discussed here is based on the theoretical framework of metabolic control analysis, which distinguishes between the pathway along which there is a flow of material and the quantitative measure of this flow. By treating the autophagic system as a multistep pathway with each step characterized by a particular rate, we are able to provide a single-cell fluorescence live-cell imaging-based approach that describes the accurate assessment of the complete autophagosome pool size, the autophagosome flux, and the transition time required to turn over the intracellular autophagosome pool. In doing so, this perspective provides clarity on whether the system is at steady state or in a transient state moving towards a new steady state. It is hoped that this theoretical account of quantitatively measuring autophagosome flux may contribute towards a new direction in the field of autophagy, a standardized approach that allows the establishment of systematic flux databases of clinically relevant cell and tissue types that serve as important model systems for human pathologies.",
+          "location": "Abstract, paragraph 1"
+        }
+      ],
+      "limitations": [
+        "PMC supplied abstract/metadata only; no readable full-text body paragraphs were available through this endpoint."
+      ]
+    },
+    {
+      "source_id": "src_01a61262ddf2407c9b7f58cade9a2451",
+      "retrieval_run_id": "phase_h_autophagy_a46df3d17a7f447ca5959b5f47b10366",
+      "url": "https://www.enzo.com/product/cyto-id-autophagy-detection-kit/",
+      "category": "manufacturer",
+      "title": "CYTO-ID® Autophagy detection kit - Enzo",
+      "authors": [],
+      "date": null,
+      "doi": null,
+      "pmid": null,
+      "pmcid": null,
+      "access_level": "product document",
+      "retrieved_at": "2026-09-19T09:55:55.779811+00:00",
+      "document_version": "Last modified: May 29, 2024",
+      "content_sha256": "11347a72c1e927598a79e18c07d9d06dcbb66bd6f023131025730d97ad5b620f",
+      "passage_count": 160,
+      "evidence_passages": [
+        {
+          "text": "Autophagy is a stress-induced protective mechanism. Less active under basal conditions, the mechanism is utilized by eukaryotic cells through lysosome-mediated bulk degradation of cellular contents when subjected to certain hostile conditions such as nutrient depletion and chemical or environmental stress. The role of increased autophagic activity in the pathology of cancer, neurodegeneration, cardiovascular disease and diabetes has become widely recognized and commonly studied. Induction of autophagic flux can be visualized by enhanced accumulation of autophagic vesicles if lysosomal function is inhibited, preventing removal of these vesicles.",
+          "location": "HTML text block 28"
+        }
+      ],
+      "limitations": [
+        "Product web page, not a complete manual review; extracted HTML blocks may include site navigation.",
+        "HTML text-block locations refer to this hashed response and may change when the official page changes."
+      ]
+    },
+    {
+      "source_id": "src_5e5b05e480ec46dcace2cb78f94682ac",
+      "retrieval_run_id": "phase_h_autophagy_a46df3d17a7f447ca5959b5f47b10366",
+      "url": "https://www.enzo.com/wp-content/uploads/2023/01/ENZ-51031_insert.pdf",
+      "category": "manufacturer",
+      "title": "CYTO-ID Autophagy Detection Kit — ENZ-51031 Product Manual",
+      "authors": [],
+      "date": null,
+      "doi": null,
+      "pmid": null,
+      "pmcid": null,
+      "access_level": "product document",
+      "retrieved_at": "2026-09-19T09:55:56.446350+00:00",
+      "document_version": "HTTP Last-Modified: Tue, 27 Jun 2023 11:15:20 GMT",
+      "content_sha256": "eecaece65b7125d8abbb325917a824d2b3415adea5c79218f57094b42e574f72",
+      "passage_count": 22,
+      "evidence_passages": [
+        {
+          "text": "                                Product Manual\nThe conventional way of monitoring autophagic activity is to measure\nthe increased numbers of autophagosomes in cells responding to\ninduction. However, the autophagosome formation is an intermediate\nstage in the whole dynamic autophagy process. The accumulation of\nautophagosomes can represent either an increased generation of\nautophagosomes or the blocked conversion to autolysosomes. To\ndistinguish these two sources of autophagosomes, monitoring\nautophagic flux provides a meaningful way, in which the balance of the\nautophagosome generation and clearance will be measured 1-4.\nRapamycin and starvation are well known inducers of autophagy.\nChloroquine is a lysosomal inhibitor. Rapamycin and Chloroquine are\nincluded as positive controls in the kit. A nuclear counterstain is\nprovided in the kit as well to highlight cellular nuclei. This live cell\nanalysis kit provides a convenient approach for the analysis of the\nregulation of autophagic activity at the cellular level.\n\n\n\n\n                                   3\n",
+          "location": "PDF physical page 5"
+        }
+      ],
+      "limitations": [
+        "Text extraction only; diagrams and tables require visual inspection of the original PDF.",
+        "Physical PDF pages count from the cover; printed page labels may differ.",
+        "Extraction is limited to 30 physical pages and 45,000 characters of complete pages; later material may be omitted.",
+        "Product identity in a document does not establish which reagent the researcher actually used."
+      ]
+    }
+  ],
+  "model": {
+    "output": null,
+    "provider": "gemini",
+    "state": "unavailable_missing_credentials",
+    "detail": "Live AI unavailable: configure GEMINI_API_KEY on the server. No demonstration result was substituted.",
+    "extraction_model_requested": "gemini-3.8-flash",
+    "assessment_model_requested": "gemini-3.8-flash",
+    "live_calls_attempted": 0
+  },
+  "scientific_review_status": "No knowledgeable human scientific review was performed in Phase H. The researcher wording above is a competition-demo edit."
+}

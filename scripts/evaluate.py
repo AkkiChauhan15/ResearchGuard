@@ -1,6 +1,6 @@
 """Inspect the case set, or explicitly run Gemini Free Tier evaluation on fixtures.
 
-Run: python3 -m scripts.evaluate [--run-model --split dev|held_out]
+Run: python3 -m scripts.evaluate [--run-model --split dev|held_out --max-cases 2]
 This never rewrites expected labels and never grades scientific entailment with a model.
 """
 import argparse
@@ -8,15 +8,25 @@ import hashlib
 import json
 from pathlib import Path
 from researchguard.assessment import Extraction, call_model, configured, validate_assessment
+from researchguard.local_env import load_local_env
 from researchguard.schemas import Assessment, Passage, Source
 
 
 def main():
+    load_local_env()
     parser=argparse.ArgumentParser()
     parser.add_argument('--run-model',action='store_true')
     parser.add_argument('--split',choices=['dev','held_out'],default='dev')
+    parser.add_argument(
+        '--max-cases',
+        type=int,
+        default=2,
+        help='Maximum cases in this bounded model batch (default: 2).',
+    )
     parser.add_argument('--output',type=Path)
     args=parser.parse_args()
+    if args.max_cases < 1:
+        parser.error('--max-cases must be at least 1')
     raw=Path('data/evaluation_cases.json').read_bytes()
     cases=json.loads(raw)
     assert len(cases)==16 and len({c['id'] for c in cases})==16
@@ -26,10 +36,16 @@ def main():
         if c['access_state'] in ('fetch_failed','no_results'):
             assert c['reference']['status'] is None and not c['sources']
     selected=[c for c in cases if c['split']==args.split]
+    model_batch=selected[:args.max_cases]
     report={'case_file_sha256':hashlib.sha256(raw).hexdigest(),'case_count':len(cases),
             'development_cases':10,'held_out_cases':6,'fixture_checks':'16/16 consistent',
+            'selected_split':args.split,'selected_case_count':len(selected),
+            'selected_case_ids':[c['id'] for c in selected],
             'reference_status':'Agent-authored drafts; knowledgeable human review pending.',
+            'human_reviewed_references':'0/16',
             'mode':'model on synthetic/archived fixtures' if args.run_model else 'fixture validation only',
+            'model_batch_limit':args.max_cases if args.run_model else 0,
+            'model_batch_case_ids':[c['id'] for c in model_batch] if args.run_model else [],
             'model_cases_attempted':0,'model_cases_completed':0,'extraction_count_matches':0,
             'citation_valid_outputs':0,'draft_label_matches':0,'results':[],
             'scientific_support':'Unmeasured; requires human review of actual claim-to-source entailment.',
@@ -40,7 +56,7 @@ def main():
         from researchguard.providers import provider_status
         report['blocked']=provider_status().detail+' No model cases were run.'
     elif args.run_model:
-        for c in selected:
+        for c in model_batch:
             row={'case_id':c['id'],'reference':c['reference'],'human_grades':None}
             report['model_cases_attempted']+=1
             try:

@@ -149,9 +149,30 @@ export interface ApiConfig {
   auth_state: 'configured' | 'unavailable_missing_configuration'
   auth_provider: 'supabase_google'
   live_auth_required: boolean
+  persistence_configured: boolean
+  persistence_state: 'configured' | 'unavailable_missing_configuration'
 }
 
 export interface AuthenticatedUser {
   user_id: string
   email: string | null
+}
+
+export interface SavedReviewSummary {
+  saved_id: string
+  review_id: string
+  schema_version: number
+  revision: number
+  mode: 'demo' | 'live'
+  title: string
+  created_at: string
+  updated_at: string
+}
+
+export interface SavedReviewRecord extends SavedReviewSummary {
+  review: Review
+}
+
+export interface SavedReviewList {
+  items: SavedReviewSummary[]
 }

@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const { chromium } = require(process.env.PLAYWRIGHT_PATH || 'playwright-core');
 const frontendUrl = process.env.FRONTEND_URL || 'http://127.0.0.1:5173';
+const screenshotDir = process.env.SCREENSHOT_DIR || 'test-results';
 
 (async () => {
   const browser = await chromium.launch({
@@ -39,8 +40,8 @@ const frontendUrl = process.env.FRONTEND_URL || 'http://127.0.0.1:5173';
     await page.keyboard.press('Tab');
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'intended-use');
 
-    await fs.mkdir('test-results', { recursive: true });
-    await page.screenshot({ path: 'test-results/react-empty-desktop.png', fullPage: true });
+    await fs.mkdir(screenshotDir, { recursive: true });
+    await page.screenshot({ path: `${screenshotDir}/react-empty-desktop.png`, fullPage: true });
 
     await page.getByRole('button', { name: 'Open demonstration' }).click();
     await page.getByText('Demonstration — not a live verification', { exact: true }).waitFor();
@@ -59,18 +60,33 @@ const frontendUrl = process.env.FRONTEND_URL || 'http://127.0.0.1:5173';
     const downloadPromise = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Export JSON' }).click();
     const download = await downloadPromise;
-    const exported = JSON.parse(await fs.readFile(await download.path(), 'utf8'));
+    const downloadPath = await download.path();
+    const exported = JSON.parse(await fs.readFile(downloadPath, 'utf8'));
     assert.equal(exported.mode, 'demo');
     assert.equal(exported.claims[0].decision.status, 'edited');
     assert.equal(exported.claims[0].decision.notes, 'Checked that the accessible paper material is abstract only.');
     assert.equal(exported.sources.length, 2);
-    await page.screenshot({ path: 'test-results/react-demo-desktop.png', fullPage: true });
+    await fs.copyFile(downloadPath, `${screenshotDir}/autophagy-demo-export.json`);
+    await fs.writeFile(
+      `${screenshotDir}/browser-run.json`,
+      `${JSON.stringify({
+        captured_at: new Date().toISOString(),
+        application_url: frontendUrl,
+        journey: 'public demonstration without authentication',
+        input_origin: 'reconstructed synthetic input shown by the curated demonstration',
+        model_output: null,
+        model_status: 'not called; curated demonstration only',
+        researcher_edit_preserved: true,
+        exported_review_created_at: exported.created_at,
+      }, null, 2)}\n`,
+    );
+    await page.screenshot({ path: `${screenshotDir}/react-demo-desktop.png`, fullPage: true });
 
     await page.getByLabel('Answer or claim to review').fill('A synthetic observation proves that cellular activity increased.');
     assert.equal(await page.getByRole('button', { name: 'Start live review' }).isDisabled(), true);
 
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.screenshot({ path: 'test-results/react-signed-out-mobile.png', fullPage: true });
+    await page.screenshot({ path: `${screenshotDir}/react-signed-out-mobile.png`, fullPage: true });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false);
     const bodyFontSize = await page.evaluate(() => Number.parseFloat(getComputedStyle(document.body).fontSize));
     assert.ok(bodyFontSize >= 16);

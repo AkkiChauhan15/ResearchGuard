@@ -1,6 +1,6 @@
 # Architecture decisions — 2026-09-16
 
-## Approved target and completed local migration decisions through Phase E
+## Approved target and completed local migration decisions through Phase G
 
 On 2026-09-16 the user approved **Python + FastAPI**, **React + TypeScript +
 Tailwind**, **Supabase Free** for Google authentication and explicitly saved
@@ -10,7 +10,8 @@ paid fallback, or credit purchases. Phase A documented the baseline. Phase B rep
 the local HTTP adapter with FastAPI. Phase C replaces the primary interface with a
 Vite React/TypeScript/Tailwind SPA while preserving the FastAPI and review contracts.
 Phase D verified retrieval. Phase E replaces the provider-specific runtime path with
-a bounded Gemini adapter. Authentication, persistence, and deployment remain later work.
+a bounded Gemini adapter. Phase F adds authentication, and Phase G adds explicit
+saved-review persistence. Public deployment remains later work.
 
 Phase B preserves `schemas.py`, retrieval/transport protections, deterministic evidence
 validation, `demo.py` and its archived sources, review decision semantics, and
@@ -41,7 +42,7 @@ The generated `frontend/dist` directory is not source-controlled; run the docume
 build before using the same-origin React preview.
 
 The current `X-Review-Session` is a transient bearer capability, not Google identity.
-Keep guest drafts separate from authenticated ownership. Future saved records must
+Keep guest drafts separate from authenticated ownership. Saved records
 derive an owner from a validated Supabase token and enforce owner-only access through
 row-level security. Use explicit save/update actions; login, extraction, retrieval,
 assessment, or editing must not write review bodies to Supabase automatically.
@@ -77,13 +78,15 @@ is insufficient. Exact passages remain unchanged and locations describe their ac
 abstract, XML paragraph, HTML block, or physical PDF page positions.
 
 `MIGRATION_PLAN.md` contains the code-backed inventory, existing API contract,
-migration risks, completed Phase B–D decisions, the Phase E provider decision, reserved F–H entries, and account
-setup prerequisites. The user will define later phases sequentially, one phase at a
-time; no phase mapping is inferred. Phase B checks verify the FastAPI HTTP layer and
+migration risks, completed Phase B–H decisions, the Phase E provider decision, and account
+setup prerequisites. The user supplied phases sequentially, one phase at a time. Phase B checks verify the FastAPI HTTP layer and
 Phase C checks verify the compiled interface and browser behavior. Phase D verifies
 the supported retrieval sources with fixtures and live read-only requests. Phase E
 verifies Gemini behavior with fixtures only. Phase F adds fixture-verified Supabase
-identity; live OAuth and saved reviews remain unverified.
+identity. Phase G adds persistence and a versioned RLS migration. The linked hosted
+migration is applied, and local two-user JWT/PostgREST/RLS behavior is verified;
+live Google OAuth and hosted authenticated user isolation remain unverified. Phase H
+adds reproducible local verification and competition artifacts without deployment.
 
 ## Phase E — Gemini provider boundary
 
@@ -142,16 +145,35 @@ while invalid credentials return a generic `401` with a Bearer challenge.
 
 The temporary store now binds a live record to both its random browser session and
 the verified user. Demo entries have no owner and remain public within their temporary
-browser session. Logout/session expiry clears live UI state. Persistent storage is not
-part of Phase F: there is no Supabase table, RLS policy, privileged key or autosave.
-Future saved-review routes must reuse the verified identity boundary and explicit-save
-requirement.
+browser session. Logout/session expiry clears live UI state. Phase F itself added no
+persistent storage; Phase G builds on this identity boundary and keeps explicit-save
+semantics.
 
-Frontend configuration is limited to the project URL and publishable/anon key. The
-backend receives only `SUPABASE_URL`; it needs no service-role secret or JWT private
-key. Fixture tests cover token validation, ownership and unauthenticated rejection.
+Frontend configuration is limited to the project URL and publishable key. The backend
+receives `SUPABASE_URL` plus the same public `SUPABASE_PUBLISHABLE_KEY`; it needs no
+service-role secret or JWT private key. Fixture tests cover token validation, ownership
+and unauthenticated rejection.
 The real OAuth browser round trip remains blocked until the user configures the Free
 project and Google client exactly as recorded in `docs/AUTH_SETUP.md`.
+
+## Phase G — user-owned saved reviews
+
+The canonical `Review` JSON remains unchanged inside a schema-versioned saved-record
+envelope. FastAPI sends the already verified user's access token plus the public
+Supabase publishable key to PostgREST. PostgreSQL derives `owner_id` from `auth.uid()`;
+the browser never supplies it, and no service-role or secret key is used. Separate RLS
+policies restrict select, insert, update and delete to that owner. Column privileges and
+a trigger make owner and record identity immutable.
+
+Saving and updating are explicit actions. Opening a saved record creates an
+owner-bound process-local working copy, so ordinary claim edits do not write to
+Postgres. Updates and deletes include the expected revision; a mismatch returns a
+conflict and preserves the local copy. Every record is parsed through the canonical
+Pydantic schema and evidence validator before display or export. The database migration
+under `supabase/migrations` is present in both local and linked hosted migration
+histories. Its policies passed a 16-check local pgTAP run and a real two-user local
+Auth/PostgREST/FastAPI check. Hosted Google-authenticated owner isolation remains a
+separate unverified gate.
 
 ## Previous local-preview decision — historical record
 
