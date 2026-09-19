@@ -1,0 +1,59 @@
+[
+  {
+    "source_id": "src_0b6c0ca62e7f45b195718fe98bd1cd13",
+    "retrieval_run_id": "retrieval_b83d9cc7c0714037ad2d9b1756886df3",
+    "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4502790/",
+    "category": "pmc",
+    "title": "Defining and measuring autophagosome flux—concept and reality",
+    "authors": [
+      "Ben Loos",
+      "André du Toit",
+      "Jan-Hendrik S Hofmeyr"
+    ],
+    "date": "18 12 2014",
+    "doi": "10.4161/15548627.2014.973338",
+    "pmid": "25484088",
+    "pmcid": "PMC4502790",
+    "access_level": "abstract",
+    "retrieved_at": "2026-09-16T12:53:00.993814+00:00",
+    "document_version": null,
+    "content_sha256": "5792568f73adf82c0b18af8321742fe341fb08a6ecedac813374cfc28edbaed2",
+    "passages": [
+      {
+        "text": "distinguishes between the pathway along which there is a flow of material and the quantitative measure of this flow.",
+        "location": "Abstract, paragraph 1"
+      }
+    ],
+    "limitations": [
+      "PMC supplied abstract/metadata only; full text and methods were not available through this endpoint.",
+      "Archived demonstration extract retrieved on 2026-09-16, not a live request. Only this short extract is redistributed."
+    ]
+  },
+  {
+    "source_id": "src_fa3199d3ff0d4046be81bc8dcc76fb50",
+    "retrieval_run_id": "retrieval_bd9b1e60d05c44e982b26f0e498e6d80",
+    "url": "https://www.enzo.com/product/cyto-id-autophagy-detection-kit/",
+    "category": "manufacturer",
+    "title": "CYTO-ID® Autophagy detection kit - Enzo",
+    "authors": [],
+    "date": null,
+    "doi": null,
+    "pmid": null,
+    "pmcid": null,
+    "access_level": "product document",
+    "retrieved_at": "2026-09-16T12:53:15.615329+00:00",
+    "document_version": null,
+    "content_sha256": "06ca88919f62959d4c62965e09e2402c6afa573e2d968294bb128e3b83f4b0c1",
+    "passages": [
+      {
+        "text": "Induction of autophagic flux can be visualized by enhanced accumulation of autophagic vesicles if lysosomal function is inhibited",
+        "location": "HTML text block 28"
+      }
+    ],
+    "limitations": [
+      "Product web page, not a complete manual review; extracted HTML blocks may include site navigation.",
+      "No page numbers or document revision were inferred.",
+      "Archived demonstration extract retrieved on 2026-09-16, not a live request. Only this short extract is redistributed."
+    ]
+  }
+]

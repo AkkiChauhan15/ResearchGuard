@@ -1,0 +1,19 @@
+{
+  "case_file_sha256": "1d19ba7693fac1c8647e9dbab4af68e19eb5089b5e188818267e09c8adcdf5f1",
+  "case_count": 16,
+  "development_cases": 10,
+  "held_out_cases": 6,
+  "fixture_checks": "16/16 consistent",
+  "reference_status": "Agent-authored drafts; knowledgeable human review pending.",
+  "mode": "fixture validation only",
+  "model_cases_attempted": 0,
+  "model_cases_completed": 0,
+  "extraction_count_matches": 0,
+  "citation_valid_outputs": 0,
+  "draft_label_matches": 0,
+  "results": [],
+  "scientific_support": "Unmeasured; requires human review of actual claim-to-source entailment.",
+  "context_matching": "Unmeasured; human grading pending.",
+  "false_alarms": "Unmeasured; human grading of supported cases pending.",
+  "uncertainty_handling": "Unmeasured; human grading of failure/no-results/mismatch cases pending."
+}

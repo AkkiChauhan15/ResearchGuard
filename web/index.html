@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Research Guard AI</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<body>
+<header><a class="brand" href="/">RG<span>Research Guard <b>AI</b></span></a><span class="local">Local research workspace</span></header>
+<main>
+<section class="hero"><div class="eyebrow">FROM AN ANSWER TO AN EVIDENCE RECORD</div><h1>Check the evidence.<br><span>Keep the qualifications.</span></h1><p>Separate what was observed from what was inferred. Inspect the sources, question the context, and record your own conclusion.</p></section>
+<nav class="workflow" aria-label="Review workflow"><span>01 <b>DEFINE</b></span><span>02 <b>RISK</b></span><span>03 <b>ASSIST</b></span><span>04 <b>VERIFY</b></span><span>05 <b>RECORD</b></span></nav>
+<div id="status" role="status" aria-live="polite">Checking local service…</div>
+<div class="workspace">
+<section class="panel input-panel"><div class="section-label">01 / DEFINE</div><h2>What needs checking?</h2><p class="muted">Use public or synthetic research text. Do not enter patient data or private laboratory information.</p>
+<form id="review-form"><label for="answer">Answer or claim to review</label><textarea id="answer" rows="7" maxlength="12000" required placeholder="Paste a research answer here…"></textarea>
+<label for="intended-use">Intended use</label><select id="intended-use"><option>topic understanding</option><option>assay interpretation</option><option>presentation preparation</option><option>experiment planning</option></select>
+<details><summary>Add experimental context <span class="muted">optional</span></summary><label for="organism_model">Organism or model</label><input id="organism_model" maxlength="500"><label for="assay">Assay</label><input id="assay" maxlength="500"><label for="reagent">Manufacturer and reagent identifier</label><input id="reagent" maxlength="500"><label for="conditions">Conditions and comparisons</label><textarea id="conditions" rows="3" maxlength="1500"></textarea></details>
+<label for="source-urls">Public source URLs <span class="muted">optional; one per line</span></label><textarea id="source-urls" rows="2" placeholder="https://pubmed.ncbi.nlm.nih.gov/…"></textarea><p class="fine">Supports PubMed, PMC, and the exact Enzo CYTO-ID <a href="https://www.enzo.com/product/cyto-id-autophagy-detection-kit/" target="_blank" rel="noopener noreferrer">product page</a> and <a href="https://www.enzo.com/wp-content/uploads/2023/01/ENZ-51031_insert.pdf" target="_blank" rel="noopener noreferrer">manual</a>. Other manufacturers and documents are not yet supported.</p>
+<button class="primary" type="submit">Start live review <span>→</span></button></form>
+<div class="demo-box"><span class="section-label">TRY THE WORKED EXAMPLE</span><h3>More fluorescent spots.<br>More cellular activity?</h3><p>A synthetic CYTO-ID interpretation, with a curated review.</p><button type="button" id="demo-button">Open demonstration →</button></div>
+</section>
+<section class="results" aria-label="Review results"><div id="review-heading"></div><div id="claims"><div class="empty"><div class="empty-icon">↗</div><h2>A claim is a starting point.</h2><p>Your review will connect each claim to retrieved passages, access limitations, and the next verification question.</p><div class="empty-points"><span>Source passages</span><span>Context checks</span><span>Your decision</span></div></div></div><div id="record"></div></section>
+</div>
+<footer><p>Research support, with researcher judgment at every step.</p><details><summary>Processing and retention</summary><p>Reviews stay in browser memory and temporary server memory (up to one hour, with bounded capacity). Reloading the page starts a new session. Nothing is automatically saved to disk. Download an export to save your record. Searches and URLs go to the selected public source services. With an approved server configuration, AI actions send the input, context, or retrieved passages to the Gemini Developer API. Free Tier content may be used by Google to improve its products; do not submit private or unpublished material. No model credential is sent to the browser.</p></details></footer>
+</main></body></html>

@@ -1,7 +1,7 @@
 # Research Guard AI — Project context
 
-Version: 1.0  
-Prepared: 2026-09-15  
+Version: 1.5
+Prepared: 2026-09-15; migration status updated 2026-09-19
 Purpose: Reference for the coding agent implementing the agreed phased build.
 
 ## Read this first
@@ -9,6 +9,34 @@ Purpose: Reference for the coding agent implementing the agreed phased build.
 Read this file before planning, coding, changing scope, or resuming work after a context reset. Read applicable repository instructions as well. This file records project requirements; it does not override system instructions, access controls, or subsequent explicit user decisions.
 
 This file cannot guarantee hallucination-free development or scientific judgments. Enforce its requirements through software validation, source checks, tests, and researcher review.
+
+### User-authorized migration direction — 2026-09-16
+
+The approved target is Python + FastAPI, React + TypeScript + Tailwind,
+Supabase Free for Google authentication and explicitly saved reviews, and the
+Gemini Developer API through an AI Studio Free Tier project. Develop locally first.
+No public deployment, paid services, billing activation, paid fallbacks, or credit
+purchases are authorized. Exhausted free quotas or unavailable free access must
+produce an explicit unavailable state, never an upgrade or provider fallback.
+
+Migration Phases A–D are complete. Phase E adds the Gemini provider boundary and
+fixture verification. Phase F implements the local Supabase Google-auth boundary;
+its real browser OAuth round trip remains blocked until the user configures a Free
+project and Google provider. A live Gemini extraction/assessment remains blocked until the user
+confirms an AI Studio Free Tier project with no billing and provides its API key only
+through the server environment. Do not claim either external integration works live
+until its check passes. No phase after F is authorized. Persistent saved reviews and
+public deployment remain later phases and are not implemented or verified features.
+The user plans to complete Supabase/Google dashboard setup when deployment is handled;
+until then retain safe configuration placeholders and keep live OAuth marked unverified.
+This sequencing note does not itself authorize deployment or Phase G implementation.
+
+Preserve working Pydantic schemas, retrieval adapters, evidence validation, curated
+demo sources, review decisions, and exports. Adapt framework/provider boundaries
+instead of rewriting the scientific review core. See `ARCHITECTURE.md` and
+`MIGRATION_PLAN.md`. The user clarified that Phases B–H will be supplied
+sequentially, one phase at a time. Reserve those definitions for the user; do not
+infer their order or begin them automatically.
 
 Inspect the repository before describing its state. Do not infer that the application exists because a sample case study describes it in the past tense. Prior competition drafts are illustrative narratives, not evidence of implementation, deployment, evaluation, or research outcomes.
 
@@ -35,10 +63,12 @@ Inspect the repository before describing its state. Do not infer that the applic
 | Core product and phased workflow | Agreed; preserve the intent described here. |
 | Initial domains | Biological claims and assay/reagent interpretation. |
 | Target deliverable | Working web application with evidence-linked reviews and exports. |
-| Framework and hosting | Not selected; inspect the environment, reuse an appropriate existing stack, and document the choice. |
-| Existing implementation | Not established by this file; inspect actual files and behavior. |
-| API keys and account access | Unknown; check availability without displaying secrets. |
-| Model choices | Candidates only; verify documented support and actual access. |
+| Framework and hosting | FastAPI is the local HTTP adapter. Phase C implements a Vite React/TypeScript/Tailwind interface; the pre-React frontend remains available at `/legacy`. Local development only. |
+| Existing implementation | FastAPI/Uvicorn backend, React/TypeScript/Tailwind SPA, preserved legacy interface, process-local transient store, and reusable Pydantic/core modules. Verify against code and tests before claiming behavior. |
+| Authentication and saving | Phase F implements Supabase Google sign-in, token verification and owner binding for transient live reviews. Real OAuth remains unverified pending dashboard setup. Explicit persistent saves remain absent; unsaved drafts are transient. |
+| API keys and account access | Gemini/Supabase environment configuration absent at Phase A inspection. Account existence, eligibility, quotas, and project configuration unverified. Never display secrets. |
+| Model choices | Gemini Developer API Free Tier is the approved provider. `gemini-3.8-flash` was selected from the official 2026-09-18 Free Tier pricing/model documentation, but access in the user's actual project is unverified. OpenAI models are previous candidates and the adapter is disabled. |
+| Cost boundary | Free tiers only. No billing activation, purchases, paid services, upgrades, or paid fallback. |
 | Performance, user adoption, savings | Unmeasured; do not invent results. |
 | Demonstration interaction | Reconstructed; not a historical transcript or a recorded live tool run. |
 | Public deployment | Requires explicit authorization; finish a reviewable local preview first. |
@@ -56,6 +86,9 @@ Include:
 - Live public evidence retrieval with visible access limitations.
 - Observation versus inference, source passages, context mismatches, and suggested qualified wording.
 - Researcher accept/edit/reject decisions and notes.
+- Google authentication through Supabase Free (implemented with fixture verification;
+  live OAuth unverified) and saving/loading a review only after an explicit researcher
+  save action (persistence target; not yet implemented).
 - Readable and structured JSON review exports.
 - Clearly separated demonstration and live modes.
 
@@ -136,13 +169,26 @@ Keep absent metadata null or explicitly unavailable. Do not infer missing page o
 
 ## 7. Models and implementation roles
 
-Candidates carried forward from planning:
+Active approved runtime direction (2026-09-16): Gemini Developer API through an
+AI Studio Free Tier project. Phase E selects `gemini-3.8-flash` for extraction and
+assessment because the official pricing table listed free input and output on
+2026-09-18. Both identifiers remain server-configurable but are checked against a
+narrow verified-free allowlist. This documentation check does not establish access
+in the user's project. Live use also requires an operator confirmation that the
+project is Free Tier with no billing. Do not activate billing or silently switch
+providers/models to resolve quota or access failures.
+
+Previous planning candidates, **not active requirements or authorized fallbacks**:
 
 - GPT-5 mini: claim extraction and missing-context identification.
 - GPT-5.4: evidence comparison and explanation.
-- Codex: assistance with application development, code review, and tests. It is not an evidence database.
 
-These are not mandatory, latest-model claims, or evidence of account access. Verify current official documentation and availability before use. Keep identifiers configurable. A single suitable model may perform both runtime tasks initially.
+Codex assists application development, code review, and tests; it is not a runtime
+evidence database. The former OpenAI implementation is retained only as a disabled
+migration marker; provider selection rejects it and it is not an authorized fallback.
+
+Previous candidates are not evidence of access or a reason to retain a paid runtime
+dependency. One suitable Gemini model may perform both runtime tasks initially.
 
 Record the model actually used and any available snapshot/version information. Keep AI use during development separate from AI use inside the application.
 
@@ -203,6 +249,13 @@ These URLs identify material to inspect. This context file is not a substitute f
 
 ## 10. Phase sequence and completion gates
 
+The numbered phases below are the original product gates and remain requirements,
+not claims of completion. The later migration uses letters A–H to avoid confusing
+the two sequences. Migration Phases A–D are complete. Phase E is fixture-verified but
+live-blocked, and Phases F–H remain reserved
+in `MIGRATION_PLAN.md` for the user's sequential instructions. Do not begin a later
+phase without the user's next phase instruction.
+
 | Phase | Deliverable | Completion evidence |
 | --- | --- | --- |
 | 1. Architecture | Workspace inspection, stack decision, schemas, plan | Actual repository observations and documented decisions. |
@@ -237,6 +290,16 @@ Keep credentials server-side and out of logs, exports, source control, and brows
 Restrict URL retrieval: allow only supported schemes and destinations; block local/private/link-local networks and metadata services; validate redirects and resolved destinations; apply reasonable time, size, and content-type limits. Do not fetch arbitrary user URLs without those protections.
 
 Do not persist full user inputs by default. Saving must be explicit. Explain external model processing and actual retention behavior accurately. Do not claim local-only processing, confidentiality guarantees, security certification, or regulatory compliance without evidence.
+
+For the approved migration, signing in must not automatically save a draft. Explicitly
+saved reviews may reside in Supabase; unsaved review bodies must remain transient.
+Derive ownership from a server-verified Supabase identity, not the existing client-made
+session header or a request-body user ID. Enforce owner isolation in the application
+and database row-level security; test two distinct users and signed-out access.
+Keep Gemini keys, OAuth client secrets, and database service secrets out of frontend
+bundles, logs, and exports. Revise processing/retention notices for Gemini Free Tier
+and Supabase rather than carrying over OpenAI-specific statements. Local application
+hosting does not mean authentication, saved data, or model processing stay local.
 
 ## 13. Competition context
 
