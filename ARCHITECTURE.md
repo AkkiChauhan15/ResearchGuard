@@ -1,6 +1,6 @@
 # Architecture decisions — 2026-09-16
 
-## Approved target and completed local migration decisions through Phase G
+## Approved target and completed local migration decisions through Phase H
 
 On 2026-09-16 the user approved **Python + FastAPI**, **React + TypeScript +
 Tailwind**, **Supabase Free** for Google authentication and explicitly saved
@@ -165,6 +165,27 @@ service-role secret or JWT private key. Fixture tests cover token validation, ow
 and unauthenticated rejection.
 The real OAuth browser round trip remains blocked until the user configures the Free
 project and Google client exactly as recorded in `docs/AUTH_SETUP.md`.
+
+## Account pages and optional profile extension
+
+The `/login` and `/signup` SPA routes reuse the Phase F Supabase client, session,
+Google provider and backend token check. Email/password controls are rendered only
+after the project's public Auth settings report that email is enabled; signup is also
+conditioned on the project signup flag. Email confirmation returns to `/account`, and
+password recovery returns to `/update-password`. OAuth continues to return through
+Supabase to the application root. Exact local or configured hosted origins and safe
+internal paths prevent external return redirects.
+
+The account page reads and writes optional details directly through the signed-in
+user's Supabase client so RLS remains authoritative. Migration `202609190002` creates
+one `researcher_profiles` row per `auth.uid()` with optional name, role, field and
+institution. It does not duplicate email or Google provider metadata. Column grants,
+owner-only policies and an immutability trigger prevent browser assignment or changes
+to ownership. Profile fields do not enter review requests or Gemini prompts.
+
+The migration is prepared but not applied. Static migration checks and browser UI
+checks pass; live email, Google and profile RLS round trips remain separate manual
+gates. Existing live-review and saved-review backend authorization is unchanged.
 
 ## Phase G — user-owned saved reviews
 

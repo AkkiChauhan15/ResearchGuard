@@ -3,7 +3,8 @@
 > **Phase H status:** the local public demonstration, current public-source retrieval,
 > application checks, and real local Supabase Auth/PostgREST/RLS paths are verified.
 > The linked hosted Supabase project reports migration `202609190001` applied, but the
-> Google OAuth browser round trip and hosted two-user check remain unverified. The
+> optional-profile migration `202609190002` is prepared and not yet applied. Google
+> OAuth, email delivery/recovery and the hosted two-user check remain unverified. The
 > configured Gemini key can access `gemini-3.8-flash`, and the structured-output adapter
 > is repaired, but generation is temporarily blocked by repeated HTTP 503 high-demand
 > responses. No billing, paid fallback, or public deployment has been used yet.
@@ -58,14 +59,22 @@ http://127.0.0.1:8000/legacy. FastAPI falls back to that interface at `/` when n
 to one worker. Do not expose this development server publicly or add workers while
 drafts and locks are process-local.
 
-The public demonstration needs no account. Live review/model routes require Google
-sign-in after configuring Supabase. Follow [`docs/AUTH_SETUP.md`](docs/AUTH_SETUP.md)
+The public demonstration needs no account. `/login` and `/signup` reuse the configured
+Google provider and expose email/password controls only when Supabase reports that the
+method is enabled. `/forgot-password`, `/update-password`, and `/account` handle account
+recovery and optional profile details. Live review/model routes require a verified
+Supabase session. Follow [`docs/AUTH_SETUP.md`](docs/AUTH_SETUP.md)
 for the exact public environment variables and the separate Google-to-Supabase and
 Supabase-to-application redirect settings. No OAuth secret belongs in frontend code.
 Apply the saved-review migration and configure the backend public project values by
 following [`docs/PERSISTENCE_SETUP.md`](docs/PERSISTENCE_SETUP.md). The app never
 autosaves: opening a saved record creates a temporary working copy, and changes persist
 only after choosing **Update saved copy**.
+
+The optional account profile is stored separately from reviews and contains only name,
+research role, field and institution. Every field is optional, RLS restricts access to
+the authenticated owner, and profile/account identity is never sent to Gemini. Apply
+the prepared `202609190002` migration before expecting profile saves to work.
 
 For a disposable local Supabase verification environment, install Docker and the
 Supabase CLI, then run:
@@ -195,7 +204,10 @@ PLAYWRIGHT_PATH=/absolute/path/to/playwright-core node scripts/browser_smoke.cjs
 `CHROME_PATH` can override `/usr/bin/google-chrome`. Screenshots go to ignored
 `test-results/`. The React smoke defaults to `http://127.0.0.1:5173`; set
 `FRONTEND_URL=http://127.0.0.1:8000` to exercise the FastAPI-served build. The legacy
-smoke uses `/legacy`. Both assume no API key is configured to test the missing-key state.
+smoke uses `/legacy` and retains its missing-key-state assumptions.
+The React smoke also checks the rendered login/signup/recovery pages, accessible
+password-mismatch handling, the public demo link, and mobile overflow. It does not
+create an account, send email, or complete Google OAuth.
 
 `data/evaluation_cases.json` contains 16 explicitly synthetic/public cases, split
 10 development / 6 held-out. References are **agent-authored drafts awaiting knowledgeable

@@ -25,11 +25,23 @@ const screenshotDir = process.env.SCREENSHOT_DIR || 'test-results';
       }
     });
 
+    await page.route('**/auth/v1/settings', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          disable_signup: false,
+          mailer_autoconfirm: false,
+          external: { email: true, google: true },
+        }),
+      });
+    });
+
     await page.goto(frontendUrl, { waitUntil: 'networkidle' });
     await page.getByRole('heading', { name: 'Check the evidence. Keep the qualifications.' }).waitFor();
-    await page.getByText('Live model service unavailable.', { exact: false }).waitFor();
     await page.getByText('You are signed out.', { exact: false }).waitFor();
-    assert.equal(await page.getByRole('button', { name: 'Sign in with Google' }).isDisabled(), true);
+    const signInButton = page.getByRole('button', { name: 'Sign in', exact: true });
+    await signInButton.waitFor();
     assert.equal(await page.getByText('A claim is a starting point.', { exact: true }).count(), 1);
 
     await page.keyboard.press('Tab');
@@ -43,7 +55,38 @@ const screenshotDir = process.env.SCREENSHOT_DIR || 'test-results';
     await fs.mkdir(screenshotDir, { recursive: true });
     await page.screenshot({ path: `${screenshotDir}/react-empty-desktop.png`, fullPage: true });
 
-    await page.getByRole('button', { name: 'Open demonstration' }).click();
+    if (!(await signInButton.isDisabled())) {
+      await signInButton.click();
+      await page.getByRole('heading', { name: 'Welcome back' }).waitFor();
+      await page.getByRole('button', { name: 'Continue with Google' }).waitFor();
+      await page.getByLabel('Email address').waitFor();
+      await page.getByLabel('Password').waitFor();
+      await page.getByRole('button', { name: 'Forgot password?' }).click();
+      await page.getByRole('heading', { name: 'Reset your password' }).waitFor();
+      await page.goto(new URL('/update-password', frontendUrl).toString(), { waitUntil: 'networkidle' });
+      await page.getByRole('heading', { name: 'Choose a new password' }).waitFor();
+      await page.getByText('The recovery session is missing or expired.', { exact: false }).waitFor();
+      await page.getByRole('button', { name: 'Request another recovery email' }).click();
+      await page.getByRole('button', { name: 'Back to sign in' }).click();
+      await page.getByRole('button', { name: 'Create an account' }).click();
+      await page.getByRole('heading', { name: 'Create your Research Guard AI account' }).waitFor();
+      await page.getByLabel('Full name').fill('Synthetic Researcher');
+      await page.getByLabel('Email address').fill('researcher@example.test');
+      await page.getByLabel('Password', { exact: true }).fill('test-password');
+      await page.getByLabel('Confirm password').fill('different-password');
+      await page.getByRole('button', { name: 'Create account' }).click();
+      await page.getByRole('alert').getByText('The password and confirmation do not match.').waitFor();
+      await page.screenshot({ path: `${screenshotDir}/react-signup-desktop.png`, fullPage: true });
+
+      await page.setViewportSize({ width: 390, height: 844 });
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false);
+      await page.setViewportSize({ width: 1440, height: 1000 });
+
+      await page.getByRole('button', { name: 'Explore the demo without signing in' }).click();
+    } else {
+      await page.getByRole('button', { name: 'Open demonstration' }).click();
+    }
+
     await page.getByText('Demonstration — not a live verification', { exact: true }).waitFor();
     await page.getByRole('heading', { name: 'What the retrieved material shows' }).waitFor();
     await page.getByText('Partial result or access limitation', { exact: true }).waitFor();
@@ -95,14 +138,14 @@ const screenshotDir = process.env.SCREENSHOT_DIR || 'test-results';
     await page.route('**/api/reviews/demo', (route) => route.abort('failed'));
     await page.getByRole('button', { name: 'Open demonstration' }).click();
     await page.getByRole('alert').waitFor();
-    await page.getByText('The local backend is unavailable.', { exact: false }).waitFor();
+    await page.getByText('The backend service is unavailable.', { exact: false }).waitFor();
     assert.equal(await page.getByText('Demonstration — not a live verification', { exact: true }).count(), 1);
     assert.equal(await page.getByText('Researcher decision: edited', { exact: true }).count(), 1);
     await page.unroute('**/api/reviews/demo');
     expectingApiFailure = false;
 
     assert.deepEqual(errors, []);
-    console.log('React browser smoke passed: logged-out state, public demo evidence/access, edited decision/export, disabled live request, failed API state, safe mobile layout; no page errors.');
+    console.log('React browser smoke passed: login/signup/recovery UI, mismatch validation, logged-out public demo, evidence/access, edited decision/export, failed API state, safe mobile layout; no page errors.');
   } finally {
     await browser.close();
   }

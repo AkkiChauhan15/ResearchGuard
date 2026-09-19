@@ -3,7 +3,11 @@
 Phase G stores only reviews that a signed-in researcher explicitly saves. Unsaved
 reviews remain in the one-hour process-local draft store. The table stores the canonical
 review plus owner UUID, schema version, revision, title and timestamps. It does not add
-a profile table or copy Google profile data.
+Google profile data.
+
+The account-page work adds a separate minimal table for optional researcher profile
+fields. It stores full name, role, research field and institution only; it does not
+duplicate email addresses or store review content. Every field may be left blank.
 
 ## 1. Copy the two public project values
 
@@ -26,9 +30,9 @@ Use the same URL and publishable key in `frontend/.env.local` as documented in
 database password, JWT private key, or Google client secret. The backend deliberately
 uses each user's access token so RLS remains active.
 
-## 2. Apply the versioned migration
+## 2. Apply the versioned migrations
 
-The versioned migration is:
+The saved-review migration already present in the linked history is:
 
 `supabase/migrations/202609190001_create_saved_reviews.sql`
 
@@ -43,9 +47,15 @@ supabase db push
 supabase migration list
 ```
 
+The new optional-profile migration is:
+
+`supabase/migrations/202609190002_create_researcher_profiles.sql`
+
 Choose the already-created Free project when `supabase link` prompts. Review the push
 preview before applying pending work. On 2026-09-19, the linked project and local
-history both listed version `202609190001`; do not push it a second time. Do not
+history both listed version `202609190001`; the `202609190002` profile migration is
+prepared but was **not applied** during this task. A normal `supabase db push` should
+apply only the pending version. Confirm both versions in the final migration list. Do not
 create the table manually in the Dashboard Table Editor or SQL Editor; current Supabase
 guidance warns that remote manual schema changes bypass migration history.
 
@@ -55,10 +65,15 @@ SELECT, INSERT, UPDATE and DELETE policies. `owner_id` defaults to `auth.uid()` 
 not insertable or updateable by the authenticated role. The record identity, demo/live
 mode and schema version are immutable, and saved canonical JSON is limited to 5 MB.
 
+The profile migration creates `public.researcher_profiles`, derives `user_id` from
+`auth.uid()`, grants authenticated clients only the four optional data columns, and
+enforces owner-only SELECT/INSERT/UPDATE with RLS. The owner and creation timestamp are
+immutable. There is no browser profile-delete operation and no anonymous access.
+
 ## 3. Optional local database policy test
 
-`supabase/tests/001_saved_reviews_rls.test.sql` is a standalone pgTAP check. Start the
-local Supabase stack and run:
+The saved-review and profile pgTAP files are under `supabase/tests/`. Start the local
+Supabase stack and run:
 
 ```sh
 supabase test db
@@ -67,6 +82,8 @@ supabase test db
 
 On 2026-09-19 the policy suite passed 16/16 checks. The second command also passed with
 two disposable local identities, real asymmetric access tokens, PostgREST and FastAPI.
+Those results predate the new profile migration. Its source contract passed automated
+tests, but applying and executing its 12 pgTAP assertions was blocked in this task.
 This does not replace the Google OAuth/hosted two-user browser check below.
 
 ## 4. Verify with two accounts after Auth is configured
@@ -91,6 +108,10 @@ Use only public or synthetic review content.
    including mode, source IDs/passages/locations/access levels, model identifiers,
    original suggestions and researcher decisions.
 8. Delete the saved record and confirm it no longer lists or opens.
+
+For the optional profile, sign in as each user and open `/account`. Confirm blank fields
+can be saved, repeat saves update one row, and user B cannot select or update user A's
+row through PostgREST. Confirm no email address is stored in `researcher_profiles`.
 
 If Supabase is paused, unreachable or the migration is absent, the application shows a
 saved-review unavailable error and retains the local working review. It does not switch

@@ -84,10 +84,12 @@ VITE_SUPABASE_URL=https://<PROJECT_REF>.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_<PROJECT_VALUE>
 VITE_API_BASE_URL=https://<RENDER_SERVICE>.onrender.com
 VITE_APPLICATION_ORIGIN=https://<VERCEL_PRODUCTION_DOMAIN>
+VITE_SUPABASE_PASSWORD_MIN_LENGTH=6
 ```
 
 `VITE_APPLICATION_ORIGIN` must exactly match the production origin: HTTPS, no path,
-and no trailing slash. These four values are compiled into the browser bundle. The two
+and no trailing slash. Match the password minimum to the actual Supabase Auth setting.
+These values are compiled into the browser bundle. The two
 Supabase values and service URLs are public configuration; the Gemini key, Google client
 secret, Supabase secret/service-role keys, and JWT private keys must never be added.
 
@@ -114,7 +116,10 @@ redeploy. If a custom backend domain is added later, also set
 
 1. In **Supabase → Authentication → URL Configuration** set:
    - **Site URL:** `https://<VERCEL_PRODUCTION_DOMAIN>/`
-   - **Redirect URLs:** add `https://<VERCEL_PRODUCTION_DOMAIN>/` exactly.
+   - **Redirect URLs:** add these exact entries:
+     - `https://<VERCEL_PRODUCTION_DOMAIN>/`
+     - `https://<VERCEL_PRODUCTION_DOMAIN>/account`
+     - `https://<VERCEL_PRODUCTION_DOMAIN>/update-password`
    - Keep the exact local URL only if local OAuth testing is still needed.
 2. In **Google Cloud Console → APIs & Services → Credentials**, open the Web OAuth
    client and add:
@@ -124,6 +129,9 @@ redeploy. If a custom backend domain is added later, also set
 3. In **Supabase → Authentication → Sign In / Providers → Google**, enable Google and
    save the Google client ID and client secret there.
 4. If Google's consent screen is in testing mode, add the intended Google test users.
+5. Confirm email sign-in and signups are enabled, email confirmation has the intended
+   setting, and the password minimum matches the frontend build variable. Do not add a
+   paid SMTP service for this demonstration.
 
 Google redirects to the Supabase callback. Supabase then redirects to the Vercel URL.
 There is no Research Guard OAuth callback API route. The hosted project already exposes
@@ -137,14 +145,19 @@ Perform these checks in order with public or synthetic text only:
    inspect evidence, and export JSON.
 2. Open browser developer tools → Network. Confirm API requests go to the exact Render
    HTTPS origin and return no CORS or trusted-host errors.
-3. Sign in with Google, reload the page to confirm session restoration, then sign out.
+3. Open `/login` and `/signup`. Sign in with Google from each page, reload to confirm
+   session restoration, then sign out.
    Also cancel one Google sign-in attempt and confirm the app remains signed out.
-4. Sign in again. Create a live review, edit a claim, retrieve sources, run assessment,
+4. Create one disposable email/password account, follow its confirmation email to
+   `/account`, request a password reset, and follow the recovery link to
+   `/update-password`. If the Free project's default sender cannot deliver to that
+   address, record this check as blocked rather than changing to a paid service.
+5. Sign in again. Create a live review, edit a claim, retrieve sources, run assessment,
    make a decision, explicitly save, reload/open it, export it, and delete a disposable
    record.
-5. Repeat saved-review access with a second Google test user. Each account must list
+6. Repeat saved-review and optional-profile access with a second test user. Each account must list
    only its own records; a copied record UUID from the other user must return not found.
-6. Inspect Render logs for errors, but do not log or paste access tokens, review bodies,
+7. Inspect Render logs for errors, but do not log or paste access tokens, review bodies,
    the Gemini key, or Google secrets.
 
 Gemini is still a separate external gate. A `503 high demand` response is an unavailable

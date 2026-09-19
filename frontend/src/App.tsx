@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
+import AuthPages, { type AuthPageRoute } from './AuthPages'
 import { api, downloadExport, downloadSavedExport } from './api'
 import {
+  clearAuthReturn,
   clearLocalSession,
   clearOAuthErrorFromUrl,
+  consumeAuthReturn,
   frontendAuthConfigured,
   readOAuthOutcome,
   restoreSession,
-  signInWithGoogle,
   signOut,
   subscribeToAuth,
 } from './auth'
+import { safeInternalPath } from './auth-utils'
 import type {
   AccessState,
   ApiConfig,
@@ -37,6 +40,25 @@ const emptyContext: ExperimentalContext = {
   assay: '',
   reagent: '',
   conditions: '',
+}
+
+const authRoutes: Record<string, AuthPageRoute> = {
+  '/login': 'login',
+  '/signup': 'signup',
+  '/forgot-password': 'forgot-password',
+  '/update-password': 'update-password',
+  '/account': 'account',
+}
+
+function browserAddress(): string {
+  return `${window.location.pathname}${window.location.search}`
+}
+
+function navigateBrowser(path: string, replace = false): void {
+  const destination = safeInternalPath(path)
+  window.history[replace ? 'replaceState' : 'pushState']({}, '', destination)
+  window.dispatchEvent(new PopStateEvent('popstate'))
+  window.scrollTo({ top: 0, behavior: 'instant' })
 }
 
 const accessLabels: Record<AccessState, string> = {
@@ -431,6 +453,7 @@ function EmptyReview() {
 }
 
 function App() {
+  const [location, setLocation] = useState(browserAddress)
   const [review, setReview] = useState<Review | null>(null)
   const [config, setConfig] = useState<ApiConfig | null>(null)
   const [configError, setConfigError] = useState(false)
@@ -445,11 +468,18 @@ function App() {
   const [authSession, setAuthSession] = useState<Session | null>(null)
   const [authReady, setAuthReady] = useState(false)
   const [authBusy, setAuthBusy] = useState(false)
+  const [passwordRecoveryReady, setPasswordRecoveryReady] = useState(false)
   const [authMessage, setAuthMessage] = useState<string | null>(null)
   const [savedReviews, setSavedReviews] = useState<SavedReviewSummary[]>([])
   const [activeSaved, setActiveSaved] = useState<SavedReviewSummary | null>(null)
   const [savedLoading, setSavedLoading] = useState(false)
   const [savedError, setSavedError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const updateLocation = () => setLocation(browserAddress())
+    window.addEventListener('popstate', updateLocation)
+    return () => window.removeEventListener('popstate', updateLocation)
+  }, [])
 
   // oxlint-disable react/set-state-in-effect -- authentication and remote persistence are external state
   useEffect(() => {
@@ -467,8 +497,17 @@ function App() {
   useEffect(() => {
     let active = true
     const callbackOutcome = readOAuthOutcome()
-    const unsubscribe = subscribeToAuth((_event, session) => {
-      if (active) setAuthSession(session)
+    const unsubscribe = subscribeToAuth((event, session) => {
+      if (!active) return
+      if (event === 'SIGNED_OUT') {
+        setAuthSession(null)
+        setPasswordRecoveryReady(false)
+      }
+      if (event === 'PASSWORD_RECOVERY') {
+        setAuthSession(session)
+        setPasswordRecoveryReady(Boolean(session))
+        navigateBrowser('/update-password', true)
+      }
     })
     restoreSession()
       .then(async (session) => {
@@ -476,7 +515,13 @@ function App() {
         if (session) {
           try {
             await api.authMe()
-            if (active) setAuthSession(session)
+            if (active) {
+              setAuthSession(session)
+              const destination = consumeAuthReturn('/')
+              if (window.location.pathname === '/' && destination !== '/') {
+                navigateBrowser(destination, true)
+              }
+            }
           } catch {
             await clearLocalSession()
             if (active) {
@@ -491,7 +536,11 @@ function App() {
       })
       .finally(() => {
         if (active) {
-          if (callbackOutcome) setAuthMessage(callbackOutcome.message)
+          if (callbackOutcome) {
+            clearAuthReturn()
+            setAuthMessage(callbackOutcome.message)
+            navigateBrowser('/login', true)
+          }
           clearOAuthErrorFromUrl()
           setAuthReady(true)
         }
@@ -684,29 +733,20 @@ function App() {
     )
   }
 
-  const beginGoogleSignIn = async () => {
-    setAuthBusy(true)
-    setAuthMessage(null)
-    try {
-      await signInWithGoogle()
-    } catch (reason) {
-      setAuthMessage(reason instanceof Error ? reason.message : 'Google sign-in could not start.')
-      setAuthBusy(false)
-    }
-  }
-
   const endSession = async () => {
     setAuthBusy(true)
     setAuthMessage(null)
     try {
       await signOut()
       setAuthSession(null)
+      setPasswordRecoveryReady(false)
       if (review?.mode === 'live' || activeSaved) setReview(null)
       setActiveSaved(null)
       setSavedReviews([])
       setNotice('Signed out. The public demonstration remains available.')
     } catch (reason) {
       setAuthSession(null)
+      setPasswordRecoveryReady(false)
       if (review?.mode === 'live' || activeSaved) setReview(null)
       setActiveSaved(null)
       setSavedReviews([])
@@ -714,6 +754,58 @@ function App() {
     } finally {
       setAuthBusy(false)
     }
+  }
+
+  const completeAuthentication = async (session: Session, destination: string) => {
+    try {
+      await api.authMe()
+      setAuthSession(session)
+      setAuthMessage(null)
+      navigateBrowser(destination, true)
+    } catch (reason) {
+      await clearLocalSession()
+      setAuthSession(null)
+      throw new Error(
+        reason instanceof Error
+          ? `The backend rejected the new session: ${reason.message}`
+          : 'The backend rejected the new session. Please sign in again.',
+      )
+    }
+  }
+
+  const exploreDemo = async () => {
+    if (busy) return
+    setBusyLabel('Opening the curated demonstration…')
+    setError(null)
+    try {
+      setReview(await api.createDemo())
+      setNotice('Demonstration loaded. Its assessment is predefined and clearly labeled.')
+      navigateBrowser('/', true)
+    } catch (reason) {
+      setAuthMessage(reason instanceof Error ? reason.message : 'The public demonstration could not be opened.')
+    } finally {
+      setBusyLabel(null)
+    }
+  }
+
+  const pathname = new URL(location, window.location.origin).pathname
+  const authRoute = authRoutes[pathname]
+  if (authRoute) {
+    return (
+      <AuthPages
+        route={authRoute}
+        session={authSession}
+        authReady={authReady}
+        backendAuthAvailable={authAvailable}
+        passwordRecoveryReady={passwordRecoveryReady}
+        authMessage={authMessage}
+        clearAuthMessage={() => setAuthMessage(null)}
+        navigate={navigateBrowser}
+        onAuthenticated={completeAuthentication}
+        onSignOut={endSession}
+        onExploreDemo={exploreDemo}
+      />
+    )
   }
 
   return (
@@ -734,10 +826,13 @@ function App() {
               {authSession?.user.email && <p className="max-w-48 truncate">{authSession.user.email}</p>}
             </div>
             {authSession ? (
-              <button type="button" className={secondaryButton} disabled={authBusy} onClick={endSession}>Sign out</button>
+              <>
+                <button type="button" className={secondaryButton} onClick={() => navigateBrowser('/account')}>Account</button>
+                <button type="button" className={secondaryButton} disabled={authBusy} onClick={endSession}>Sign out</button>
+              </>
             ) : (
-              <button type="button" className={primaryButton} disabled={!authReady || !authAvailable || authBusy} onClick={beginGoogleSignIn}>
-                {authBusy ? 'Opening Google…' : 'Sign in with Google'}
+              <button type="button" className={primaryButton} disabled={!authReady || !authAvailable} onClick={() => navigateBrowser('/login')}>
+                Sign in
               </button>
             )}
           </div>

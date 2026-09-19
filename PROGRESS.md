@@ -1135,3 +1135,131 @@ backend, create the Vercel Hobby frontend, add the exact Vercel origin to Render
 Supabase URL Configuration and the Google OAuth client, then run the signed-out and
 two-account hosted checklists. Do not commit `.env`, add a service-role key, put the
 Gemini/Google secret in Vercel, enable billing, or use wildcard redirects/origins.
+
+## 2026-09-19 — Login, signup, recovery and optional-profile pages
+
+Status: **IMPLEMENTATION PASS; LIVE AUTH/EMAIL/PROFILE INTEGRATION BLOCKED.** Existing
+research-review behavior was preserved. No deployment, paid mail service, billing
+change, credential change or external account mutation was performed.
+
+### Existing implementation verified and reused
+
+- The primary frontend remains React 19 + TypeScript + Tailwind through Vite. The
+  existing Supabase JS singleton, implicit Google OAuth flow, persistent session and
+  automatic refresh were extended rather than replaced.
+- The existing OAuth destination remains the exact application root: Google returns to
+  Supabase `/auth/v1/callback`, then Supabase returns to the SPA. FastAPI's asymmetric
+  JWT signature/issuer/expiry/audience/role/subject verification remains authoritative
+  for live and private API routes.
+- Existing server-owned review decisions, transient session/user isolation, explicit
+  saved-review persistence, evidence invalidation, retrieval, model, validation and
+  export services were not rewritten. The public demonstration still requires no login.
+- No suitable profile table existed. The existing `saved_reviews` table remains solely
+  for canonical review records; profile data was not added to it.
+
+### Changes made
+
+- Added responsive SPA pages at `/login`, `/signup`, `/forgot-password`,
+  `/update-password`, and `/account`, plus exact FastAPI SPA routes and Vercel rewrites.
+  The pages use the existing visual language, labeled fields, autocomplete, show/hide
+  controls, loading/error states, keyboard-sized controls, Google branding and a public
+  demonstration link.
+- Reused the existing Google provider from both login and signup. Added email/password
+  sign-in, registration, confirmation-aware status, neutral recovery requests and
+  recovery-session password updates through the same Supabase client. The application
+  reads Supabase's public Auth settings and hides email controls when that method or
+  signup is disabled/unavailable.
+- Added safe internal return paths and a session-scoped pending OAuth return. External,
+  scheme-relative, backslash and fragment redirects fall back to `/`. A new browser
+  session is accepted only after `/api/auth/me` verifies it; a rejected token is cleared
+  locally instead of leaving a partial signed-in state.
+- Session restore, expiry refresh, `PASSWORD_RECOVERY`, OAuth cancellation/failure,
+  sign-out and already-signed-in redirects are handled in the SPA. Invalid or expired
+  confirmation/sign-in callbacks show a recoverable generic error without exposing
+  account existence.
+- Added an optional account profile for full name, research role, research field and
+  institution. Google metadata may prefill the editable name. Every field is optional;
+  no email, phone, date of birth, lab/project data or payment data is copied. Profile
+  data is not used by review/Gemini requests.
+- Prepared `supabase/migrations/202609190002_create_researcher_profiles.sql` and a
+  12-assertion pgTAP file. The table derives its primary-key owner from `auth.uid()`,
+  grants authenticated users only the four optional data columns, forces RLS and has
+  owner-only SELECT/INSERT/UPDATE policies plus immutable owner/creation fields. The UI
+  upserts one owner row safely and never sends `user_id`.
+- Updated Auth, persistence, deployment, API and README setup documents. No privacy or
+  terms page exists, so no policy link or compliance statement was invented.
+
+### Checks actually executed
+
+- `.venv/bin/python -m unittest discover -s tests -v`: **71/71 passed**, no skips.
+  New coverage verifies all account SPA paths return the built entry and statically
+  checks the optional-table fields, forced RLS, owner policies, column grants, immutable
+  owner and absence of email. Existing token, unauthenticated private-route, two-owner
+  saved-review, invalidation, evidence, retrieval, model and export tests remain green.
+- `npm run typecheck`, `npm run lint`, `npm run test:auth`, and `npm run build` in
+  `frontend/`: passed. The auth test file covers five redirect/callback groups. Vite
+  8.3.0 built 64 modules: 0.64 kB HTML, 28.08 kB CSS and 498.84 kB JavaScript before
+  gzip.
+- Headless Chrome against the actual FastAPI-served production build passed: login,
+  signup and recovery rendering; rejection of a password update without the dedicated
+  recovery event/session; enabled email controls from a mocked settings response;
+  accessible password-mismatch alert; public demo navigation; evidence/access labels;
+  edited decision and canonical JSON export; failed-API retention; keyboard focus;
+  390 px no-overflow layout; and zero page errors. This did not submit credentials,
+  send email or leave the application for Google.
+- The project's live public Auth settings endpoint returned HTTP 200 and reported
+  Google enabled, email enabled, signup enabled and email auto-confirm disabled. This
+  confirms the controls should be visible and confirmation required; it does not prove
+  OAuth, email delivery or the exact dashboard password policy.
+- A built-bundle scan found no configured server credential value, Gemini-key shape,
+  Supabase secret-key shape or JWT shape. Compileall, `pip check`, browser-script syntax
+  and `git diff --check` passed.
+- The temporary FastAPI browser-test process and only the `ResearchGuardAI` local
+  Supabase containers were stopped afterward. Unrelated containers were not changed.
+
+### Prepared versus applied migrations
+
+- `202609190001_create_saved_reviews.sql`: previously verified in linked hosted and
+  local migration history; unchanged.
+- `202609190002_create_researcher_profiles.sql`: **prepared, not applied locally or to
+  the linked hosted project**. Its Python source-contract test passed. The new pgTAP
+  assertions did not execute against PostgreSQL.
+
+### Blockers and unverified assumptions
+
+- A real Google browser round trip from both pages, cancellation, refresh restoration,
+  sign-out and safe requested-page return remain unverified.
+- Email registration, delivery, confirmation, duplicate-account response, recovery
+  delivery, successful password update and expired-link behavior remain unverified.
+  The public settings endpoint does not reveal the exact configured password minimum;
+  the checked-in local default is 6 and must be matched to the dashboard before build.
+- Supabase's default sender may restrict recipients or rate-limit delivery. No custom
+  SMTP service was configured. A paid service is not authorized.
+- Optional-profile insert/upsert, blank fields, repeated save and two-user RLS isolation
+  remain unverified until migration `202609190002` is applied and its pgTAP/live checks
+  run. Until then `/account` reports profile storage unavailable without affecting the
+  authenticated workspace or local review.
+- Automated browser tests verify UI behavior only. They do not establish the external
+  Google/email flows or a comprehensive accessibility audit.
+
+### Manual action required
+
+1. Apply only the pending profile migration through the linked CLI workflow:
+   `supabase migration list`, `supabase db push`, then `supabase migration list`. The
+   final list must include both `202609190001` and `202609190002`.
+2. In Supabase Authentication → URL Configuration, keep the exact application root and
+   add exact `/account` and `/update-password` redirect URLs for the local or deployed
+   origin in use. Do not add wildcards. Keep the existing Google client and its Supabase
+   callback unchanged.
+3. Check the dashboard password minimum and set
+   `VITE_SUPABASE_PASSWORD_MIN_LENGTH` to that number before rebuilding. Confirm email
+   provider, signup and email confirmation settings; the read-only public flags currently
+   show all three enabled with confirmation required.
+4. Run one disposable Google flow and one disposable email confirmation/recovery flow,
+   then the two-user profile isolation checklist in `docs/PERSISTENCE_SETUP.md`. If the
+   default mail sender cannot deliver, record it as blocked; do not enable billing or a
+   paid SMTP provider.
+
+The attempted local `supabase migration up --local` execution was rejected by the
+automatic approval reviewer because its usage limit had been reached. The migration was
+not applied through another route; this is why database execution remains blocked.

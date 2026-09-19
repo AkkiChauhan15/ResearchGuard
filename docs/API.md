@@ -97,6 +97,10 @@ The built React preview is served from `http://127.0.0.1:8000` when
 `frontend/dist/index.html` exists. The pre-React interface remains at `/legacy`, and
 is also used at `/` if no React build is present. For development, Vite runs at
 `http://127.0.0.1:5173` and proxies relative `/api` requests to this FastAPI process.
+FastAPI serves the same SPA entry at `/login`, `/signup`, `/forgot-password`,
+`/update-password`, and `/account`; Vercel uses equivalent exact rewrites. These are
+client-side account views. Backend authorization still occurs on `/api` through the
+verified Supabase bearer token.
 The permitted
 cross-origin frontend defaults are exactly `http://127.0.0.1:5173` and
 `http://localhost:5173`, with credentials disabled. These environment variables may

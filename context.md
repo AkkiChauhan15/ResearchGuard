@@ -1,6 +1,6 @@
 # Research Guard AI — Project context
 
-Version: 1.8
+Version: 1.9
 Prepared: 2026-09-15; migration status updated 2026-09-19
 Purpose: Reference for the coding agent implementing the agreed phased build.
 
@@ -34,6 +34,16 @@ configuration and instructions are now prepared, but no public deployment or hos
 browser journey has been executed or verified by the agent. The user must complete the
 Render, Vercel, Supabase, and Google dashboard steps in `docs/DEPLOYMENT.md`; keep live
 OAuth and hosted behavior marked unverified until that journey passes.
+
+On 2026-09-19 the user also authorized account pages around the existing Supabase
+identity boundary. `/login` and `/signup` reuse Google OAuth and conditionally expose
+the project's enabled email/password method; `/forgot-password`, `/update-password`
+and `/account` provide recovery and optional profile editing. Public Auth settings
+reported Google, email and signup enabled with email confirmation required. The exact
+dashboard password policy, email delivery, and real OAuth/confirmation/recovery round
+trips remain unverified. The optional `researcher_profiles` migration `202609190002` is
+prepared with owner-only RLS but is not applied. The linked hosted database still has
+only `202609190001` verified as applied.
 
 Preserve working Pydantic schemas, retrieval adapters, evidence validation, curated
 demo sources, review decisions, and exports. Adapt framework/provider boundaries
@@ -69,7 +79,7 @@ Inspect the repository before describing its state. Do not infer that the applic
 | Target deliverable | Working web application with evidence-linked reviews and exports. |
 | Framework and hosting | FastAPI backend plus a Vite React/TypeScript/Tailwind frontend. The prepared free hosted layout is Vercel Hobby for the static SPA and one Render Free FastAPI worker. No hosted run is verified. |
 | Existing implementation | FastAPI/Uvicorn backend, React/TypeScript/Tailwind SPA, preserved legacy interface, process-local transient store, and reusable Pydantic/core modules. Verify against code and tests before claiming behavior. |
-| Authentication and saving | Phase F implements Supabase Google sign-in, token verification and owner binding for transient live reviews. Phase G adds explicit saved-review CRUD and versioned RLS. The linked hosted migration is applied; local two-user RLS/token behavior passed. Google OAuth and hosted authenticated two-user behavior remain unverified. Unsaved drafts stay transient. |
+| Authentication and saving | Supabase supports Google and enabled email/password account pages, with backend token verification and owner binding for transient live reviews. Phase G adds explicit saved-review CRUD and versioned RLS. The linked saved-review migration is applied; local two-user saved-review RLS/token behavior passed. The optional profile migration is prepared, not applied. Google OAuth, email delivery/recovery, profile RLS execution and hosted authenticated two-user behavior remain unverified. Unsaved drafts stay transient. |
 | API keys and account access | Gemini key/model metadata access verified on 2026-09-19 without displaying the key. Free Tier is operator-attested in local configuration; billing state cannot be inspected by code. Generation remains blocked by HTTP 503 high demand. Never display secrets. |
 | Model choices | Gemini Developer API Free Tier is the approved provider. `gemini-3.8-flash` was selected from the official 2026-09-18 Free Tier pricing/model documentation, but access in the user's actual project is unverified. OpenAI models are previous candidates and the adapter is disabled. |
 | Cost boundary | Free tiers only. No billing activation, purchases, paid services, upgrades, or paid fallback. |

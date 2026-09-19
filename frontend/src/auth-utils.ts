@@ -39,6 +39,31 @@ export function localAuthRedirect(origin: string, configuredHostedOrigin?: strin
   return `${parsed.origin}/`
 }
 
+export function safeInternalPath(value: string | null | undefined, fallback = '/'): string {
+  if (!value || !value.startsWith('/') || value.startsWith('//') || value.includes('\\')) return fallback
+  try {
+    const base = new URL('https://research-guard.invalid')
+    const parsed = new URL(value, base)
+    if (parsed.origin !== base.origin || parsed.hash) return fallback
+    return `${parsed.pathname}${parsed.search}`
+  } catch {
+    return fallback
+  }
+}
+
+export function applicationRedirect(
+  origin: string,
+  path: string,
+  configuredHostedOrigin?: string,
+): string {
+  const applicationRoot = localAuthRedirect(origin, configuredHostedOrigin)
+  return new URL(safeInternalPath(path), applicationRoot).toString()
+}
+
+export function requestedInternalPath(search: string, fallback = '/'): string {
+  return safeInternalPath(new URLSearchParams(search).get('next'), fallback)
+}
+
 export interface OAuthCallbackOutcome {
   kind: 'cancelled' | 'failed'
   message: string
@@ -59,7 +84,7 @@ export function oauthCallbackOutcome(href: string): OAuthCallbackOutcome | null 
   }
   return {
     kind: 'failed',
-    message: 'Google sign-in did not complete. Check the Supabase and Google OAuth configuration, then try again.',
+    message: 'Account confirmation or sign-in did not complete. The link may be invalid or expired; request a new link and try again.',
   }
 }
 

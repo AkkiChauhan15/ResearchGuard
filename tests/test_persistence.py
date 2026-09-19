@@ -137,6 +137,32 @@ class MigrationContractTests(unittest.TestCase):
         self.assertIn("authenticated clients cannot assign owner_id", rls_test)
         self.assertIn("signed-out clients cannot read saved reviews", rls_test)
 
+    def test_profile_migration_has_optional_owner_only_rls_contract(self):
+        migration = (ROOT / "supabase/migrations/202609190002_create_researcher_profiles.sql").read_text()
+        normalized = " ".join(migration.lower().split())
+        self.assertIn("user_id uuid primary key default auth.uid()", normalized)
+        self.assertIn("alter table public.researcher_profiles enable row level security", normalized)
+        self.assertIn("alter table public.researcher_profiles force row level security", normalized)
+        for operation in ("select", "insert", "update"):
+            self.assertIn(f"on public.researcher_profiles for {operation} to authenticated", normalized)
+        self.assertNotIn("on public.researcher_profiles for delete", normalized)
+        self.assertGreaterEqual(normalized.count("(select auth.uid()) = user_id"), 4)
+        self.assertIn("revoke all on table public.researcher_profiles from anon, authenticated", normalized)
+        self.assertIn("grant insert (full_name, research_role, research_field, institution)", normalized)
+        self.assertIn("grant update (full_name, research_role, research_field, institution)", normalized)
+        self.assertNotIn("grant update on table public.researcher_profiles", normalized)
+        self.assertIn("new.user_id is distinct from old.user_id", normalized)
+        self.assertNotIn("email text", normalized)
+
+        rls_test = (ROOT / "supabase/tests/002_researcher_profiles_rls.test.sql").read_text().lower()
+        self.assertIn("profile owner is derived from auth.uid()", rls_test)
+        self.assertIn("profile creation is safe to repeat", rls_test)
+        self.assertIn("another user cannot read the first profile", rls_test)
+        self.assertIn("another user cannot update the first profile", rls_test)
+        self.assertIn("profile owner cannot be changed", rls_test)
+        self.assertIn("optional profile details can all be skipped", rls_test)
+        self.assertIn("signed-out clients cannot read profiles", rls_test)
+
 
 if __name__ == "__main__":
     unittest.main()

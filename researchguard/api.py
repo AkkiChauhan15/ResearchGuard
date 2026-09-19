@@ -346,6 +346,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return {"status": "ok", "service": "researchguard-api", "storage": "temporary-process-memory"}
 
     @application.get("/", include_in_schema=False)
+    @application.get("/login", include_in_schema=False)
+    @application.get("/signup", include_in_schema=False)
+    @application.get("/forgot-password", include_in_schema=False)
+    @application.get("/update-password", include_in_schema=False)
+    @application.get("/account", include_in_schema=False)
     async def primary_frontend():
         content, media_type = primary_index
         return Response(content=content, media_type=media_type)

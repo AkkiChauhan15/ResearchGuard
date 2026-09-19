@@ -210,6 +210,10 @@ class HTTPTests(unittest.IsolatedAsyncioTestCase):
         root = await self.client.get("/")
         self.assertEqual(root.status_code, 200)
         self.assertIn("script-src 'self'", root.headers["content-security-policy"])
+        for frontend_path in ("/login", "/signup", "/forgot-password", "/update-password", "/account"):
+            route = await self.client.get(frontend_path)
+            self.assertEqual(route.status_code, 200, frontend_path)
+            self.assertEqual(route.content, root.content)
         self.assertEqual((await self.client.get("/context.md")).status_code, 404)
 
         preflight = await self.client.options(
