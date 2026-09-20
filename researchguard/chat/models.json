@@ -1,0 +1,31 @@
+{
+  "version": "2026-09-20",
+  "providers": {
+    "groq": {
+      "display_name": "Groq",
+      "models": [
+        {"id": "llama-3.1-8b-instant", "label": "Llama 3.1 8B Instant"},
+        {"id": "openai/gpt-oss-20b", "label": "GPT-OSS 20B"}
+      ]
+    },
+    "openrouter": {
+      "display_name": "OpenRouter",
+      "models": [
+        {"id": "openrouter/free", "label": "OpenRouter Free Router"}
+      ]
+    },
+    "gemini": {
+      "display_name": "Google Gemini",
+      "models": [
+        {"id": "gemini-3.8-flash", "label": "Gemini 3.8 Flash"}
+      ]
+    },
+    "nvidia": {
+      "display_name": "NVIDIA NIM",
+      "models": [
+        {"id": "meta/llama-3.1-8b-instruct", "label": "Llama 3.1 8B Instruct"},
+        {"id": "meta/llama-3.3-70b-instruct", "label": "Llama 3.3 70B Instruct"}
+      ]
+    }
+  }
+}

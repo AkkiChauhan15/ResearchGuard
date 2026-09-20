@@ -58,6 +58,18 @@ def _positive_int(name: str, default: int, minimum: int, maximum: int) -> int:
     return value
 
 
+def _boolean(name: str, default: bool = False) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    value = raw.strip().lower()
+    if value in {"1", "true", "yes"}:
+        return True
+    if value in {"0", "false", "no"}:
+        return False
+    raise ValueError(f"{name} must be true or false.")
+
+
 def _origins(value: str | None) -> tuple[str, ...]:
     values = DEFAULT_FRONTEND_ORIGINS if value is None else tuple(
         item.strip().rstrip("/") for item in value.split(",") if item.strip()
@@ -124,6 +136,11 @@ class Settings:
     assessment_timeout_seconds: float = 130
     auth_timeout_seconds: float = 10
     persistence_timeout_seconds: float = 10
+    chat_timeout_seconds: float = 45
+    chat_provider_timeout_seconds: float = 20
+    chat_requests_per_minute: int = 6
+    chat_max_output_tokens: int = 1024
+    chat_fallback_enabled: bool = False
     supabase_url: str | None = None
     supabase_publishable_key: str | None = None
     supabase_audience: str = "authenticated"
@@ -145,6 +162,11 @@ class Settings:
             assessment_timeout_seconds=_positive_int("RESEARCHGUARD_ASSESSMENT_TIMEOUT_SECONDS", 130, 1, 300),
             auth_timeout_seconds=_positive_int("RESEARCHGUARD_AUTH_TIMEOUT_SECONDS", 10, 1, 30),
             persistence_timeout_seconds=_positive_int("RESEARCHGUARD_PERSISTENCE_TIMEOUT_SECONDS", 10, 1, 30),
+            chat_timeout_seconds=_positive_int("RESEARCHGUARD_CHAT_TIMEOUT_SECONDS", 45, 5, 120),
+            chat_provider_timeout_seconds=_positive_int("RESEARCHGUARD_CHAT_PROVIDER_TIMEOUT_SECONDS", 20, 2, 60),
+            chat_requests_per_minute=_positive_int("RESEARCHGUARD_CHAT_REQUESTS_PER_MINUTE", 6, 1, 60),
+            chat_max_output_tokens=_positive_int("RESEARCHGUARD_CHAT_MAX_OUTPUT_TOKENS", 1024, 128, 4096),
+            chat_fallback_enabled=_boolean("RESEARCHGUARD_CHAT_FALLBACK_ENABLED", False),
             supabase_url=_supabase_url(os.environ.get("SUPABASE_URL")),
             supabase_publishable_key=_supabase_publishable_key(os.environ.get("SUPABASE_PUBLISHABLE_KEY")),
             supabase_audience="authenticated",

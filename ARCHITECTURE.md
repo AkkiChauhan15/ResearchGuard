@@ -183,9 +183,10 @@ institution. It does not duplicate email or Google provider metadata. Column gra
 owner-only policies and an immutability trigger prevent browser assignment or changes
 to ownership. Profile fields do not enter review requests or Gemini prompts.
 
-The migration is prepared but not applied. Static migration checks and browser UI
-checks pass; live email, Google and profile RLS round trips remain separate manual
-gates. Existing live-review and saved-review backend authorization is unchanged.
+The migration is applied to the linked hosted project. Static migration checks and
+browser UI checks pass; live email, Google and two-user hosted profile RLS round trips
+remain separate manual gates. Existing live-review and saved-review backend
+authorization is unchanged.
 
 ## Phase G — user-owned saved reviews
 
@@ -205,6 +206,38 @@ under `supabase/migrations` is present in both local and linked hosted migration
 histories. Its policies passed a 16-check local pgTAP run and a real two-user local
 Auth/PostgREST/FastAPI check. Hosted Google-authenticated owner isolation remains a
 separate unverified gate.
+
+## Authenticated general chat extension — 2026-09-20
+
+The user separately authorized a general AI chat page after the phased evidence-review
+build. It lives at `/chat` in the existing React SPA and uses `/api/chat/providers` plus
+`/api/chat` in the existing FastAPI service. It is deliberately outside the canonical
+`Review` schema: chat history stays in browser memory, is never saved to Supabase, and
+cannot become evidence, an assessment, a decision, or an export. The interface and each
+assistant message state that output is not evidence-checked and point users back to the
+structured review when verification matters.
+
+All chat routes require the same verified Supabase access token as live reviews. The
+backend applies a process-local per-user request limit, a 24-message/24,000-character
+history bound, per-message and request-body limits, a bounded external worker pool,
+provider and total deadlines, a maximum output token setting, fixed provider endpoints,
+and a versioned model allowlist in `researchguard/chat/models.json`. It returns only
+normalized answer/provider/model/attempt metadata. Provider bodies and keys are absent
+from safe errors, logs, responses, exports, and frontend configuration.
+
+Provider-specific formats live behind `ChatProvider.complete()`. Groq, OpenRouter and
+NVIDIA use their fixed OpenAI-compatible chat-completion endpoints; Gemini uses the
+existing server-side `google-genai` SDK and maps assistant history to Gemini's `model`
+role. No adapter enables tools, search grounding, file access, or cached content.
+Streaming remains a future extension; v1 returns complete bounded responses.
+
+Groq, Gemini and NVIDIA availability requires both a key and an operator confirmation
+of free/no-billing access. OpenRouter is allowlisted only to `openrouter/free`. Fallback
+requires the server flag and an explicit per-request user choice, considers only
+configured providers, and always records the actual provider/model and all attempted
+statuses. It is off by default. This authorization does not change the evidence model
+boundary: structured extraction and assessment remain Gemini-only with no provider
+fallback, and the legacy OpenAI evidence adapter remains disabled.
 
 ## Previous local-preview decision — historical record
 

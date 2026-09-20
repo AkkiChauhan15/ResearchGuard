@@ -51,11 +51,10 @@ The new optional-profile migration is:
 
 `supabase/migrations/202609190002_create_researcher_profiles.sql`
 
-Choose the already-created Free project when `supabase link` prompts. Review the push
-preview before applying pending work. On 2026-09-19, the linked project and local
-history both listed version `202609190001`; the `202609190002` profile migration is
-prepared but was **not applied** during this task. A normal `supabase db push` should
-apply only the pending version. Confirm both versions in the final migration list. Do not
+Choose the already-created Free project when `supabase link` prompts. On 2026-09-19, a
+fresh linked query confirmed both `202609190001` and `202609190002` in remote migration
+history. Do **not** push either migration again. For future migrations, review the push
+preview and confirm the new version in the final migration list. Do not
 create the table manually in the Dashboard Table Editor or SQL Editor; current Supabase
 guidance warns that remote manual schema changes bypass migration history.
 

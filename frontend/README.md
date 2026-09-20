@@ -19,6 +19,11 @@ npm run dev --prefix frontend
 
 Open `http://127.0.0.1:5173`. A production build is created with:
 
+The evidence workspace is `/`; account routes remain under `/login`, `/signup` and
+`/account`. The authenticated general assistant is `/chat`. It calls only FastAPI's
+`/api/chat` routes, keeps provider credentials out of the bundle, and labels responses
+as not evidence-checked.
+
 ```sh
 npm run typecheck --prefix frontend
 npm run build --prefix frontend

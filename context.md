@@ -1,6 +1,6 @@
 # Research Guard AI — Project context
 
-Version: 1.9
+Version: 2.0
 Prepared: 2026-09-15; migration status updated 2026-09-19
 Purpose: Reference for the coding agent implementing the agreed phased build.
 
@@ -18,7 +18,8 @@ Gemini Developer API through an AI Studio Free Tier project. Development began l
 On 2026-09-19 the user authorized preparation and exact manual instructions for a
 public competition deployment using only free tiers. No paid services, billing
 activation, paid fallbacks, or credit purchases are authorized. Exhausted free quotas or unavailable free access must
-produce an explicit unavailable state, never an upgrade or provider fallback.
+produce an explicit unavailable state, never an upgrade or paid fallback. The evidence-review
+model still has no provider fallback.
 
 Migration Phases A–G are implemented. Phase H was authorized on 2026-09-19 and performs
 local end-to-end verification and competition preparation. The linked hosted Supabase
@@ -30,10 +31,11 @@ authenticated two-user journey remain blocked. The locally configured Gemini key
 JSON Schema incompatibility was repaired, but bounded live generation attempts returned
 HTTP 503 high demand before producing output. Do not claim those
 external browser/model integrations work until their checks pass. Deployment-compatible
-configuration and instructions are now prepared, but no public deployment or hosted
-browser journey has been executed or verified by the agent. The user must complete the
-Render, Vercel, Supabase, and Google dashboard steps in `docs/DEPLOYMENT.md`; keep live
-OAuth and hosted behavior marked unverified until that journey passes.
+configuration and instructions are prepared. The frontend deployment is now verified
+from public GitHub metadata, while public reachability and the hosted browser journey
+remain unverified. Complete the remaining Render, Vercel, Supabase and Google settings
+in `docs/DEPLOYMENT.md`; keep live OAuth and hosted behavior marked unverified until
+that journey passes.
 
 On 2026-09-19 the user also authorized account pages around the existing Supabase
 identity boundary. `/login` and `/signup` reuse Google OAuth and conditionally expose
@@ -41,9 +43,29 @@ the project's enabled email/password method; `/forgot-password`, `/update-passwo
 and `/account` provide recovery and optional profile editing. Public Auth settings
 reported Google, email and signup enabled with email confirmation required. The exact
 dashboard password policy, email delivery, and real OAuth/confirmation/recovery round
-trips remain unverified. The optional `researcher_profiles` migration `202609190002` is
-prepared with owner-only RLS but is not applied. The linked hosted database still has
-only `202609190001` verified as applied.
+trips remain unverified. The optional `researcher_profiles` migration `202609190002`
+has owner-only RLS and is applied to the linked hosted database alongside
+`202609190001`. Hosted profile isolation still requires a two-user check.
+
+Deployment status changed on 2026-09-19. The user reports that the project is deployed,
+and public GitHub deployment metadata verifies that Vercel successfully deployed commit
+`1ce8ae3`. The generated Vercel deployment URL currently redirects unauthenticated
+visitors to Vercel SSO, so public access and the stable production domain remain
+unverified. The Render service URL was not available in the repository, so backend
+health and production CORS remain unverified. A fresh linked Supabase migration query
+confirmed both `202609190001` and `202609190002` are applied remotely; the optional
+profile migration is no longer pending.
+
+On 2026-09-20 the user explicitly authorized a separate general AI chat page using
+Groq, OpenRouter, Gemini and NVIDIA NIM. This supersedes the earlier exclusion only for
+this clearly labeled assistant surface; it does not replace or feed the structured
+evidence-review workflow. Chat responses are unverified model output, require a verified
+Supabase user, remain temporary in browser memory, and are not saved as reviews. Keys
+remain backend-only. Provider/model input is allowlisted in a versioned configuration.
+Fallback is disabled by default and may run only when both the operator and user opt in,
+only among configured providers confirmed for free/no-billing access, and always reports
+the provider and model that answered. No paid model, billing, purchased credit, search
+tool, or silent fallback is authorized.
 
 Preserve working Pydantic schemas, retrieval adapters, evidence validation, curated
 demo sources, review decisions, and exports. Adapt framework/provider boundaries
@@ -77,15 +99,15 @@ Inspect the repository before describing its state. Do not infer that the applic
 | Core product and phased workflow | Agreed; preserve the intent described here. |
 | Initial domains | Biological claims and assay/reagent interpretation. |
 | Target deliverable | Working web application with evidence-linked reviews and exports. |
-| Framework and hosting | FastAPI backend plus a Vite React/TypeScript/Tailwind frontend. The prepared free hosted layout is Vercel Hobby for the static SPA and one Render Free FastAPI worker. No hosted run is verified. |
+| Framework and hosting | FastAPI backend plus a Vite React/TypeScript/Tailwind frontend. Vercel successfully deployed the SPA commit; its generated URL is currently SSO-protected. The user reports Render deployment, but its URL and health are unverified. |
 | Existing implementation | FastAPI/Uvicorn backend, React/TypeScript/Tailwind SPA, preserved legacy interface, process-local transient store, and reusable Pydantic/core modules. Verify against code and tests before claiming behavior. |
-| Authentication and saving | Supabase supports Google and enabled email/password account pages, with backend token verification and owner binding for transient live reviews. Phase G adds explicit saved-review CRUD and versioned RLS. The linked saved-review migration is applied; local two-user saved-review RLS/token behavior passed. The optional profile migration is prepared, not applied. Google OAuth, email delivery/recovery, profile RLS execution and hosted authenticated two-user behavior remain unverified. Unsaved drafts stay transient. |
+| Authentication and saving | Supabase supports Google and enabled email/password account pages, with backend token verification and owner binding for transient live reviews. Phase G adds explicit saved-review CRUD and versioned RLS. Both hosted migrations are applied; local two-user saved-review RLS/token behavior passed. Google OAuth, email delivery/recovery, hosted profile RLS behavior and hosted authenticated two-user behavior remain unverified. Unsaved drafts stay transient. |
 | API keys and account access | Gemini key/model metadata access verified on 2026-09-19 without displaying the key. Free Tier is operator-attested in local configuration; billing state cannot be inspected by code. Generation remains blocked by HTTP 503 high demand. Never display secrets. |
-| Model choices | Gemini Developer API Free Tier is the approved provider. `gemini-3.8-flash` was selected from the official 2026-09-18 Free Tier pricing/model documentation, but access in the user's actual project is unverified. OpenAI models are previous candidates and the adapter is disabled. |
+| Model choices | Gemini Developer API Free Tier remains the evidence extraction/assessment provider. The separate general chat surface has allowlisted Groq, OpenRouter-free, Gemini and NVIDIA adapters. Each chat provider remains unavailable until its key and required free/no-billing confirmation are present. OpenAI models are previous evidence-workflow candidates and the adapter is disabled. |
 | Cost boundary | Free tiers only. No billing activation, purchases, paid services, upgrades, or paid fallback. |
 | Performance, user adoption, savings | Unmeasured; do not invent results. |
 | Demonstration interaction | Reconstructed; not a historical transcript or a recorded live tool run. |
-| Public deployment | Free-tier competition deployment preparation is authorized. No deployment has been executed or verified; follow `docs/DEPLOYMENT.md`, use public/synthetic data, and do not enable billing. |
+| Public deployment | The user reports deployment, and Vercel metadata verifies a successful production deployment of commit `1ce8ae3`. Its generated deployment URL is currently protected by Vercel SSO. The stable Vercel production domain, Render health/CORS, and end-to-end hosted journey remain unverified. Use public/synthetic data and do not enable billing. |
 
 Routine implementation choices may be made autonomously. Do not repeatedly ask for permission to read files, implement reversible changes, or run relevant tests. Explain genuine blockers and continue independent work. Do not bypass approval or access restrictions.
 
@@ -102,9 +124,10 @@ Include:
 - Researcher accept/edit/reject decisions and notes.
 - Google authentication through Supabase Free (implemented with fixture verification;
   live OAuth unverified) and saving/loading a review only after an explicit researcher
-  save action (Phase G implemented with fixtures; remote migration unverified).
+  save action (hosted migration applied; hosted authenticated journey unverified).
 - Readable and structured JSON review exports.
 - Clearly separated demonstration and live modes.
+- A separate, authenticated general assistant chat, visibly labeled as unverified model output and never treated as retrieved evidence.
 
 Exclude from the first release:
 

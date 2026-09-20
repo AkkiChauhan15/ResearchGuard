@@ -16,6 +16,8 @@ signature through the project's JWKS plus issuer, expiry, audience, role and sub
 then binds the record to that verified subject. A review created under another browser
 session or verified user returns `404`. Health and configuration routes need no token.
 `GET /api/auth/me` requires a valid token and returns only the verified user ID/email.
+The two general-chat routes also require a valid bearer token. Chat does not use the
+draft session header because it has no server-side conversation record.
 
 JSON request bodies use `application/json`. Validation and service-rule failures return
 `400 {"error": "..."}`; inaccessible/expired reviews return `404`; bodies over the
@@ -32,6 +34,8 @@ and leaves the temporary working review intact.
 | `GET /api/health` | None | Service status and temporary-storage mode |
 | `GET /api/config` | None | Local mode, retention, Gemini state plus public auth availability; never credential values |
 | `GET /api/auth/me` | Verified Supabase bearer token | Verified `user_id` and optional email |
+| `GET /api/chat/providers` | Verified bearer token | Safe configuration state, allowlisted models and fallback flag; never keys |
+| `POST /api/chat` | Bearer token plus `provider`, allowlisted `model`, 1–24 user/assistant `messages`, and optional `allow_fallback` | Normalized answer with requested/actual provider and model, fallback flag and attempt statuses |
 | `GET /api/saved-reviews` | Bearer token; no draft session required | `{items: SavedReviewSummary[]}` for the verified owner only |
 | `POST /api/saved-reviews` | Bearer token, draft session and `{"review_id":"review_..."}` | HTTP 201 `SavedReviewRecord`; explicit snapshot of that canonical temporary review |
 | `POST /api/saved-reviews/{saved_id}/open` | Bearer token and draft session | `SavedReviewRecord`; also creates an owner-bound temporary working copy in that session |
@@ -79,6 +83,12 @@ a 90-second request deadline and extraction/assessment have a 130-second deadlin
 Timed-out worker functions cannot commit their private review copy. Use one Uvicorn
 worker because temporary records, locks, and NCBI throttling are process-local.
 
+Chat messages are limited to 4,000 characters each and 24,000 characters total. The
+default authenticated-user limit is six requests per rolling minute. Chat runs in the
+same bounded external pool, has a 45-second total deadline, a 20-second provider
+deadline, and at most 1,024 output tokens. Provider failures return safe `429`, `503`,
+or `504` errors. No failed chat call substitutes demo content.
+
 ## Local startup and configuration
 
 ```sh
@@ -98,7 +108,7 @@ The built React preview is served from `http://127.0.0.1:8000` when
 is also used at `/` if no React build is present. For development, Vite runs at
 `http://127.0.0.1:5173` and proxies relative `/api` requests to this FastAPI process.
 FastAPI serves the same SPA entry at `/login`, `/signup`, `/forgot-password`,
-`/update-password`, and `/account`; Vercel uses equivalent exact rewrites. These are
+`/update-password`, `/account`, and `/chat`; Vercel uses equivalent exact rewrites. These are
 client-side account views. Backend authorization still occurs on `/api` through the
 verified Supabase bearer token.
 The permitted
@@ -127,6 +137,16 @@ change local limits without putting secrets in source control:
 | `SUPABASE_PUBLISHABLE_KEY` | unset public `sb_publishable_...` key used with the user bearer token; secret/service-role keys are rejected |
 | `RESEARCHGUARD_AUTH_TIMEOUT_SECONDS` | `10` |
 | `RESEARCHGUARD_PERSISTENCE_TIMEOUT_SECONDS` | `10` |
+| `GROQ_API_KEY` | unset server-only optional chat credential |
+| `GROQ_FREE_TIER_CONFIRMED` | `false`; operator confirmation required before Groq chat is available |
+| `OPENROUTER_API_KEY` | unset server-only optional chat credential; only `openrouter/free` is allowlisted |
+| `NVIDIA_NIM_API_KEY` | unset server-only optional chat credential |
+| `NVIDIA_NIM_FREE_TIER_CONFIRMED` | `false`; operator confirmation required before NVIDIA chat is available |
+| `RESEARCHGUARD_CHAT_FALLBACK_ENABLED` | `false`; requires per-request user opt-in too |
+| `RESEARCHGUARD_CHAT_REQUESTS_PER_MINUTE` | `6` per verified user, process-local |
+| `RESEARCHGUARD_CHAT_TIMEOUT_SECONDS` | `45` total |
+| `RESEARCHGUARD_CHAT_PROVIDER_TIMEOUT_SECONDS` | `20` per attempted provider |
+| `RESEARCHGUARD_CHAT_MAX_OUTPUT_TOKENS` | `1024` |
 
 The React build reads the public project values `VITE_SUPABASE_URL` and
 `VITE_SUPABASE_PUBLISHABLE_KEY`. A hosted split deployment additionally uses the exact
@@ -137,6 +157,7 @@ secret/service-role keys and JWT signing keys are not backend settings for this 
 Migration application and saved-review RLS checks are documented in
 `docs/PERSISTENCE_SETUP.md`.
 The full Vercel/Render configuration is documented in `docs/DEPLOYMENT.md`.
+Optional chat-provider setup and extension instructions are in `docs/CHAT_SETUP.md`.
 
 The provider limits serialized model input to 120,000 bytes, output to 64,000 bytes,
 and local Gemini concurrency to two calls. Extraction and assessment request at most

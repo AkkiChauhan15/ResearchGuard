@@ -1263,3 +1263,104 @@ change, credential change or external account mutation was performed.
 The attempted local `supabase migration up --local` execution was rejected by the
 automatic approval reviewer because its usage limit had been reached. The migration was
 not applied through another route; this is why database execution remains blocked.
+
+## 2026-09-19 — Deployed configuration audit
+
+Status: **DEPLOYED FRONTEND VERIFIED; PUBLIC ACCESS AND HOSTED JOURNEY NEED CONFIGURATION.**
+
+- The user reported the project deployed. Public GitHub deployment metadata shows a
+  successful Vercel Production deployment of current commit
+  `1ce8ae318a3bf5fec2223644b3b1289687f544ca`.
+- A direct request to the generated Vercel deployment URL returned HTTP 302 to
+  `vercel.com/sso-api`. It is protected by Vercel Authentication and is not currently a
+  public competition URL. The stable Production Domain was not present in the repository.
+- `supabase migration list` connected to the linked hosted database and confirmed both
+  `202609190001` and `202609190002` are applied remotely. Do not push either migration
+  again. Hosted two-user profile/RLS behavior is still unverified.
+- The Render URL and Vercel/Render dashboard environment values are not available in the
+  repository. Render health, production CORS, Gemini generation and the complete hosted
+  browser journey therefore remain unverified.
+- No dashboard setting, environment value, deployment or billing configuration was
+  changed during this audit.
+
+## 2026-09-20 — Authenticated multi-provider AI chat
+
+Status: **IMPLEMENTATION PASS; LIVE PROVIDER GENERATION BLOCKED.**
+
+### Changes made
+
+- Added the existing-SPA `/chat` route and header navigation. The responsive React UI
+  has provider/model selectors, per-provider availability, bounded multi-turn history,
+  separate user/assistant messages, loading/error states, Enter/Shift+Enter behavior,
+  auto-scroll, clear chat, and optional fallback. Every response shows the actual
+  provider/model and is labeled `not evidence-checked`.
+- Kept chat separate from canonical reviews, saved records, evidence, decisions and
+  exports. Chat requires the existing verified Supabase session; its history remains
+  only in React memory and account identity is never sent to a model provider.
+- Added authenticated `GET /api/chat/providers` and `POST /api/chat`. FastAPI validates
+  provider/model allowlists, 1–24 messages, 4,000 characters per message and 24,000
+  total characters. It uses the bounded external pool, fixed destinations, safe errors,
+  a per-user six-request rolling-minute limit, 45-second total/20-second provider
+  deadlines, streamed 64 KB response bounds and at most 1,024 output tokens.
+- Added the `ChatProvider` boundary with distinct Groq, OpenRouter, Gemini and NVIDIA
+  adapters. The versioned `researchguard/chat/models.json` keeps model labels/IDs easy
+  to update. No frontend/API request can submit an arbitrary provider URL.
+- Added free-only gates. Groq, Gemini and NVIDIA require a key plus operator
+  free/no-billing confirmation; OpenRouter allows only `openrouter/free`. Fallback is
+  disabled by default, requires an explicit user checkbox when enabled by the server,
+  skips unconfigured providers and reports every attempted status plus the actual
+  provider/model. There is no paid or silent fallback.
+- Added `.env.example` placeholders, `docs/CHAT_SETUP.md`, API/deployment/README
+  instructions, a bounded live-check CLI, a Vercel `/chat` rewrite, and the explicit
+  scope/architecture decision. No dependency was added.
+
+### Checks actually executed
+
+- `.venv/bin/python -m unittest discover -s tests -v`: **83/83 passed** after all
+  changes, including 12 chat HTTP/provider/rate-limit tests and the preserved review,
+  retrieval, authentication and persistence checks.
+- `npm run typecheck`, `npm run lint`, `npm run test:auth`, and `npm run build`:
+  passed. Vite built 65 modules; the existing non-failing chunk-size advisory remains.
+- `scripts/browser_chat_smoke.cjs` in headless Chrome: passed the signed-in `/chat`
+  journey with provider/model selection, two-turn context, normalized metadata, failed
+  request retention and exclusion from later model context, clear action and no
+  horizontal overflow at 390 px.
+- Existing `scripts/browser_react_smoke.cjs` against the FastAPI-served production
+  build: passed the account UI, public demo, evidence/access, edit/decision/export,
+  failed API, keyboard and mobile regression journey with no page errors.
+- Python compileall, `pip check`, both browser-script syntax checks and
+  `git diff --check`: passed. A targeted production-bundle scan found no configured
+  provider-key value, provider secret-key shape, Supabase secret key, or JWT.
+- Provider status from the actual ignored local environment: Gemini configured;
+  Groq, OpenRouter and NVIDIA missing keys; fallback disabled. No secret value printed.
+- One bounded live Gemini chat check using public synthetic input returned
+  `Google Gemini is temporarily unavailable. Retry later.` No response was produced,
+  no fallback ran, and no billing was enabled.
+- `.venv/bin/python -m scripts.evaluate`: **16/16 fixture-consistency checks** across
+  10 development and 6 held-out definitions; **0 model cases run** and scientific
+  performance remains unmeasured.
+
+### Blockers and unverified assumptions
+
+- No provider has completed a live chat response in this implementation check. Gemini
+  is configured but temporarily unavailable. Groq, OpenRouter and NVIDIA cannot be
+  live-tested until their server-only free-access keys are supplied; their account
+  tier/billing state is not inferable from code.
+- Provider fixture tests establish request/response mapping and failure handling, not
+  current external model availability, answer quality or scientific accuracy.
+- The deployed Vercel/Render services do not contain these uncommitted changes yet.
+  Hosted `/chat`, hosted sign-in, Render keys/CORS and browser network secrecy remain
+  unverified until a reviewed commit is deployed and the manual journey passes.
+- Conversation rate limiting is process-local, matching the current one-worker Render
+  architecture. It is not a distributed production abuse-control system.
+
+### Manual action required
+
+1. Review, commit and push this revision so Vercel and Render rebuild it.
+2. Add only the desired provider keys to Render using `docs/CHAT_SETUP.md`. Keep keys
+   out of Vercel and all `VITE_` variables. Set a free-tier confirmation true only
+   after checking that exact account has no billing. Do not purchase credits.
+3. Keep fallback false for the first hosted provider check. Sign in at `/chat`, send
+   one public/synthetic question and follow-up, inspect the Network response for actual
+   provider/model metadata and absence of keys, then enable fallback only if every
+   candidate is independently confirmed free/no-billing.

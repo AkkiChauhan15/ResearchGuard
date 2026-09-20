@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 import mimetypes
 from pathlib import Path
 import re
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Annotated, Callable, Literal
 from uuid import UUID
 
@@ -15,10 +15,11 @@ from fastapi import FastAPI, Header, HTTPException, Path as ApiPath, Query, Requ
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
-from pydantic import Field
+from pydantic import Field, field_validator, model_validator
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .assessment import assess, extract
+from .chat import ChatProviderError, ChatRateLimiter, ChatService, ProviderMessage
 from .auth import (
     AuthenticatedUser,
     AuthenticationError,
@@ -74,6 +75,33 @@ class SaveReviewRequest(Strict):
 class UpdateSavedReviewRequest(Strict):
     review_id: str = Field(pattern=f"^{REVIEW_ID_PATTERN}$")
     expected_revision: int = Field(ge=1)
+
+
+class ChatMessageRequest(Strict):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=4000)
+
+    @field_validator("content")
+    @classmethod
+    def content_must_not_be_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Chat messages cannot be blank.")
+        return value
+
+
+class ChatRequest(Strict):
+    provider: Literal["groq", "openrouter", "gemini", "nvidia"]
+    model: str = Field(min_length=1, max_length=120, pattern=r"^[A-Za-z0-9._:/-]+$")
+    messages: list[ChatMessageRequest] = Field(min_length=1, max_length=24)
+    allow_fallback: bool = False
+
+    @model_validator(mode="after")
+    def validate_conversation(self):
+        if self.messages[-1].role != "user":
+            raise ValueError("The last chat message must be from the user.")
+        if sum(len(message.content) for message in self.messages) > 24_000:
+            raise ValueError("Chat history exceeds the 24,000-character limit.")
+        return self
 
 
 @dataclass(frozen=True)
@@ -165,6 +193,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             settings.supabase_publishable_key,
             timeout_seconds=settings.persistence_timeout_seconds,
         )
+        application.state.chat_service = ChatService(
+            fallback_enabled=settings.chat_fallback_enabled,
+            provider_timeout_seconds=settings.chat_provider_timeout_seconds,
+            max_output_tokens=settings.chat_max_output_tokens,
+        )
+        application.state.chat_rate_limiter = ChatRateLimiter(settings.chat_requests_per_minute)
         application.state.external_executor = ThreadPoolExecutor(
             max_workers=settings.external_concurrency,
             thread_name_prefix="researchguard-external",
@@ -270,9 +304,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         await application.state.store.add(session_id, review, owner_id)
         return review
 
-    async def run_in_external_pool(operation: Callable, *args, timeout: float):
+    async def run_in_external_pool(operation: Callable, *args, timeout: float, **kwargs):
         """Await a bounded worker without relying on Python's executor wakeup bridge."""
-        future = application.state.external_executor.submit(operation, *args)
+        future = application.state.external_executor.submit(operation, *args, **kwargs)
         deadline = asyncio.get_running_loop().time() + timeout
         while not future.done():
             remaining = deadline - asyncio.get_running_loop().time()
@@ -351,6 +385,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @application.get("/forgot-password", include_in_schema=False)
     @application.get("/update-password", include_in_schema=False)
     @application.get("/account", include_in_schema=False)
+    @application.get("/chat", include_in_schema=False)
     async def primary_frontend():
         content, media_type = primary_index
         return Response(content=content, media_type=media_type)
@@ -403,6 +438,36 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def auth_me(authorization: Authorization = None):
         user = await authenticated_user(authorization)
         return {"user_id": user.user_id, "email": user.email}
+
+    @application.get("/api/chat/providers")
+    async def chat_providers(authorization: Authorization = None):
+        await authenticated_user(authorization)
+        return application.state.chat_service.public_status()
+
+    @application.post("/api/chat")
+    async def chat(payload: ChatRequest, authorization: Authorization = None):
+        user = await authenticated_user(authorization)
+        retry_after = await application.state.chat_rate_limiter.check(user.user_id)
+        if retry_after is not None:
+            raise HTTPException(
+                429,
+                "Chat request limit reached. Wait before trying again.",
+                headers={"Retry-After": str(retry_after)},
+            )
+        try:
+            result = await run_in_external_pool(
+                application.state.chat_service.complete,
+                payload.provider,
+                payload.model,
+                tuple(ProviderMessage(item.role, item.content) for item in payload.messages),
+                allow_fallback=payload.allow_fallback,
+                total_timeout_seconds=settings.chat_timeout_seconds,
+                timeout=settings.chat_timeout_seconds + 1,
+            )
+        except ChatProviderError as exc:
+            status = 429 if exc.category == "rate_limited" else 504 if exc.category == "timeout" else 503
+            raise HTTPException(status, exc.detail) from None
+        return {"success": True, **asdict(result)}
 
     async def local_review_for_save(
         session_id: str,

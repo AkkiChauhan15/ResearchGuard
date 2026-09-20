@@ -2,25 +2,32 @@
 
 > **Phase H status:** the local public demonstration, current public-source retrieval,
 > application checks, and real local Supabase Auth/PostgREST/RLS paths are verified.
-> The linked hosted Supabase project reports migration `202609190001` applied, but the
-> optional-profile migration `202609190002` is prepared and not yet applied. Google
+> The linked hosted Supabase project reports migrations `202609190001` and
+> `202609190002` applied. Google
 > OAuth, email delivery/recovery and the hosted two-user check remain unverified. The
 > configured Gemini key can access `gemini-3.8-flash`, and the structured-output adapter
 > is repaired, but generation is temporarily blocked by repeated HTTP 503 high-demand
-> responses. No billing, paid fallback, or public deployment has been used yet.
+> responses. Vercel deployed the latest commit, but its generated deployment URL is
+> currently protected by Vercel SSO; public reachability and the hosted journey remain
+> unverified. No billing or paid fallback has been used.
 
 A local research-review application for making claim-to-evidence relationships,
 experimental context, and limitations inspectable. Start with the clearly labeled
 CYTO-ID demonstration, or create a live review and retrieve public sources.
 
-This is a local preview. The former OpenAI adapter is disabled. The Gemini provider
+The signed-in `/chat` page is an optional general assistant using server-side Groq,
+OpenRouter, Gemini, or NVIDIA NIM adapters. Every reply is labeled as unverified model
+output and remains separate from evidence reviews and saved records.
+
+This remains a local-first application with a reported free-tier deployment. The former
+OpenAI adapter is disabled. The Gemini provider
 has passed controlled fixture tests but **has not completed a successful live generation
 in the user's project**. Key/model metadata access is verified; the latest bounded
 generation attempts reached Google and returned HTTP 503 high demand.
 Scientific accuracy has not been measured. See `PROGRESS.md` for actual results
 and incomplete phase gates; read `context.md` before continuing any phase. The exact
-free hosted setup is in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md); preparing that
-configuration does not count as a successful deployment.
+free hosted setup is in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md). A successful host
+build does not establish public access or the complete hosted integration journey.
 
 ## Run locally
 
@@ -59,6 +66,13 @@ http://127.0.0.1:8000/legacy. FastAPI falls back to that interface at `/` when n
 to one worker. Do not expose this development server publicly or add workers while
 drafts and locks are process-local.
 
+After signing in, open http://127.0.0.1:5173/chat or choose **AI chat** in the header.
+The browser sends the selected allowlisted provider/model and bounded conversation
+history to `POST /api/chat`; FastAPI calls the provider with its server-only key and
+returns one normalized answer. Provider/model setup, fallback rules, a bounded live
+check, and adapter extension steps are documented in
+[`docs/CHAT_SETUP.md`](docs/CHAT_SETUP.md).
+
 The public demonstration needs no account. `/login` and `/signup` reuse the configured
 Google provider and expose email/password controls only when Supabase reports that the
 method is enabled. `/forgot-password`, `/update-password`, and `/account` handle account
@@ -73,8 +87,9 @@ only after choosing **Update saved copy**.
 
 The optional account profile is stored separately from reviews and contains only name,
 research role, field and institution. Every field is optional, RLS restricts access to
-the authenticated owner, and profile/account identity is never sent to Gemini. Apply
-the prepared `202609190002` migration before expecting profile saves to work.
+the authenticated owner, and profile/account identity is never sent to Gemini. The
+hosted `202609190002` migration is applied; two-user hosted profile isolation still
+needs browser verification.
 
 For a disposable local Supabase verification environment, install Docker and the
 Supabase CLI, then run:
@@ -198,6 +213,7 @@ server running at port 8000:
 
 ```sh
 PLAYWRIGHT_PATH=/absolute/path/to/playwright-core node scripts/browser_react_smoke.cjs
+PLAYWRIGHT_PATH=/absolute/path/to/playwright-core node scripts/browser_chat_smoke.cjs
 PLAYWRIGHT_PATH=/absolute/path/to/playwright-core node scripts/browser_smoke.cjs
 ```
 
@@ -247,7 +263,8 @@ use RLS, but the public deployment has not yet passed the hosted two-user journe
 Prompt instructions, structured output, and deterministic checks reduce specific failure
 modes; they cannot certify reasoning, stop every prompt injection, or guarantee coverage.
 Human review remains necessary. No accuracy, time-saving, adoption, clinical, or regulatory
-claims have been measured or established. No public deployment has occurred.
+claims have been measured or established. The deployed frontend's public reachability
+and hosted integrations remain unverified.
 
 ## Official integration references
 

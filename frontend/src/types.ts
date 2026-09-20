@@ -176,3 +176,46 @@ export interface SavedReviewRecord extends SavedReviewSummary {
 export interface SavedReviewList {
   items: SavedReviewSummary[]
 }
+
+export type ChatProviderId = 'groq' | 'openrouter' | 'gemini' | 'nvidia'
+
+export interface ChatModelOption {
+  id: string
+  label: string
+}
+
+export interface ChatProviderOption {
+  id: ChatProviderId
+  display_name: string
+  configured: boolean
+  state: 'configured' | 'missing_api_key' | 'free_tier_unconfirmed'
+  models: ChatModelOption[]
+}
+
+export interface ChatProviderStatus {
+  config_version: string
+  fallback_enabled: boolean
+  providers: ChatProviderOption[]
+}
+
+export interface ChatMessageInput {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+export interface ChatAttempt {
+  provider: ChatProviderId
+  model: string
+  status: string
+}
+
+export interface ChatResponse {
+  success: true
+  provider: ChatProviderId
+  requested_provider: ChatProviderId
+  model: string
+  requested_model: string
+  answer: string
+  fallback_used: boolean
+  attempts: ChatAttempt[]
+}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import AuthPages, { type AuthPageRoute } from './AuthPages'
+import ChatPage from './ChatPage'
 import { api, downloadExport, downloadSavedExport } from './api'
 import {
   clearAuthReturn,
@@ -808,6 +809,18 @@ function App() {
     )
   }
 
+  if (pathname === '/chat') {
+    return (
+      <ChatPage
+        session={authSession}
+        authReady={authReady}
+        authAvailable={authAvailable}
+        navigate={navigateBrowser}
+        onSignOut={endSession}
+      />
+    )
+  }
+
   return (
     <div className="min-h-screen">
       <a href="#main-content" className="fixed -top-20 left-3 z-50 rounded-lg bg-ink px-4 py-2 font-bold text-white transition-[top] focus:top-3">Skip to review</a>
@@ -821,6 +834,7 @@ function App() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <button type="button" className={secondaryButton} onClick={() => navigateBrowser('/chat')}>AI chat</button>
             <div className="text-right text-xs leading-5 text-muted">
               <p className="font-bold text-ink">{!authReady ? 'Checking sign-in…' : authSession ? 'Signed in' : 'Signed out'}</p>
               {authSession?.user.email && <p className="max-w-48 truncate">{authSession.user.email}</p>}

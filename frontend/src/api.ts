@@ -9,6 +9,10 @@ import type {
   SavedReviewList,
   SavedReviewRecord,
   SavedReviewSummary,
+  ChatMessageInput,
+  ChatProviderId,
+  ChatProviderStatus,
+  ChatResponse,
 } from './types'
 
 const sessionId = crypto.randomUUID()
@@ -91,6 +95,12 @@ async function request<T>(path: string, options: RequestInit = {}, authMode: Aut
 export const api = {
   config: () => request<ApiConfig>('/api/config', {}, 'none'),
   authMe: () => request<AuthenticatedUser>('/api/auth/me', {}, 'required'),
+  chatProviders: () => request<ChatProviderStatus>('/api/chat/providers', {}, 'required'),
+  chat: (provider: ChatProviderId, model: string, messages: ChatMessageInput[], allowFallback: boolean) =>
+    request<ChatResponse>('/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ provider, model, messages, allow_fallback: allowFallback }),
+    }, 'required'),
   createReview: (input: ReviewInput) =>
     request<Review>('/api/reviews', { method: 'POST', body: JSON.stringify(input) }, 'required'),
   createDemo: () => request<Review>('/api/reviews/demo', { method: 'POST' }, 'none'),

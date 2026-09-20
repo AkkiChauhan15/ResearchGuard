@@ -1,6 +1,6 @@
 # Feature verification status
 
-Status as of 2026-09-19. “Fixture” means controlled local inputs or mocked provider
+Status as of 2026-09-20. “Fixture” means controlled local inputs or mocked provider
 responses. It is not a live external integration result.
 
 | Feature | Status | Evidence |
@@ -15,6 +15,8 @@ responses. It is not a live external integration result.
 | Unsafe URL and response limits | Fixture-verified | DNS, redirect, host/path/port, MIME, timeout and size tests |
 | Gemini provider boundary | Fixture-verified and live configuration-verified | Key/model metadata accepted; JSON Schema adapter repaired; bounds and error tests pass |
 | Gemini extraction/assessment | **Blocked by provider availability** | Repaired requests reached Google; repeated HTTP 503 high demand produced no output |
+| General chat API and React UI | Fixture/browser-verified | Auth, allowlists, provider formats, context, explicit fallback metadata, errors, clear action and 390 px layout |
+| Live general chat providers | **Blocked/partly configured** | Gemini is configured but the bounded request returned temporarily unavailable; other provider keys are absent |
 | Supabase JWT verification | Live-verified locally | Two real local asymmetric access tokens plus tamper rejection |
 | Supabase saved-review RLS | Live-verified locally | 16 pgTAP checks and two-user local PostgREST/FastAPI journey |
 | Hosted Supabase migration | Applied, partially verified | CLI histories match; JWKS responds; anonymous REST is denied |
@@ -23,4 +25,4 @@ responses. It is not a live external integration result.
 | Meaningful scientific support | Demonstration-only/unmeasured | Curated autophagy reasoning; 0/16 human-reviewed references and 0/16 model cases |
 | Prompt-injection resistance | Fixture-only | Untrusted-data prompt boundary and two evaluation cases; no live model run |
 | Keyboard/mobile layout | Browser-verified locally | Focus checks, 390 px overflow/font checks; no full WCAG audit |
-| Public deployment | Not performed | Explicitly outside Phase H |
+| Public deployment | Partially verified | Vercel deployment metadata succeeds, but its generated URL redirects to Vercel SSO; public reachability and Render health remain unverified |

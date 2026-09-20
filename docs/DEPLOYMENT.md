@@ -54,6 +54,21 @@ GEMINI_EXTRACTION_MODEL=gemini-3.8-flash
 GEMINI_ASSESSMENT_MODEL=gemini-3.8-flash
 ```
 
+To enable one or more optional `/chat` providers, add their keys to **Render only**:
+
+```dotenv
+GROQ_API_KEY=<OPTIONAL_SERVER_KEY>
+GROQ_FREE_TIER_CONFIRMED=false
+OPENROUTER_API_KEY=<OPTIONAL_SERVER_KEY>
+NVIDIA_NIM_API_KEY=<OPTIONAL_SERVER_KEY>
+NVIDIA_NIM_FREE_TIER_CONFIRMED=false
+RESEARCHGUARD_CHAT_FALLBACK_ENABLED=false
+```
+
+Leave unused values absent. Change a confirmation to `true` only after verifying the
+actual account has free access and no billing. Keep fallback false for the first live
+check. Never put these keys in Vercel or a `VITE_` variable. See `docs/CHAT_SETUP.md`.
+
 Do not create `VITE_` variables on Render. Do not add a Supabase service-role/secret
 key or a Google client secret. `RENDER_EXTERNAL_HOSTNAME` is provided automatically
 and the backend uses it as its exact trusted host.
@@ -148,16 +163,21 @@ Perform these checks in order with public or synthetic text only:
 3. Open `/login` and `/signup`. Sign in with Google from each page, reload to confirm
    session restoration, then sign out.
    Also cancel one Google sign-in attempt and confirm the app remains signed out.
-4. Create one disposable email/password account, follow its confirmation email to
+4. Open `/chat`, confirm only configured providers show Available, send one public or
+   synthetic question, ask one follow-up, and verify the reply names the actual provider
+   and model and says it is not evidence-checked. Check browser Network and confirm the
+   provider key is absent. Do not enable fallback until each candidate account has been
+   confirmed free/no-billing.
+5. Create one disposable email/password account, follow its confirmation email to
    `/account`, request a password reset, and follow the recovery link to
    `/update-password`. If the Free project's default sender cannot deliver to that
    address, record this check as blocked rather than changing to a paid service.
-5. Sign in again. Create a live review, edit a claim, retrieve sources, run assessment,
+6. Sign in again. Create a live review, edit a claim, retrieve sources, run assessment,
    make a decision, explicitly save, reload/open it, export it, and delete a disposable
    record.
-6. Repeat saved-review and optional-profile access with a second test user. Each account must list
+7. Repeat saved-review and optional-profile access with a second test user. Each account must list
    only its own records; a copied record UUID from the other user must return not found.
-7. Inspect Render logs for errors, but do not log or paste access tokens, review bodies,
+8. Inspect Render logs for errors, but do not log or paste access tokens, review bodies,
    the Gemini key, or Google secrets.
 
 Gemini is still a separate external gate. A `503 high demand` response is an unavailable
