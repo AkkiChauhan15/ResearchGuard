@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><title>Research Guard AI</title><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"surface-container-highest":"#293737","error":"#ffb4ab","primary":"#4edea3","on-primary-fixed-variant":"#005236","inverse-primary":"#006c49","surface-container-lowest":"#031111","on-tertiary-fixed-variant":"#653e00","surface-bright":"#2d3c3c","on-primary":"#003824","surface-dim":"#071616","on-surface-variant":"#bbcabf","on-secondary-fixed":"#091f1f","tertiary-container":"#e29100","secondary-fixed":"#d0e7e6","primary-fixed-dim":"#4edea3","tertiary-fixed-dim":"#ffb95f","background":"#071616","surface-variant":"#293737","on-background":"#d5e6e5","on-tertiary-fixed":"#2a1700","surface-tint":"#4edea3","secondary-fixed-dim":"#b4cbca","on-tertiary":"#472a00","on-primary-fixed":"#002113","on-secondary":"#1f3434","outline":"#86948a","surface":"#071616","secondary-container":"#384d4d","inverse-on-surface":"#243333","on-secondary-fixed-variant":"#364a4a","on-primary-container":"#00422b","on-tertiary-container":"#523200","error-container":"#93000a","surface-container-high":"#1e2d2c","primary-container":"#10b981","secondary":"#b4cbca","on-error":"#690005","inverse-surface":"#d5e6e5","surface-container":"#132222","on-surface":"#d5e6e5","primary-fixed":"#6ffbbe","outline-variant":"#3c4a42","on-secondary-container":"#a6bdbc","tertiary-fixed":"#ffddb8","surface-container-low":"#0f1e1e","tertiary":"#ffb95f","on-error-container":"#ffdad6"},borderRadius:{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},spacing:{"gutter":"1.5rem","space-sm":"0.5rem","margin-mobile":"1rem","gutter-mobile":"0.75rem","space-lg":"1.5rem","space-xs":"0.25rem","space-md":"1rem","space-xl":"2.5rem","margin":"2rem"},fontFamily:{"body-sm":["Inter"],"headline-md":["Newsreader"],"headline-lg":["Newsreader"],"label-lg":["JetBrains Mono"],"body-lg":["Inter"],"headline-xl-mobile":["Newsreader"],"display-lg":["Newsreader"],"label-md":["JetBrains Mono"],"display-lg-mobile":["Newsreader"],"body-md":["Inter"],"headline-sm":["Newsreader"],"headline-xl":["Newsreader"],"label-sm":["JetBrains Mono"],"body-xl":["Inter"]},fontSize:{"body-sm":["12px",{"lineHeight":"18px","fontWeight":"400"}],"headline-md":["24px",{"lineHeight":"32px","fontWeight":"500"}],"headline-lg":["32px",{"lineHeight":"40px","letterSpacing":"-0.01em","fontWeight":"500"}],"label-lg":["14px",{"lineHeight":"20px","letterSpacing":"0.02em","fontWeight":"500"}],"body-lg":["16px",{"lineHeight":"24px","fontWeight":"400"}],"headline-xl-mobile":["28px",{"lineHeight":"36px","letterSpacing":"-0.01em","fontWeight":"400"}],"display-lg":["56px",{"lineHeight":"64px","letterSpacing":"-0.02em","fontWeight":"400"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.04em","fontWeight":"500"}],"display-lg-mobile":["36px",{"lineHeight":"44px","letterSpacing":"-0.01em","fontWeight":"400"}],"body-md":["14px",{"lineHeight":"20px","fontWeight":"400"}],"headline-sm":["20px",{"lineHeight":"28px","fontWeight":"600"}],"headline-xl":["40px",{"lineHeight":"48px","letterSpacing":"-0.015em","fontWeight":"400"}],"label-sm":["10px",{"lineHeight":"14px","letterSpacing":"0.08em","fontWeight":"600"}],"body-xl":["18px",{"lineHeight":"28px","fontWeight":"400"}]}}}};</script></head><body class="bg-surface font-body-md text-on-surface antialiased min-h-screen selection:bg-primary selection:text-on-primary"><header class="fixed top-0 left-0 w-full z-50 bg-surface/85 backdrop-blur-xl shadow-[0_4px_30px_rgba(0,0,0,0.5)]"><div class="h-20 w-full px-gutter flex items-center justify-between gap-space-md"><div class="flex items-center gap-space-md"><img alt="Research Guard AI Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1U8UJ61knZ1Q_HML7xcJw-f4owi7Iz4X-AnvqHx8gMJ0XePb0SRRXHCRLKwsd5vimonrH1nC5SCOx7wAFsnNXd30TWaYeed3DvcTZeGOtMobPDEj_d_8MeQc2bbKoLJVRgztCbkF_ThyJRKZWL_C2lPk8JwT0z5bhL2JHArkx5bl9F2QMjJMEBJ30I_A6rJ5QTYU5yfqW72ezOkVIKxSX6k9ovZeFszEPwhJ_s6d0PtNDvJEpJtVVJZoqk"/><div class="flex flex-col"><div class="flex items-center gap-space-xs"><span class="font-headline-sm text-headline-sm text-on-surface tracking-tight font-medium">Research Guard</span><span class="font-label-sm text-label-sm text-primary tracking-widest uppercase px-space-xs py-0.5 rounded bg-surface-container-high">AI v2.4</span></div><span class="font-label-sm text-label-sm text-on-surface-variant">Autonomous Biomedical Verification</span></div></div><nav class="hidden xl:flex items-center gap-space-xs px-space-xs py-1 rounded-lg bg-surface-container-low" data-active-classes="bg-primary-container text-on-primary font-medium rounded"><a class="px-space-md py-1.5 font-body-md text-body-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors rounded" data-path="evidence-review" href="#">Evidence Review</a><a class="flex items-center gap-space-xs px-space-md py-1.5 font-body-md text-body-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors rounded" data-path="ai-chat" href="#"><span>AI Chat</span><span class="font-label-sm text-label-sm text-tertiary px-1.5 py-0.5 rounded-full bg-surface-container-highest tracking-wider uppercase">Unchecked AI</span></a><a aria-current="page" class="flex items-center gap-space-xs px-space-md py-1.5 transition-colors bg-primary-container text-on-primary font-medium rounded" data-path="saved-reviews" href="#"><span>Saved Reviews</span><span class="font-label-sm text-label-sm text-on-primary bg-primary rounded-full px-1.5 py-0.5">8</span></a><a class="px-space-md py-1.5 font-body-md text-body-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors rounded" data-path="documentation-methodology" href="#">Documentation / Methodology</a></nav><div class="flex items-center gap-space-md"><div class="hidden lg:flex items-center gap-space-xs px-space-sm py-1 rounded-full bg-surface-container-lowest"><span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span><span class="font-label-sm text-label-sm text-on-surface-variant">System Operational • Groq/Gemini Active</span></div><button aria-label="Notifications" class="relative p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-tertiary"></span></button><div class="flex items-center gap-space-sm pl-space-sm py-1"><div class="text-right hidden sm:block"><div class="font-body-md text-body-md text-on-surface font-medium leading-none">Dr. Aris Thorne, MD PhD</div><div class="font-label-sm text-label-sm text-on-surface-variant leading-none mt-1">Cell Signaling Lab • Chief Evaluator</div></div><div class="relative"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-primary ring-2 ring-surface"></span></div></div></div></div><div class="h-11 w-full px-gutter bg-surface-container-lowest/80 backdrop-blur-md flex items-center justify-between"><div class="flex items-center gap-space-lg overflow-x-auto py-1"><div class="flex items-center gap-space-xs"><span class="w-5 h-5 rounded-full bg-primary text-on-primary font-label-sm text-label-sm flex items-center justify-center font-semibold">1</span><span class="font-label-md text-label-md text-on-surface font-medium">Define</span><span class="material-symbols-outlined text-on-surface-variant text-[14px]">chevron_right</span></div><div class="flex items-center gap-space-xs"><span class="w-5 h-5 rounded-full bg-surface-container-highest text-primary font-label-sm text-label-sm flex items-center justify-center">2</span><span class="font-label-md text-label-md text-on-surface-variant">Risk</span><span class="material-symbols-outlined text-outline-variant text-[14px]">chevron_right</span></div><div class="flex items-center gap-space-xs"><span class="w-5 h-5 rounded-full bg-surface-container-highest text-on-surface-variant font-label-sm text-label-sm flex items-center justify-center">3</span><span class="font-label-md text-label-md text-on-surface-variant">Assist</span><span class="material-symbols-outlined text-outline-variant text-[14px]">chevron_right</span></div><div class="flex items-center gap-space-xs"><span class="w-5 h-5 rounded-full bg-surface-container-highest text-on-surface-variant font-label-sm text-label-sm flex items-center justify-center">4</span><span class="font-label-md text-label-md text-on-surface-variant">Verify</span><span class="material-symbols-outlined text-outline-variant text-[14px]">chevron_right</span></div><div class="flex items-center gap-space-xs"><span class="w-5 h-5 rounded-full bg-surface-container-highest text-on-surface-variant font-label-sm text-label-sm flex items-center justify-center">5</span><span class="font-label-md text-label-md text-on-surface-variant">Record</span></div></div><div class="flex items-center gap-space-xs bg-surface-container-low p-0.5 rounded-lg"><button class="px-space-sm py-0.5 rounded font-label-sm text-label-sm bg-surface-container-high text-primary font-medium shadow-sm transition-colors" type="button">Live Pipeline</button><button class="px-space-sm py-0.5 rounded font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface transition-colors" type="button">Demonstration Mode</button></div></div></header><main class="w-full pt-[124px] bg-surface min-h-screen"><div class="flex flex-col w-full">
+<div class="w-full px-gutter py-space-xl flex flex-col gap-space-xl max-w-7xl mx-auto">
+<!-- Top Context & Architectural Header -->
+<div class="flex flex-col gap-space-md">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-space-md pb-space-xs">
+<div class="flex flex-col gap-space-xs max-w-3xl">
+<div class="flex items-center gap-space-xs">
+<span class="w-2 h-2 rounded-full bg-primary animate-ping"></span>
+<span class="font-label-sm text-label-sm tracking-widest text-primary uppercase">Cryptographic Audit Trail Active</span>
+<span class="text-on-surface-variant font-label-sm text-label-sm">•</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Vault ID: RG-ARC-9042</span>
+</div>
+<h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight">Saved Reviews &amp; Verification Dossiers</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Archived literature assessments, synthetic benchmarks, and researcher-annotated claim revisions.</p>
+</div>
+<div class="flex items-center gap-space-xs">
+<button class="flex items-center gap-space-xs px-space-md py-2 rounded bg-surface-container-high hover:bg-surface-container-highest text-secondary transition-all shadow-sm" onclick="document.getElementById('import-file-input').click()" type="button">
+<span class="material-symbols-outlined text-[18px]">upload_file</span>
+<span class="font-body-md text-body-md">Import Review (.json)</span>
+</button>
+<input accept=".json" class="hidden" id="import-file-input" onchange="alert('Synthetic payload parsed: Review ingested into memory cache.')" type="file"/>
+<button class="flex items-center gap-space-xs px-space-md py-2 rounded bg-primary text-on-primary hover:bg-primary-container font-medium transition-all shadow-md" onclick="toggleExportModal()" type="button">
+<span class="material-symbols-outlined text-[18px]">file_download</span>
+<span class="font-body-md text-body-md">Batch Export Selected</span>
+</button>
+</div>
+</div>
+<!-- State Persistence Architecture Notice (Mandated Glass Panel) -->
+<div class="relative overflow-hidden rounded-xl bg-surface-container-low p-space-md shadow-sm">
+<div class="absolute -right-8 -top-8 w-48 h-48 bg-gradient-to-br from-primary/10 via-transparent to-transparent rounded-full blur-2xl pointer-events-none"></div>
+<div class="flex items-start gap-space-md relative z-10">
+<div class="p-2 rounded bg-surface-container-highest text-primary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[22px]">database</span>
+</div>
+<div class="flex flex-col gap-0.5">
+<div class="flex items-center gap-space-xs">
+<span class="font-label-md text-label-md text-primary font-medium tracking-wide uppercase">State Persistence Architecture</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-highest font-label-sm text-label-sm text-on-surface-variant">ISOLATED SANDBOX</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+              Unsaved reviews in the workspace are temporary session memory. Saving is always an explicit action. Opening an archived review creates an isolated working copy; modifications update the saved record only when you explicitly choose <span class="text-primary font-mono text-body-sm font-medium">"Update saved copy"</span>.
+            </p>
+</div>
+</div>
+</div>
+</div>
+<!-- Search & Filter Ribbon with Micro-Telemetry -->
+<div class="flex flex-col gap-space-md">
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md bg-surface-container p-space-sm rounded-xl shadow-sm">
+<!-- Input Field -->
+<div class="flex items-center gap-space-sm bg-surface-container-lowest px-space-md py-2 rounded flex-1 min-w-0">
+<span class="material-symbols-outlined text-outline text-[20px]">search</span>
+<input class="bg-transparent text-on-surface placeholder:text-outline text-body-md font-body-md focus:outline-none w-full" id="review-search" oninput="handleSearch(this.value)" placeholder="Search by review title, target gene, compound, or author notes..." type="text"/>
+<span class="font-label-sm text-label-sm text-outline px-1.5 py-0.5 rounded bg-surface-container-high hidden sm:inline">⌘K</span>
+</div>
+<!-- Sort Select and Density View -->
+<div class="flex items-center gap-space-sm shrink-0">
+<div class="flex items-center gap-space-xs bg-surface-container-lowest px-space-sm py-1.5 rounded">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">swap_vert</span>
+<label class="sr-only" for="sort-select">Sort reviews</label>
+<select class="bg-transparent text-on-surface font-body-sm text-body-sm focus:outline-none cursor-pointer pr-space-xs" id="sort-select">
+<option class="bg-surface-container-high text-on-surface" value="newest">Last Modified: Newest First</option>
+<option class="bg-surface-container-high text-on-surface" value="oldest">Last Modified: Oldest First</option>
+<option class="bg-surface-container-high text-on-surface" value="revisions">Revision Depth (High → Low)</option>
+<option class="bg-surface-container-high text-on-surface" value="claims">Claim Complexity</option>
+</select>
+</div>
+<div class="flex items-center bg-surface-container-lowest p-0.5 rounded">
+<button aria-label="Grid View" class="p-1.5 rounded bg-surface-container-high text-primary" type="button"><span class="material-symbols-outlined text-[18px]">grid_view</span></button>
+<button aria-label="Table View" class="p-1.5 rounded text-on-surface-variant hover:text-on-surface" type="button"><span class="material-symbols-outlined text-[18px]">table_rows</span></button>
+</div>
+</div>
+</div>
+<!-- Filter Pills Row -->
+<div class="flex items-center justify-between gap-space-md flex-wrap">
+<div class="flex items-center gap-space-xs flex-wrap" id="filter-pill-group">
+<button class="filter-pill active px-space-md py-1.5 rounded-full font-label-md text-label-md bg-primary text-on-primary font-medium flex items-center gap-1.5 transition-colors" onclick="setFilter('all', this)" type="button">
+<span>All Reviews</span>
+<span class="px-1.5 py-0.2 rounded-full bg-on-primary/20 text-on-primary font-label-sm text-label-sm">8</span>
+</button>
+<button class="filter-pill px-space-md py-1.5 rounded-full font-label-md text-label-md bg-surface-container hover:bg-surface-container-high text-secondary flex items-center gap-1.5 transition-colors" onclick="setFilter('live', this)" type="button">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+<span>Live Reviews</span>
+<span class="px-1.5 py-0.2 rounded-full bg-surface-container-highest text-on-surface-variant font-label-sm text-label-sm">5</span>
+</button>
+<button class="filter-pill px-space-md py-1.5 rounded-full font-label-md text-label-md bg-surface-container hover:bg-surface-container-high text-secondary flex items-center gap-1.5 transition-colors" onclick="setFilter('demo', this)" type="button">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+<span>Demonstrations / Synthetic</span>
+<span class="px-1.5 py-0.2 rounded-full bg-surface-container-highest text-on-surface-variant font-label-sm text-label-sm">3</span>
+</button>
+<button class="filter-pill px-space-md py-1.5 rounded-full font-label-md text-label-md bg-surface-container hover:bg-surface-container-high text-secondary flex items-center gap-1.5 transition-colors" onclick="setFilter('recheck', this)" type="button">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+<span>Needs Re-verification</span>
+<span class="px-1.5 py-0.2 rounded-full bg-surface-container-highest text-error font-label-sm text-label-sm">2</span>
+</button>
+<button class="filter-pill px-space-md py-1.5 rounded-full font-label-md text-label-md bg-surface-container hover:bg-surface-container-high text-secondary flex items-center gap-1.5 transition-colors" onclick="setFilter('qualified', this)" type="button">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span>Fully Qualified</span>
+<span class="px-1.5 py-0.2 rounded-full bg-surface-container-highest text-on-surface-variant font-label-sm text-label-sm">6</span>
+</button>
+</div>
+<div class="flex items-center gap-space-xs font-label-sm text-label-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] text-primary">verified_user</span>
+<span>SHA-256 State Anchored: 0x8a92...e41f</span>
+</div>
+</div>
+</div>
+<!-- Main Grid: Dossier Cards -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
+<!-- Primary List Column -->
+<div class="lg:col-span-8 flex flex-col gap-space-lg" id="reviews-container">
+<!-- Card 1: MRTX1133 Pan-KRAS -->
+<article class="review-card flex flex-col rounded-xl bg-surface-container p-space-lg shadow-sm hover:shadow-xl transition-all duration-300 relative group" data-category="live qualified">
+<div class="flex items-start justify-between gap-space-md">
+<div class="flex items-center gap-space-xs flex-wrap">
+<span class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded-full bg-primary-container/20 text-primary font-label-sm text-label-sm uppercase tracking-wider font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                Live Verification
+              </span>
+<span class="px-space-xs py-0.5 rounded bg-surface-container-high font-label-sm text-label-sm text-on-surface-variant">Rev #4</span>
+<span class="text-outline font-label-sm text-label-sm">•</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Today, 09:15 AM</span>
+<span class="px-space-xs py-0.5 rounded bg-surface-container-highest font-label-sm text-label-sm text-secondary">DOI: 10.1038/s41586-023-06123-x</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<input class="w-4 h-4 rounded accent-primary bg-surface-container-lowest cursor-pointer" title="Select for batch action" type="checkbox"/>
+<button aria-label="More options" class="text-on-surface-variant hover:text-on-surface p-1 rounded hover:bg-surface-container-high" type="button">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</div>
+<div class="mt-space-sm flex flex-col gap-space-xs">
+<h2 class="font-headline-md text-headline-md text-on-surface leading-tight group-hover:text-primary transition-colors">
+              MRTX1133 Pan-KRAS Inhibitor In Vitro Rebound &amp; Autophagy Activation in BxPC-3 Models
+            </h2>
+<div class="flex items-center gap-space-sm text-on-surface-variant font-body-sm text-body-sm">
+<span class="font-medium text-secondary">Target: KRAS G12D / MAPK Cascade</span>
+<span>•</span>
+<span>Author: Dr. A. Thorne (Assisted by Claude-3.5-Sonnet)</span>
+</div>
+</div>
+<!-- Synthetic Sparkline / Claim Visualizer -->
+<div class="my-space-md p-space-sm rounded bg-surface-container-lowest flex flex-col gap-space-xs">
+<div class="flex items-center justify-between text-label-sm font-label-sm">
+<span class="text-on-surface-variant font-medium">CLAIM CONCORDANCE SPECTRUM</span>
+<span class="text-primary font-mono">75% Consensus</span>
+</div>
+<!-- Segmented Bar Visualization -->
+<div class="w-full h-2 rounded bg-surface-container-highest flex overflow-hidden gap-0.5">
+<div class="bg-primary h-full w-2/4" title="2 Supported Claims"></div>
+<div class="bg-tertiary h-full w-1/4" title="1 Partially Supported Claim"></div>
+<div class="bg-error h-full w-1/4" title="1 Conflicting Claim"></div>
+</div>
+<div class="flex items-center justify-between font-label-sm text-label-sm text-on-surface-variant pt-1">
+<span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span> 2 Supported</span>
+<span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> 1 Partially Supported</span>
+<span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-error"></span> 1 Conflicting</span>
+<span class="text-secondary font-mono">6 Open-Access Sources Linked</span>
+</div>
+</div>
+<!-- Working Copy Sync State -->
+<div class="flex items-center justify-between py-space-xs px-space-sm rounded bg-surface-container-high mb-space-md">
+<div class="flex items-center gap-space-xs text-primary font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-[18px]">check_circle</span>
+<span>Current Working Copy matches archived version</span>
+</div>
+<span class="font-label-sm text-label-sm text-outline font-mono">Clean Hash: c9f182</span>
+</div>
+<!-- Action Footer -->
+<div class="flex flex-wrap items-center justify-between gap-space-sm pt-space-xs">
+<div class="flex items-center gap-space-xs flex-wrap">
+<button class="flex items-center gap-1.5 px-space-md py-1.5 rounded bg-primary text-on-primary hover:bg-primary-container font-body-md text-body-md font-medium transition-all shadow-sm" type="button">
+<span class="material-symbols-outlined text-[18px]">open_in_new</span>
+<span>Open Working Copy in Workspace</span>
+</button>
+<button class="flex items-center gap-1 px-space-sm py-1.5 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-body-sm text-body-sm transition-colors" onclick="previewExport('MRTX1133 Pan-KRAS Inhibitor In Vitro Rebound', 'json')" type="button">
+<span class="material-symbols-outlined text-[16px]">data_object</span>
+<span>JSON</span>
+</button>
+<button class="flex items-center gap-1 px-space-sm py-1.5 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-body-sm text-body-sm transition-colors" onclick="previewExport('MRTX1133 Pan-KRAS Inhibitor In Vitro Rebound', 'txt')" type="button">
+<span class="material-symbols-outlined text-[16px]">description</span>
+<span>Readable TXT</span>
+</button>
+</div>
+<div class="flex items-center gap-space-xs">
+<button class="px-space-sm py-1.5 rounded bg-surface-container-lowest text-outline font-body-sm text-body-sm cursor-not-allowed opacity-60 flex items-center gap-1" disabled="" title="Working copy has no uncommitted changes" type="button">
+<span class="material-symbols-outlined text-[16px]">cloud_done</span>
+<span>Up to date</span>
+</button>
+<button class="p-1.5 rounded hover:bg-error-container/20 text-error hover:text-error transition-colors" onclick="confirmDelete(this)" title="Delete Review" type="button">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+</button>
+</div>
+</div>
+</article>
+<!-- Card 2: Demonstration Mode Review -->
+<article class="review-card flex flex-col rounded-xl bg-surface-container p-space-lg shadow-sm hover:shadow-xl transition-all duration-300 relative group" data-category="demo qualified">
+<div class="flex items-start justify-between gap-space-md">
+<div class="flex items-center gap-space-xs flex-wrap">
+<span class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded-full bg-tertiary-container/30 text-tertiary font-label-sm text-label-sm uppercase tracking-wider font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+                Demonstration / Synthetic
+              </span>
+<span class="px-space-xs py-0.5 rounded bg-surface-container-high font-label-sm text-label-sm text-on-surface-variant">Rev #1</span>
+<span class="text-outline font-label-sm text-label-sm">•</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Yesterday, 16:40</span>
+<span class="px-space-xs py-0.5 rounded bg-surface-container-highest font-label-sm text-label-sm text-on-surface-variant">Ref: BENCHMARK-TNBC-04</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<input class="w-4 h-4 rounded accent-primary bg-surface-container-lowest cursor-pointer" title="Select for batch action" type="checkbox"/>
+<button aria-label="More options" class="text-on-surface-variant hover:text-on-surface p-1 rounded hover:bg-surface-container-high" type="button">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</div>
+<div class="mt-space-sm flex flex-col gap-space-xs">
+<h2 class="font-headline-md text-headline-md text-on-surface leading-tight group-hover:text-primary transition-colors">
+              Benchmark Case Study: PD-L1 Expression Modulation via CDK4/6 Inhibition in Triple-Negative Breast Cancer
+            </h2>
+<div class="flex items-center gap-space-sm text-on-surface-variant font-body-sm text-body-sm">
+<span class="font-medium text-secondary">Cohort: Palbociclib + Anti-PD-1 Dual Screen</span>
+<span>•</span>
+<span class="text-tertiary">Benchmark synthetic ground truth</span>
+</div>
+</div>
+<!-- Notice Banner -->
+<div class="my-space-sm p-space-sm rounded bg-surface-container-high flex items-center gap-space-sm text-body-sm font-body-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-tertiary text-[20px] shrink-0">dataset</span>
+<span>Uses curated public benchmark dataset for competition demonstration &amp; calibration.</span>
+</div>
+<!-- Stats Pill Spectrum -->
+<div class="p-space-sm rounded bg-surface-container-lowest flex items-center justify-between text-label-sm font-label-sm flex-wrap gap-space-xs mb-space-md">
+<div class="flex items-center gap-space-sm">
+<span class="text-on-surface font-medium">5 Claims Reviewed:</span>
+<span class="text-primary font-mono font-medium">4 Supported</span>
+<span class="text-outline">•</span>
+<span class="text-tertiary font-mono font-medium">1 Insufficient Evidence</span>
+</div>
+<span class="font-mono text-secondary">8 Synthetic Source Records</span>
+</div>
+<!-- Action Footer -->
+<div class="flex flex-wrap items-center justify-between gap-space-sm pt-space-xs">
+<div class="flex items-center gap-space-xs flex-wrap">
+<button class="flex items-center gap-1.5 px-space-md py-1.5 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-body-md text-body-md font-medium transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">open_in_new</span>
+<span>Open Working Copy</span>
+</button>
+<button class="flex items-center gap-1 px-space-sm py-1.5 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-body-sm text-body-sm transition-colors" onclick="previewExport('Benchmark Case Study: PD-L1 Expression Modulation', 'json')" type="button">
+<span class="material-symbols-outlined text-[16px]">data_object</span>
+<span>Export JSON</span>
+</button>
+<button class="flex items-center gap-1 px-space-sm py-1.5 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-body-sm text-body-sm transition-colors" onclick="previewExport('Benchmark Case Study: PD-L1 Expression Modulation', 'txt')" type="button">
+<span class="material-symbols-outlined text-[16px]">description</span>
+<span>Export Readable TXT</span>
+</button>
+</div>
+<button class="p-1.5 rounded hover:bg-error-container/20 text-error hover:text-error transition-colors" onclick="confirmDelete(this)" title="Delete" type="button">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+</button>
+</div>
+</article>
+<!-- Card 3: Live Review Flagged for Re-check -->
+<article class="review-card flex flex-col rounded-xl bg-surface-container p-space-lg shadow-sm hover:shadow-xl transition-all duration-300 relative group" data-category="live recheck">
+<div class="flex items-start justify-between gap-space-md">
+<div class="flex items-center gap-space-xs flex-wrap">
+<span class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded-full bg-primary-container/20 text-primary font-label-sm text-label-sm uppercase tracking-wider font-semibold">
+                Live Verification
+              </span>
+<span class="px-space-xs py-0.5 rounded bg-surface-container-high font-label-sm text-label-sm text-on-surface-variant">Rev #2</span>
+<span class="text-outline font-label-sm text-label-sm">•</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">3 days ago</span>
+<span class="px-space-sm py-0.5 rounded-full bg-error-container/20 text-error font-label-sm text-label-sm font-semibold uppercase flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-error animate-ping"></span>
+                Stale Index
+              </span>
+</div>
+<div class="flex items-center gap-space-xs">
+<input class="w-4 h-4 rounded accent-primary bg-surface-container-lowest cursor-pointer" title="Select for batch action" type="checkbox"/>
+<button aria-label="More options" class="text-on-surface-variant hover:text-on-surface p-1 rounded hover:bg-surface-container-high" type="button">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</div>
+<div class="mt-space-sm flex flex-col gap-space-xs">
+<h2 class="font-headline-md text-headline-md text-on-surface leading-tight group-hover:text-primary transition-colors">
+              STING Pathway Agonist DMXAA Cross-Species Reactivity in Murine vs Human Macrophages
+            </h2>
+<div class="flex items-center gap-space-sm text-on-surface-variant font-body-sm text-body-sm">
+<span class="font-medium text-secondary">Target: TMEM173 / IRF3 Phosphorylation</span>
+<span>•</span>
+<span>PubMed Central Cross-Verification</span>
+</div>
+</div>
+<!-- Alert Callout (Stale Index Detection) -->
+<div class="my-space-md p-space-sm rounded bg-surface-container-lowest flex items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-xs text-error font-body-sm text-body-sm font-medium">
+<span class="material-symbols-outlined text-[20px]">notification_important</span>
+<span>1 new Europe PMC paper indexed since last assessment. Potential contradiction in C-terminal binding domain.</span>
+</div>
+<button class="px-space-sm py-1 rounded bg-error/10 hover:bg-error/20 text-error font-label-sm text-label-sm uppercase font-semibold shrink-0 transition-colors" type="button">
+              Inspect Delta
+            </button>
+</div>
+<div class="p-space-sm rounded bg-surface-container-lowest flex items-center justify-between text-label-sm font-label-sm flex-wrap gap-space-xs mb-space-md">
+<div class="flex items-center gap-space-sm">
+<span class="text-on-surface font-medium">3 Claims Evaluated:</span>
+<span class="text-error font-mono font-medium">1 Contradicted</span>
+<span class="text-outline">•</span>
+<span class="text-primary font-mono font-medium">2 Supported</span>
+</div>
+<span class="font-mono text-outline">External Sync: Oct 2024</span>
+</div>
+<!-- Actions -->
+<div class="flex flex-wrap items-center justify-between gap-space-sm pt-space-xs">
+<div class="flex items-center gap-space-xs flex-wrap">
+<button class="flex items-center gap-1.5 px-space-md py-1.5 rounded bg-error-container text-on-error hover:bg-error font-body-md text-body-md font-medium transition-all shadow-sm" type="button">
+<span class="material-symbols-outlined text-[18px]">sync_problem</span>
+<span>Open &amp; Re-verify Evidence</span>
+</button>
+<button class="flex items-center gap-1 px-space-sm py-1.5 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-body-sm text-body-sm transition-colors" onclick="previewExport('STING Pathway Agonist DMXAA Cross-Species Reactivity', 'json')" type="button">
+<span class="material-symbols-outlined text-[16px]">data_object</span>
+<span>JSON</span>
+</button>
+<button class="flex items-center gap-1 px-space-sm py-1.5 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-body-sm text-body-sm transition-colors" onclick="previewExport('STING Pathway Agonist DMXAA Cross-Species Reactivity', 'txt')" type="button">
+<span class="material-symbols-outlined text-[16px]">description</span>
+<span>TXT</span>
+</button>
+</div>
+<button class="p-1.5 rounded hover:bg-error-container/20 text-error hover:text-error transition-colors" onclick="confirmDelete(this)" title="Delete" type="button">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+</button>
+</div>
+</article>
+<!-- Card 4: CRISPR-Cas12a -->
+<article class="review-card flex flex-col rounded-xl bg-surface-container p-space-lg shadow-sm hover:shadow-xl transition-all duration-300 relative group" data-category="live qualified">
+<div class="flex items-start justify-between gap-space-md">
+<div class="flex items-center gap-space-xs flex-wrap">
+<span class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded-full bg-primary-container/20 text-primary font-label-sm text-label-sm uppercase tracking-wider font-semibold">
+                Live Verification
+              </span>
+<span class="px-space-xs py-0.5 rounded bg-surface-container-high font-label-sm text-label-sm text-on-surface-variant">Rev #6</span>
+<span class="text-outline font-label-sm text-label-sm">•</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Feb 18, 2025</span>
+<span class="px-space-xs py-0.5 rounded bg-surface-container-highest font-label-sm text-label-sm text-primary">All Claims Resolved</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<input class="w-4 h-4 rounded accent-primary bg-surface-container-lowest cursor-pointer" title="Select for batch action" type="checkbox"/>
+<button aria-label="More options" class="text-on-surface-variant hover:text-on-surface p-1 rounded hover:bg-surface-container-high" type="button">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</div>
+<div class="mt-space-sm flex flex-col gap-space-xs">
+<h2 class="font-headline-md text-headline-md text-on-surface leading-tight group-hover:text-primary transition-colors">
+              CRISPR-Cas12a Off-Target Cleavage Kinetics with Modified Guide RNA Chemistries
+            </h2>
+<div class="flex items-center gap-space-sm text-on-surface-variant font-body-sm text-body-sm">
+<span class="font-medium text-secondary">Target: R-loop Stabilization &amp; Mismatch Tolerance</span>
+<span>•</span>
+<span>Reviewer: Dr. Aris Thorne (Final Qualified Release)</span>
+</div>
+</div>
+<div class="my-space-md p-space-sm rounded bg-surface-container-lowest flex items-center justify-between text-body-sm font-body-sm">
+<div class="flex items-center gap-space-xs text-primary">
+<span class="material-symbols-outlined text-[20px]">task_alt</span>
+<span>6 of 6 Claims Resolved with accepted consensus wording revisions.</span>
+</div>
+<span class="font-label-sm text-label-sm font-mono text-outline">12 PMIDs Referenced</span>
+</div>
+<!-- Actions -->
+<div class="flex flex-wrap items-center justify-between gap-space-sm pt-space-xs">
+<div class="flex items-center gap-space-xs flex-wrap">
+<button class="flex items-center gap-1.5 px-space-md py-1.5 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-body-md text-body-md font-medium transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">open_in_new</span>
+<span>Open Working Copy in Workspace</span>
+</button>
+<button class="flex items-center gap-1 px-space-sm py-1.5 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-body-sm text-body-sm transition-colors" onclick="previewExport('CRISPR-Cas12a Off-Target Cleavage Kinetics', 'json')" type="button">
+<span class="material-symbols-outlined text-[16px]">data_object</span>
+<span>Export JSON</span>
+</button>
+<button class="flex items-center gap-1 px-space-sm py-1.5 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-body-sm text-body-sm transition-colors" onclick="previewExport('CRISPR-Cas12a Off-Target Cleavage Kinetics', 'txt')" type="button">
+<span class="material-symbols-outlined text-[16px]">description</span>
+<span>Export Readable TXT</span>
+</button>
+</div>
+<button class="p-1.5 rounded hover:bg-error-container/20 text-error hover:text-error transition-colors" onclick="confirmDelete(this)" title="Delete" type="button">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+</button>
+</div>
+</article>
+</div>
+<!-- Right Column: Interactive Audit Drawer / Telemetry & Export Configurator -->
+<div class="lg:col-span-4 flex flex-col gap-space-lg">
+<!-- Live Export Dossier Preview Panel (Integrated Drawer) -->
+<div class="flex flex-col rounded-xl bg-surface-container-high p-space-md shadow-xl sticky top-[140px]">
+<div class="flex items-center justify-between pb-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">ios_share</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">Export Dossier Preview</span>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-highest font-label-sm text-label-sm text-primary font-mono">STRICT v2</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant pb-space-md">Configure payload parameters for peer-review manuscripts or automated algorithmic audit benches.</p>
+<!-- Format Toggle -->
+<div class="p-1 rounded bg-surface-container-lowest flex items-center mb-space-md">
+<button class="flex-1 py-1.5 rounded font-label-sm text-label-sm font-medium text-center bg-surface-container-high text-primary shadow-sm transition-all" id="fmt-txt" onclick="setExportFormat('txt')" type="button">
+              Formatted Report (.txt)
+            </button>
+<button class="flex-1 py-1.5 rounded font-label-sm text-label-sm font-medium text-center text-on-surface-variant hover:text-on-surface transition-all" id="fmt-json" onclick="setExportFormat('json')" type="button">
+              Schema JSON (.json)
+            </button>
+</div>
+<!-- Inclusion Options Toggles -->
+<div class="flex flex-col gap-space-sm mb-space-md">
+<label class="flex items-center justify-between p-2 rounded bg-surface-container-low hover:bg-surface-container cursor-pointer transition-colors">
+<div class="flex items-center gap-2">
+<input checked="" class="w-4 h-4 rounded accent-primary bg-surface-container-lowest cursor-pointer" id="opt-claim-text" onchange="updateDossierPreview()" type="checkbox"/>
+<span class="font-body-sm text-body-sm text-on-surface">Claim text &amp; researcher decisions</span>
+</div>
+<span class="font-label-sm text-label-sm text-primary font-mono">REQ</span>
+</label>
+<label class="flex items-center justify-between p-2 rounded bg-surface-container-low hover:bg-surface-container cursor-pointer transition-colors">
+<div class="flex items-center gap-2">
+<input checked="" class="w-4 h-4 rounded accent-primary bg-surface-container-lowest cursor-pointer" id="opt-obs-inf" onchange="updateDossierPreview()" type="checkbox"/>
+<span class="font-body-sm text-body-sm text-on-surface">Observations vs Inferences breakdown</span>
+</div>
+<span class="material-symbols-outlined text-[16px] text-outline">psychology</span>
+</label>
+<label class="flex items-center justify-between p-2 rounded bg-surface-container-low hover:bg-surface-container cursor-pointer transition-colors">
+<div class="flex items-center gap-2">
+<input checked="" class="w-4 h-4 rounded accent-primary bg-surface-container-lowest cursor-pointer" id="opt-passages" onchange="updateDossierPreview()" type="checkbox"/>
+<span class="font-body-sm text-body-sm text-on-surface">Exact retrieved passages &amp; DOIs</span>
+</div>
+<span class="material-symbols-outlined text-[16px] text-outline">menu_book</span>
+</label>
+<label class="flex items-center justify-between p-2 rounded bg-surface-container-low hover:bg-surface-container cursor-pointer transition-colors">
+<div class="flex items-center gap-2">
+<input checked="" class="w-4 h-4 rounded accent-primary bg-surface-container-lowest cursor-pointer" id="opt-notes" onchange="updateDossierPreview()" type="checkbox"/>
+<span class="font-body-sm text-body-sm text-on-surface">Researcher qualifications &amp; notes</span>
+</div>
+<span class="material-symbols-outlined text-[16px] text-outline">history_edu</span>
+</label>
+</div>
+<!-- Code / Text Snippet Interactive Preview -->
+<div class="flex flex-col rounded bg-surface-container-lowest p-space-sm font-mono text-label-sm text-on-surface-variant overflow-hidden mb-space-md">
+<div class="flex items-center justify-between pb-1 text-outline font-label-sm text-label-sm">
+<span id="preview-filename">Dossier_Bundle_20250220.txt</span>
+<span class="text-primary text-[10px] uppercase tracking-wider">Validated Payload</span>
+</div>
+<pre class="overflow-x-auto text-[11px] leading-4 text-secondary max-h-48 pt-1 selection:bg-primary/20" id="preview-code-block">============================================================
+RESEARCH GUARD AI • SCIENTIFIC DOSSIER MANUSCRIPT
+============================================================
+Target: MRTX1133 Pan-KRAS Inhibitor In Vitro Rebound
+Reviewer: Dr. Aris Thorne, MD PhD [Cell Signaling Lab]
+Audit Timestamp: 2025-02-20T09:15:32.412Z
+Ledger Hash: 8fa7210e7cb28114...
+
+[CLAIM 01: OBSERVATION]
+"BxPC-3 pancreatic models treated with MRTX1133 display 
+transient ERK rebound within 48 hours."
+- VERIFICATION STATUS: SUPPORTED
+- DOI: 10.1038/s41586-023-06123-x (Passage §4.2, p.118)
+- EVALUATOR NOTE: Direct western blot confirmation.
+
+[CLAIM 02: INFERENCE]
+"Rebound is mediated exclusively by autophagic flux upregulation."
+- VERIFICATION STATUS: PARTIALLY SUPPORTED
+- NOTE: Secondary receptor tyrosine kinase (EGFR) also triggered.</pre>
+</div>
+<!-- Primary Download Action Button -->
+<button class="w-full flex items-center justify-center gap-space-xs py-2.5 rounded bg-primary text-on-primary hover:bg-primary-container font-body-md text-body-md font-semibold transition-all shadow-md" onclick="triggerDownloadDossier()" type="button">
+<span class="material-symbols-outlined text-[20px]">download</span>
+<span>Download Verified Dossier</span>
+</button>
+<!-- Cryptographic Footnote -->
+<div class="mt-space-sm flex items-center justify-between text-outline font-label-sm text-label-sm">
+<span>Signature: ECDSA-SECP256K1</span>
+<span class="text-primary font-medium">Verified Clean</span>
+</div>
+</div>
+<!-- System Architecture Telemetry Card -->
+<div class="flex flex-col rounded-xl bg-surface-container p-space-md gap-space-sm shadow-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md text-on-surface font-medium uppercase tracking-wider">Vault Metrics</span>
+<span class="material-symbols-outlined text-[18px] text-primary">speed</span>
+</div>
+<div class="grid grid-cols-2 gap-space-sm pt-space-xs">
+<div class="p-space-xs rounded bg-surface-container-low flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Local Indexed</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-mono">8 Files</span>
+</div>
+<div class="p-space-xs rounded bg-surface-container-low flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Total Claims</span>
+<span class="font-headline-sm text-headline-sm text-primary font-mono">34 Claims</span>
+</div>
+</div>
+<div class="p-space-sm rounded bg-surface-container-low flex items-center gap-space-xs text-body-sm font-body-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-primary text-[18px]">verified</span>
+<span>All local files conform to HIPAA/FDA 21 CFR Part 11 electronic records protocols.</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Modal Overlay for Batch Export / Quick Dossier Generation -->
+<div class="fixed inset-0 z-50 flex items-center justify-center p-gutter bg-surface-dim/80 backdrop-blur-md hidden opacity-0 transition-opacity duration-200" id="export-modal">
+<div class="bg-surface-container-high rounded-xl p-space-lg max-w-xl w-full flex flex-col gap-space-md shadow-2xl relative">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<div class="p-2 rounded bg-primary-container/20 text-primary">
+<span class="material-symbols-outlined text-[24px]">archive</span>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Batch Dossier Extraction</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Generating unified research bundle for selected evidence units.</p>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface p-1 rounded" onclick="toggleExportModal()" type="button">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<div class="p-space-md rounded bg-surface-container-lowest font-body-sm text-body-sm text-on-surface flex flex-col gap-space-xs">
+<div class="flex justify-between items-center text-label-md font-label-md">
+<span class="text-secondary font-medium">Selected for Packaging:</span>
+<span class="text-primary font-mono font-semibold">4 Reviews (22 Claims)</span>
+</div>
+<div class="w-full bg-surface-container h-1.5 rounded overflow-hidden">
+<div class="bg-primary h-full w-full"></div>
+</div>
+<span class="text-on-surface-variant text-[11px]">Includes cryptographic signatures, PMC source extracts, and observation/inference tables.</span>
+</div>
+<div class="flex items-center justify-end gap-space-sm pt-space-xs">
+<button class="px-space-md py-2 rounded bg-surface-container-highest hover:bg-surface-bright text-on-surface font-body-md text-body-md transition-colors" onclick="toggleExportModal()" type="button">
+          Cancel
+        </button>
+<button class="px-space-md py-2 rounded bg-primary text-on-primary hover:bg-primary-container font-body-md text-body-md font-medium flex items-center gap-1.5 transition-all" onclick="triggerBatchZip()" type="button">
+<span class="material-symbols-outlined text-[18px]">download_for_offline</span>
+<span>Download Consolidated ZIP (.tar.gz)</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<script>
+  let currentFormat = 'txt';
+
+  function setFilter(category, buttonEl) {
+    // Update active pill state
+    document.querySelectorAll('.filter-pill').forEach(btn => {
+      btn.classList.remove('bg-primary', 'text-on-primary');
+      btn.classList.add('bg-surface-container', 'text-secondary');
+    });
+    buttonEl.classList.remove('bg-surface-container', 'text-secondary');
+    buttonEl.classList.add('bg-primary', 'text-on-primary');
+
+    // Filter review cards
+    const cards = document.querySelectorAll('.review-card');
+    cards.forEach(card => {
+      const cardCats = card.getAttribute('data-category') || '';
+      if (category === 'all' || cardCats.includes(category)) {
+        card.style.display = 'flex';
+      } else {
+        card.style.display = 'none';
+      }
+    });
+  }
+
+  function handleSearch(term) {
+    const q = term.toLowerCase().trim();
+    const cards = document.querySelectorAll('.review-card');
+    cards.forEach(card => {
+      const text = card.textContent.toLowerCase();
+      if (!q || text.includes(q)) {
+        card.style.display = 'flex';
+      } else {
+        card.style.display = 'none';
+      }
+    });
+  }
+
+  function setExportFormat(fmt) {
+    currentFormat = fmt;
+    const txtBtn = document.getElementById('fmt-txt');
+    const jsonBtn = document.getElementById('fmt-json');
+    const filenameEl = document.getElementById('preview-filename');
+
+    if (fmt === 'txt') {
+      txtBtn.classList.add('bg-surface-container-high', 'text-primary', 'shadow-sm');
+      txtBtn.classList.remove('text-on-surface-variant');
+      jsonBtn.classList.remove('bg-surface-container-high', 'text-primary', 'shadow-sm');
+      jsonBtn.classList.add('text-on-surface-variant');
+      filenameEl.textContent = 'Dossier_Bundle_20250220.txt';
+    } else {
+      jsonBtn.classList.add('bg-surface-container-high', 'text-primary', 'shadow-sm');
+      jsonBtn.classList.remove('text-on-surface-variant');
+      txtBtn.classList.remove('bg-surface-container-high', 'text-primary', 'shadow-sm');
+      txtBtn.classList.add('text-on-surface-variant');
+      filenameEl.textContent = 'Dossier_Schema_v2.json';
+    }
+    updateDossierPreview();
+  }
+
+  function updateDossierPreview() {
+    const codeBlock = document.getElementById('preview-code-block');
+    const claimText = document.getElementById('opt-claim-text').checked;
+    const obsInf = document.getElementById('opt-obs-inf').checked;
+    const passages = document.getElementById('opt-passages').checked;
+    const notes = document.getElementById('opt-notes').checked;
+
+    if (currentFormat === 'txt') {
+      let preview = `============================================================\nRESEARCH GUARD AI • SCIENTIFIC DOSSIER MANUSCRIPT\n============================================================\nTarget: MRTX1133 Pan-KRAS Inhibitor In Vitro Rebound\nAudit Timestamp: 2025-02-20T09:15:32Z\n`;
+      
+      if (claimText) {
+        preview += `\n[CLAIM 01${obsInf ? ': OBSERVATION' : ''}]\n"BxPC-3 models treated with MRTX1133 display transient ERK rebound."\n- STATUS: SUPPORTED\n`;
+      }
+      if (passages) {
+        preview += `- RETRIEVED DOI: 10.1038/s41586-023-06123-x (Section 4.2)\n`;
+      }
+      if (notes) {
+        preview += `- RESEARCHER NOTE: Direct western blot confirmation in duplicate.\n`;
+      }
+      if (claimText && obsInf) {
+        preview += `\n[CLAIM 02: INFERENCE]\n"Rebound mediated by autophagic flux upregulation."\n- STATUS: PARTIALLY SUPPORTED\n`;
+      }
+      codeBlock.textContent = preview;
+    } else {
+      const obj = {
+        vault_signature: "0x8a92e41f71a0",
+        format_version: "2.4.0",
+        target: "MRTX1133 Pan-KRAS",
+        claims: []
+      };
+      if (claimText) {
+        const item = { id: "CLM-001", status: "SUPPORTED" };
+        if (obsInf) item.type = "OBSERVATION";
+        if (passages) item.sources = [{ doi: "10.1038/s41586-023-06123-x", span: "4.2" }];
+        if (notes) item.annotations = ["Direct western blot confirmation in duplicate."];
+        obj.claims.push(item);
+      }
+      codeBlock.textContent = JSON.stringify(obj, null, 2);
+    }
+  }
+
+  function previewExport(title, format) {
+    setExportFormat(format);
+    const codeBlock = document.getElementById('preview-code-block');
+    codeBlock.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const originalText = codeBlock.textContent;
+    codeBlock.textContent = `[TARGET FOCUSED: ${title}]\n` + originalText;
+  }
+
+  function triggerDownloadDossier() {
+    const ext = currentFormat;
+    const content = document.getElementById('preview-code-block').textContent;
+    const blob = new Blob([content], { type: ext === 'json' ? 'application/json' : 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ResearchGuard_Dossier.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function toggleExportModal() {
+    const modal = document.getElementById('export-modal');
+    if (modal.classList.contains('hidden')) {
+      modal.classList.remove('hidden');
+      setTimeout(() => modal.classList.remove('opacity-0'), 10);
+    } else {
+      modal.classList.add('opacity-0');
+      setTimeout(() => modal.classList.add('hidden'), 200);
+    }
+  }
+
+  function triggerBatchZip() {
+    toggleExportModal();
+    alert('Consolidated verification package generated and dispatched: ResearchGuard_Batch_Archives.tar.gz');
+  }
+
+  function confirmDelete(button) {
+    if (confirm('Are you sure you want to permanently delete this archived dossier and revoke its cryptographic state?')) {
+      const card = button.closest('article');
+      card.style.opacity = '0';
+      card.style.transform = 'scale(0.95)';
+      setTimeout(() => card.remove(), 250);
+    }
+  }
+</script></main><footer class="w-full bg-surface-container-lowest py-space-xl"><div class="w-full px-gutter flex flex-col md:flex-row items-center justify-between gap-space-md"><div class="flex items-center gap-space-sm"><span class="font-label-sm text-label-sm uppercase tracking-widest text-primary">Research Guard AI</span><span class="text-outline text-[12px]">•</span><span class="font-body-sm text-body-sm text-on-surface-variant">Biomedical Sequence Integrity &amp; LLM Guardrail Fabric</span></div><div class="flex items-center gap-space-lg font-body-sm text-body-sm text-on-surface-variant"><a class="hover:text-primary transition-colors" href="#">Audit Logs</a><a class="hover:text-primary transition-colors" href="#">Cryptographic Ledger</a><a class="hover:text-primary transition-colors" href="#">Compliance HIPAA/FDA 21 CFR</a><span class="font-label-sm text-label-sm text-outline">© 2025 Synthetic Bio Labs Inc.</span></div></div></footer></body></html>

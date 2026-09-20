@@ -1364,3 +1364,52 @@ Status: **IMPLEMENTATION PASS; LIVE PROVIDER GENERATION BLOCKED.**
    one public/synthetic question and follow-up, inspect the Network response for actual
    provider/model metadata and absence of keys, then enable fallback only if every
    candidate is independently confirmed free/no-billing.
+
+## 2026-09-20 — Stitch visual design integration
+
+Status: **PASS LOCALLY; DEPLOYMENT UPDATE NOT YET VERIFIED.**
+
+### Changes made
+
+- Applied the supplied `stitch_research_guard_bioplatform` visual direction to the
+  existing React application instead of replacing its working flows. Evidence review,
+  AI chat, sign-in/create-account/recovery, account settings and saved-review controls
+  now share deep teal surfaces, emerald actions, editorial headings, monospaced
+  provenance labels, compact workflow navigation and responsive glass panels.
+- Added a reusable molecular shield brand mark and lockup in `frontend/src/Brand.tsx`,
+  updated the favicon and browser theme color, and kept all supplied Stitch source files
+  unchanged as design references.
+- Preserved the existing route names, accessible labels, FastAPI contracts, canonical
+  review state, public-demo distinction, evidence/access labels, researcher decisions,
+  exports, Supabase account behavior and server-only model credentials.
+- Did not copy unverified claims from the mockups. The application does not claim
+  HIPAA/FDA compliance, cryptographic ledgers, provider health, or product capabilities
+  that are absent from the verified implementation.
+
+### Checks actually executed
+
+- `npm run typecheck`, `npm run lint`, `npm run test:auth`, and `npm run build`: passed.
+  Vite built 66 modules; its existing non-failing bundle-size advisory remains.
+- Existing `scripts/browser_react_smoke.cjs`: passed the login/signup/recovery controls,
+  public demo, evidence/access display, edited decision/export, failed request state,
+  keyboard route and 390 px responsive journey with no page errors.
+- Existing `scripts/browser_chat_smoke.cjs`: passed the signed-in chat, provider/model
+  selection, multi-turn context, failure retention, clear action and 390 px layout.
+- Focused Chrome design check: `/login` rendered at desktop and 390 px without horizontal
+  overflow; the signed-out `/chat` state rendered without page errors.
+- `.venv/bin/python -m unittest discover -s tests -v`: **83/83 passed**, confirming the
+  preserved auth, chat, evidence validation, retrieval, HTTP and persistence behavior.
+- Python compileall, `pip check`, production-bundle secret-pattern scan and
+  `git diff --check`: passed. No provider key or privileged Supabase-key pattern was
+  found in the built frontend.
+
+### Remaining limitations and manual action
+
+- This is a local source change. Commit and redeploy the frontend before describing the
+  hosted application as redesigned; no Vercel or Render deployment was triggered here.
+- Google-hosted Newsreader, Inter and JetBrains Mono fonts use the same public font URLs
+  supplied by the Stitch export. The CSS retains system fallbacks if those files cannot
+  load.
+- Live Google OAuth, hosted persistence and live model generation retain their previously
+  recorded verification status; a visual redesign does not resolve those external
+  configuration or quota blockers.

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import AuthPages, { type AuthPageRoute } from './AuthPages'
+import { BrandLockup, WorkflowStrip } from './Brand'
 import ChatPage from './ChatPage'
 import { api, downloadExport, downloadSavedExport } from './api'
 import {
@@ -28,13 +29,13 @@ import type {
 } from './types'
 
 const inputClass =
-  'mt-2 w-full rounded-xl border border-line bg-white px-3.5 py-3 text-sm text-ink shadow-sm transition placeholder:text-muted/65 hover:border-accent/50 focus:border-accent'
+  'mt-2 w-full rounded-md border border-line bg-deep/80 px-3.5 py-3 text-sm text-ink shadow-sm transition placeholder:text-muted/65 hover:border-accent/50 focus:border-accent focus:shadow-[inset_0_0_10px_rgba(78,222,163,0.08)]'
 const primaryButton =
-  'inline-flex min-h-11 items-center justify-center rounded-xl bg-accent px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-accent-dark disabled:hover:bg-accent'
+  'inline-flex min-h-11 items-center justify-center rounded-md bg-accent px-4 py-2.5 text-sm font-extrabold text-accent-ink shadow-[0_0_18px_rgba(78,222,163,0.14)] transition hover:bg-accent-dark hover:shadow-[0_0_24px_rgba(78,222,163,0.24)] disabled:hover:bg-accent'
 const secondaryButton =
-  'inline-flex min-h-11 items-center justify-center rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-ink transition hover:border-accent hover:bg-soft'
+  'inline-flex min-h-11 items-center justify-center rounded-md border border-accent/25 bg-accent/5 px-4 py-2.5 text-sm font-bold text-accent transition hover:border-accent/60 hover:bg-accent/10'
 const quietButton =
-  'inline-flex min-h-10 items-center justify-center rounded-lg px-3 py-2 text-sm font-bold text-accent underline decoration-accent/30 underline-offset-4 transition hover:bg-soft'
+  'inline-flex min-h-10 items-center justify-center rounded-md px-3 py-2 text-sm font-bold text-accent underline decoration-accent/30 underline-offset-4 transition hover:bg-soft'
 
 const emptyContext: ExperimentalContext = {
   organism_model: '',
@@ -76,7 +77,7 @@ function cx(...values: Array<string | false | null | undefined>) {
 }
 
 function SectionLabel({ children }: { children: ReactNode }) {
-  return <p className="text-[0.68rem] font-black uppercase tracking-[0.24em] text-accent">{children}</p>
+  return <p className="font-mono text-[0.64rem] font-semibold uppercase tracking-[0.18em] text-accent">{children}</p>
 }
 
 function ArrowIcon() {
@@ -118,7 +119,7 @@ function ListBlock({ title, items }: { title: string; items: string[] }) {
 
 function SourceCard({ source }: { source: Source }) {
   return (
-    <article className="rounded-xl border border-line bg-white p-4 sm:p-5">
+    <article className="rounded-lg border border-line bg-panel p-4 shadow-[inset_0_1px_0_rgba(78,222,163,0.05)] sm:p-5">
       <div className="flex flex-wrap items-center gap-2">
         <span className="rounded-full bg-soft px-2.5 py-1 text-[0.68rem] font-black uppercase tracking-wider text-accent-dark">
           {source.access_level} access
@@ -197,10 +198,10 @@ function ClaimCard({ review, claim, index, busy, runReviewAction }: ClaimCardPro
 
   return (
     <article className="overflow-hidden rounded-2xl border border-line bg-paper shadow-card">
-      <header className="border-b border-line bg-white/75 px-5 py-5 sm:px-7">
+      <header className="border-b border-line bg-panel/75 px-5 py-5 sm:px-7">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="grid size-8 place-items-center rounded-full bg-ink text-xs font-black text-white">{index + 1}</span>
+            <span className="grid size-8 place-items-center rounded-full bg-accent font-mono text-xs font-black text-accent-ink">{index + 1}</span>
             <span className="rounded-full border border-line px-2.5 py-1 text-[0.68rem] font-black uppercase tracking-wider text-muted">
               {claim.type}
             </span>
@@ -246,13 +247,13 @@ function ClaimCard({ review, claim, index, busy, runReviewAction }: ClaimCardPro
           <section aria-labelledby={`reasoning-${claim.claim_id}`}>
             <h4 id={`reasoning-${claim.claim_id}`} className="sr-only">Observation and interpretation</h4>
             <div className="grid gap-3 md:grid-cols-2">
-              <div className="rounded-xl border border-line bg-white p-4">
+              <div className="rounded-lg border border-line bg-panel p-4">
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-accent">Reported observation</p>
                 {claim.observations.length > 0 ? (
                   <ul className="mt-3 space-y-2 text-sm leading-6 text-ink">{claim.observations.map((item) => <li key={item}>• {item}</li>)}</ul>
                 ) : <p className="mt-3 text-sm text-muted">No observation was separated.</p>}
               </div>
-              <div className="rounded-xl border border-line bg-white p-4">
+              <div className="rounded-lg border border-line bg-panel p-4">
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-warm-ink">Interpretation or inference</p>
                 {claim.inferences.length > 0 ? (
                   <ul className="mt-3 space-y-2 text-sm leading-6 text-ink">{claim.inferences.map((item) => <li key={item}>• {item}</li>)}</ul>
@@ -261,7 +262,7 @@ function ClaimCard({ review, claim, index, busy, runReviewAction }: ClaimCardPro
             </div>
           </section>
         ) : (
-          <p className="rounded-xl border border-dashed border-line bg-white/60 p-4 text-sm leading-6 text-muted">
+          <p className="rounded-lg border border-dashed border-line bg-panel/60 p-4 text-sm leading-6 text-muted">
             Observation and interpretation have not been separated yet. The initial live claims are editable sentence segments.
           </p>
         )}
@@ -269,7 +270,7 @@ function ClaimCard({ review, claim, index, busy, runReviewAction }: ClaimCardPro
         {claim.missing_context.length > 0 && <ListBlock title="Questions about missing context" items={claim.missing_context} />}
 
         {review.mode === 'live' && (
-          <section className="rounded-xl border border-line bg-white p-4 sm:p-5" aria-labelledby={`retrieve-${claim.claim_id}`}>
+          <section className="rounded-lg border border-line bg-panel p-4 sm:p-5" aria-labelledby={`retrieve-${claim.claim_id}`}>
             <h4 id={`retrieve-${claim.claim_id}`} className="text-base font-black text-ink">Retrieve and assess public evidence</h4>
             <label htmlFor={`query-${claim.claim_id}`} className="mt-4 block text-sm font-bold text-ink">PubMed search terms</label>
             <textarea
@@ -319,7 +320,7 @@ function ClaimCard({ review, claim, index, busy, runReviewAction }: ClaimCardPro
               {noReadableSources && <p className="mt-2 text-sm leading-6 text-warm-ink">No readable source passage is currently available. This is an access state, not evidence that the claim is false.</p>}
               <div className="mt-3 space-y-2">
                 {attempts.map((attempt) => (
-                  <div key={`${attempt.retrieval_run_id}-${attempt.adapter}-${attempt.query_or_url}`} className="rounded-lg bg-white/75 p-3">
+                  <div key={`${attempt.retrieval_run_id}-${attempt.adapter}-${attempt.query_or_url}`} className="rounded-md bg-panel/75 p-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-xs font-black uppercase tracking-wider text-ink">{attempt.adapter}</span>
                       <span className="rounded-full border border-line px-2 py-0.5 text-xs font-bold text-muted">{accessLabels[attempt.access_state]}</span>
@@ -342,7 +343,7 @@ function ClaimCard({ review, claim, index, busy, runReviewAction }: ClaimCardPro
         {claim.assessment ? (
           <section className="space-y-6" aria-labelledby={`assessment-${claim.claim_id}`}>
             <div>
-              <span className="inline-flex rounded-full bg-ink px-3 py-1.5 text-xs font-black uppercase tracking-wider text-white">
+              <span className="inline-flex rounded-full border border-accent/25 bg-accent/10 px-3 py-1.5 font-mono text-xs font-black uppercase tracking-wider text-accent">
                 {claim.assessment.status}
               </span>
               <h4 id={`assessment-${claim.claim_id}`} className="mt-4 font-serif text-2xl text-ink">What the retrieved material shows</h4>
@@ -368,11 +369,11 @@ function ClaimCard({ review, claim, index, busy, runReviewAction }: ClaimCardPro
               <ListBlock title="Limitations" items={claim.assessment.limitations} />
             </div>
 
-            <div className="rounded-xl bg-ink p-5 text-white sm:p-6">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-white/65">Suggested qualified wording</p>
+            <div className="rounded-lg border border-accent/20 bg-deep p-5 text-ink shadow-[inset_0_1px_0_rgba(78,222,163,0.12)] sm:p-6">
+              <p className="font-mono text-xs font-black uppercase tracking-[0.18em] text-accent/70">Suggested qualified wording</p>
               <p className="mt-3 font-serif text-xl leading-8">{claim.assessment.suggested_wording}</p>
             </div>
-            <div className="rounded-xl border border-accent/25 bg-white p-5">
+            <div className="rounded-lg border border-accent/25 bg-panel p-5">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-accent">Next verification question</p>
               <p className="mt-3 text-base font-bold leading-7 text-ink">{claim.assessment.next_verification_step}</p>
             </div>
@@ -423,7 +424,7 @@ function ClaimCard({ review, claim, index, busy, runReviewAction }: ClaimCardPro
             </section>
           </section>
         ) : (
-          <div className="rounded-xl border border-dashed border-line bg-white/60 p-4 text-sm leading-6 text-muted">
+          <div className="rounded-lg border border-dashed border-line bg-panel/60 p-4 text-sm leading-6 text-muted">
             No evidence assessment is currently attached to this claim. Missing evidence or a failed request does not establish that the claim is true or false.
           </div>
         )}
@@ -823,19 +824,21 @@ function App() {
 
   return (
     <div className="min-h-screen">
-      <a href="#main-content" className="fixed -top-20 left-3 z-50 rounded-lg bg-ink px-4 py-2 font-bold text-white transition-[top] focus:top-3">Skip to review</a>
-      <header className="border-b border-line bg-paper/80 backdrop-blur">
-        <div className="mx-auto flex max-w-[94rem] flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-7">
-          <div className="flex items-center gap-3">
-            <span className="grid size-10 place-items-center rounded-xl bg-ink font-serif text-lg font-bold text-white">RG</span>
-            <div>
-              <p className="font-black tracking-tight text-ink">Research Guard AI</p>
-              <p className="text-xs text-muted">Local research evidence workspace</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <button type="button" className={secondaryButton} onClick={() => navigateBrowser('/chat')}>AI chat</button>
-            <div className="text-right text-xs leading-5 text-muted">
+      <a href="#main-content" className="fixed -top-20 left-3 z-50 rounded-md bg-accent px-4 py-2 font-bold text-accent-ink transition-[top] focus:top-3">Skip to review</a>
+      <header className="sticky top-0 z-40 border-b border-line bg-canvas/90 shadow-[0_10px_34px_rgba(0,0,0,0.28)] backdrop-blur-xl">
+        <div className="mx-auto flex max-w-[94rem] flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-7">
+          <button type="button" className="min-w-0 rounded-md" onClick={() => navigateBrowser('/')} aria-label="Research Guard evidence review">
+            <BrandLockup subtitle="Evidence review workspace" />
+          </button>
+          <nav aria-label="Primary navigation" className="order-3 flex w-full items-center gap-1 overflow-x-auto rounded-md bg-deep p-1 md:order-none md:w-auto">
+            <button type="button" aria-current="page" className="min-h-10 shrink-0 rounded-sm bg-accent px-3.5 py-2 text-sm font-bold text-accent-ink">Evidence review</button>
+            <button type="button" className="min-h-10 shrink-0 rounded-sm px-3.5 py-2 text-sm font-bold text-muted transition hover:bg-panel hover:text-ink" onClick={() => navigateBrowser('/chat')}>
+              AI chat <span className="ml-1 font-mono text-[0.55rem] uppercase text-warm-ink">unchecked</span>
+            </button>
+            {authSession && <button type="button" className="min-h-10 shrink-0 rounded-sm px-3.5 py-2 text-sm font-bold text-muted transition hover:bg-panel hover:text-ink" onClick={() => document.getElementById('saved-reviews-title')?.scrollIntoView({ behavior: 'smooth' })}>Saved reviews <span className="ml-1 rounded-full bg-accent/15 px-1.5 text-xs text-accent">{savedReviews.length}</span></button>}
+          </nav>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="hidden text-right font-mono text-[0.62rem] leading-5 text-muted sm:block">
               <p className="font-bold text-ink">{!authReady ? 'Checking sign-in…' : authSession ? 'Signed in' : 'Signed out'}</p>
               {authSession?.user.email && <p className="max-w-48 truncate">{authSession.user.email}</p>}
             </div>
@@ -851,19 +854,18 @@ function App() {
             )}
           </div>
         </div>
+        <WorkflowStrip />
       </header>
 
       <main id="main-content" tabIndex={-1} className="mx-auto max-w-[94rem] px-4 py-7 sm:px-7 sm:py-10">
-        <section className="mb-8 grid gap-6 border-b border-line pb-8 lg:grid-cols-[1fr_auto] lg:items-end">
+        <section className="relative mb-8 overflow-hidden rounded-lg border border-line bg-paper/75 px-5 py-8 shadow-card sm:px-8 sm:py-11 lg:px-12">
+          <div aria-hidden="true" className="absolute -right-24 -top-32 size-96 rounded-full bg-accent/8 blur-3xl" />
           <div className="max-w-4xl">
-            <SectionLabel>From an answer to an evidence record</SectionLabel>
-            <h1 className="mt-4 font-serif text-5xl leading-[0.98] tracking-tight text-ink sm:text-7xl">
-              Check the evidence.<br /><span className="text-accent/70">Keep the qualifications.</span>
+            <SectionLabel>Evidence before conclusion // review workspace</SectionLabel>
+            <h1 className="relative mt-4 font-serif text-5xl leading-[0.98] tracking-tight text-ink sm:text-7xl">
+              Check the evidence.<br /><span className="italic text-accent">Keep the qualifications.</span>
             </h1>
-            <p className="mt-5 max-w-2xl text-base leading-7 text-muted sm:text-lg">Separate what was observed from what was inferred. Inspect source access and limitations, then record your own conclusion.</p>
-          </div>
-          <div className="grid grid-cols-5 gap-3 text-center text-[0.62rem] font-black uppercase tracking-wider text-muted sm:gap-6">
-            {['Define', 'Risk', 'Assist', 'Verify', 'Record'].map((step, index) => <span key={step}><b className="mr-1 text-accent">0{index + 1}</b>{step}</span>)}
+            <p className="relative mt-5 max-w-2xl text-base leading-7 text-muted sm:text-lg">Separate what was observed from what was inferred. Inspect source access and limitations, then record your own conclusion.</p>
           </div>
         </section>
 
@@ -907,7 +909,7 @@ function App() {
         )}
 
         <div className="grid items-start gap-6 lg:grid-cols-[22rem_minmax(0,1fr)] xl:grid-cols-[24rem_minmax(0,1fr)]">
-          <aside className="rounded-2xl border border-line bg-paper p-5 shadow-card lg:sticky lg:top-5 sm:p-6">
+          <aside className="rounded-lg border border-line bg-paper/85 p-5 shadow-card lg:sticky lg:top-32 sm:p-6">
             <SectionLabel>01 / Define</SectionLabel>
             <h2 className="mt-3 font-serif text-3xl text-ink">What needs checking?</h2>
             <p className="mt-2 text-sm leading-6 text-muted">Use public or synthetic research text. Do not enter patient data or private laboratory information.</p>
@@ -966,7 +968,7 @@ function App() {
                 )}
                 <div className="mt-3 space-y-3">
                   {savedReviews.map((saved) => (
-                    <article key={saved.saved_id} className="rounded-xl border border-line bg-white p-3">
+                    <article key={saved.saved_id} className="rounded-md border border-line bg-panel p-3">
                       <p className="break-words text-sm font-black text-ink">{saved.title}</p>
                       <p className="mt-1 text-xs text-muted">{saved.mode} · revision {saved.revision} · schema {saved.schema_version}</p>
                       <div className="mt-3 flex flex-wrap gap-2">
@@ -985,10 +987,10 @@ function App() {
           <section aria-busy={busy} className="min-w-0">
             {!review ? <EmptyReview /> : (
               <div className="space-y-5">
-                <header className={cx('rounded-2xl border p-5 shadow-card sm:p-7', review.mode === 'demo' ? 'border-warm-ink/20 bg-warm/60' : 'border-line bg-paper')}>
+                <header className={cx('rounded-lg border p-5 shadow-card sm:p-7', review.mode === 'demo' ? 'border-warm-ink/20 bg-warm/60' : 'border-line bg-paper')}>
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                      <span className={cx('inline-flex rounded-full px-3 py-1.5 text-xs font-black uppercase tracking-wider', review.mode === 'demo' ? 'bg-warm-ink text-white' : 'bg-accent text-white')}>
+                      <span className={cx('inline-flex rounded-full px-3 py-1.5 font-mono text-xs font-black uppercase tracking-wider', review.mode === 'demo' ? 'bg-warm-ink text-deep' : 'bg-accent text-accent-ink')}>
                         {review.mode === 'demo' ? 'Demonstration — not a live verification' : 'Live review'}
                       </span>
                       <h2 className="mt-4 font-serif text-3xl text-ink sm:text-4xl">{review.claims.length} claim{review.claims.length === 1 ? '' : 's'} to inspect</h2>
@@ -1005,7 +1007,7 @@ function App() {
                       <button type="button" disabled={busy} className={secondaryButton} onClick={() => runExport('txt')}>Export readable TXT</button>
                     </div>
                   </div>
-                  {review.mode === 'demo' && <p className="mt-4 rounded-xl bg-white/65 p-3 text-sm font-bold leading-6 text-warm-ink">This predefined demonstration uses synthetic experimental context and archived public extracts. It is never substituted for a failed live review.</p>}
+                  {review.mode === 'demo' && <p className="mt-4 rounded-md bg-panel/65 p-3 text-sm font-bold leading-6 text-warm-ink">This predefined demonstration uses synthetic experimental context and archived public extracts. It is never substituted for a failed live review.</p>}
                   {review.missing_fields.length > 0 && <p className="mt-4 text-sm text-muted"><strong className="text-ink">Context not supplied:</strong> {review.missing_fields.join(', ')}</p>}
                   {review.mode === 'live' && (
                     <button type="button" disabled={busy} className={cx(secondaryButton, 'mt-4')} onClick={() => runReviewAction('Extracting claims with the configured model…', () => api.extract(review.review_id), 'Claims extracted. Review and edit each one before retrieval.')}>Extract claims with AI</button>
@@ -1032,7 +1034,7 @@ function App() {
                   />
                 ))}
 
-                <footer className="rounded-2xl border border-line bg-paper p-5 text-sm leading-6 text-muted sm:p-6">
+                <footer className="rounded-lg border border-line bg-paper p-5 text-sm leading-6 text-muted sm:p-6">
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="max-w-2xl">
                       <SectionLabel>05 / Record</SectionLabel>
@@ -1050,10 +1052,11 @@ function App() {
           </section>
         </div>
       </main>
-      <footer className="mt-10 border-t border-line bg-paper/60">
+      <footer className="mt-10 border-t border-line bg-deep/80">
         <div className="mx-auto flex max-w-[94rem] flex-wrap justify-between gap-3 px-4 py-6 text-xs leading-5 text-muted sm:px-7">
+          <span className="font-mono uppercase tracking-wider text-accent">Research Guard AI</span>
           <span>Research support with researcher judgment at every step.</span>
-          <span>Temporary local drafts · explicit private saves only</span>
+          <span className="font-mono">Temporary drafts · explicit private saves only</span>
         </div>
       </footer>
     </div>

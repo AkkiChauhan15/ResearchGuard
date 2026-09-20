@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
+import { BrandLockup } from './Brand'
 import {
   frontendAuthConfigured,
   loadAuthCapabilities,
@@ -38,25 +39,13 @@ interface AuthPagesProps {
 }
 
 const fieldClass =
-  'mt-2 w-full rounded-xl border border-line bg-white px-3.5 py-3 text-base text-ink shadow-sm transition placeholder:text-muted/60 hover:border-accent/50 focus:border-accent'
+  'mt-2 w-full rounded-md border border-line bg-deep/80 px-3.5 py-3 text-base text-ink shadow-sm transition placeholder:text-muted/60 hover:border-accent/50 focus:border-accent focus:shadow-[inset_0_0_10px_rgba(78,222,163,0.08)]'
 const primaryButton =
-  'inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-accent px-4 py-3 text-sm font-black text-white shadow-sm transition hover:bg-accent-dark disabled:hover:bg-accent'
+  'inline-flex min-h-12 w-full items-center justify-center rounded-md bg-accent px-4 py-3 text-sm font-black text-accent-ink shadow-[0_0_20px_rgba(78,222,163,0.16)] transition hover:bg-accent-dark hover:shadow-[0_0_26px_rgba(78,222,163,0.25)] disabled:hover:bg-accent'
 const secondaryButton =
-  'inline-flex min-h-11 items-center justify-center rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-black text-ink transition hover:border-accent hover:bg-soft'
+  'inline-flex min-h-11 items-center justify-center rounded-md border border-accent/25 bg-accent/5 px-4 py-2.5 text-sm font-black text-accent transition hover:border-accent/60 hover:bg-accent/10'
 const textLink =
-  'inline-flex min-h-10 items-center rounded-lg px-1 py-2 text-sm font-black text-accent underline decoration-accent/30 underline-offset-4'
-
-function Brand({ compact = false }: { compact?: boolean }) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="grid size-11 place-items-center rounded-xl bg-ink font-serif text-lg font-bold text-white">RG</span>
-      <div>
-        <p className="font-black tracking-tight text-ink">Research Guard AI</p>
-        {!compact && <p className="text-xs text-muted">Research evidence workspace</p>}
-      </div>
-    </div>
-  )
-}
+  'inline-flex min-h-10 items-center rounded-md px-1 py-2 text-sm font-black text-accent underline decoration-accent/30 underline-offset-4'
 
 function GoogleIcon() {
   return (
@@ -131,34 +120,39 @@ function Alert({ children, tone = 'error' }: { children: ReactNode; tone?: 'erro
 
 function AuthShell({ children, navigate }: { children: ReactNode; navigate: Navigate }) {
   return (
-    <div className="min-h-screen bg-canvas">
-      <a href="#account-content" className="fixed -top-20 left-3 z-50 rounded-lg bg-ink px-4 py-2 font-bold text-white transition-[top] focus:top-3">Skip to account access</a>
-      <header className="border-b border-line bg-paper/90">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-7">
-          <button type="button" className="rounded-xl text-left" onClick={() => navigate('/')} aria-label="Research Guard workspace">
-            <Brand compact />
+    <div className="min-h-screen bg-canvas px-3 py-3 sm:px-6 sm:py-6">
+      <a href="#account-content" className="fixed -top-20 left-3 z-50 rounded-md bg-accent px-4 py-2 font-bold text-accent-ink transition-[top] focus:top-3">Skip to account access</a>
+      <div className="mx-auto min-h-[calc(100vh-1.5rem)] max-w-7xl overflow-hidden rounded-lg border border-line bg-paper/75 shadow-[0_28px_90px_rgba(0,0,0,0.38)] sm:min-h-[calc(100vh-3rem)]">
+      <header className="border-b border-line bg-deep/45">
+        <div className="mx-auto flex items-center justify-between gap-4 px-4 py-4 sm:px-8">
+          <button type="button" className="min-w-0 rounded-md text-left" onClick={() => navigate('/')} aria-label="Research Guard workspace">
+            <BrandLockup subtitle="Secure research access" />
           </button>
           <button type="button" className={secondaryButton} onClick={() => navigate('/')}>Research workspace</button>
         </div>
       </header>
-      <main id="account-content" tabIndex={-1} className="mx-auto grid min-h-[calc(100vh-78px)] max-w-6xl items-center gap-10 px-4 py-10 sm:px-7 lg:grid-cols-[0.95fr_1.05fr] lg:py-16">
-        <section className="max-w-xl">
-          <p className="text-xs font-black uppercase tracking-[0.24em] text-accent">From an answer to an evidence record</p>
-          <h1 className="mt-5 font-serif text-4xl leading-tight tracking-tight text-ink sm:text-6xl">Check claims. Inspect evidence. Record your decisions.</h1>
+      <div className="border-b border-line bg-soft/25 px-4 py-2.5 font-mono text-[0.62rem] uppercase tracking-[0.12em] text-accent sm:px-8">
+        <span className="mr-2 inline-block size-2 rounded-full bg-accent shadow-[0_0_10px_rgba(78,222,163,0.8)]" /> Account access · session handled by Supabase
+      </div>
+      <main id="account-content" tabIndex={-1} className="mx-auto grid min-h-[calc(100vh-170px)] max-w-6xl items-center gap-10 px-4 py-10 sm:px-8 lg:grid-cols-[0.9fr_1.1fr] lg:py-16">
+        <section className="max-w-xl lg:pr-6">
+          <p className="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-accent">From an answer to an evidence record</p>
+          <h1 className="mt-5 font-serif text-4xl leading-tight tracking-tight text-ink sm:text-6xl">Check claims. <em className="font-normal text-accent">Inspect evidence.</em> Record your decisions.</h1>
           <p className="mt-5 max-w-lg text-base leading-7 text-muted">A focused research workspace for separating observations from interpretations and keeping source limitations visible.</p>
           <div className="mt-8 grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
             {['Editable claims', 'Inspectable sources', 'Researcher decisions'].map((item, index) => (
-              <div key={item} className="border-l-2 border-accent/35 pl-3">
-                <p className="text-[0.65rem] font-black uppercase tracking-wider text-accent">0{index + 1}</p>
+              <div key={item} className="rounded-sm border border-line bg-panel/45 p-3">
+                <p className="font-mono text-[0.65rem] font-black uppercase tracking-wider text-accent">0{index + 1}</p>
                 <p className="mt-1 text-sm font-black text-ink">{item}</p>
               </div>
             ))}
           </div>
         </section>
-        <section className="w-full rounded-2xl border border-line bg-paper p-5 shadow-card sm:p-8">
+        <section className="w-full rounded-lg border border-accent/15 bg-panel/80 p-5 shadow-card backdrop-blur sm:p-8">
           {children}
         </section>
       </main>
+      </div>
     </div>
   )
 }

@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><title>Research Guard AI</title><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"surface-container-highest":"#293737","error":"#ffb4ab","primary":"#4edea3","on-primary-fixed-variant":"#005236","inverse-primary":"#006c49","surface-container-lowest":"#031111","on-tertiary-fixed-variant":"#653e00","surface-bright":"#2d3c3c","on-primary":"#003824","surface-dim":"#071616","on-surface-variant":"#bbcabf","on-secondary-fixed":"#091f1f","tertiary-container":"#e29100","secondary-fixed":"#d0e7e6","primary-fixed-dim":"#4edea3","tertiary-fixed-dim":"#ffb95f","background":"#071616","surface-variant":"#293737","on-background":"#d5e6e5","on-tertiary-fixed":"#2a1700","surface-tint":"#4edea3","secondary-fixed-dim":"#b4cbca","on-tertiary":"#472a00","on-primary-fixed":"#002113","on-secondary":"#1f3434","outline":"#86948a","surface":"#071616","secondary-container":"#384d4d","inverse-on-surface":"#243333","on-secondary-fixed-variant":"#364a4a","on-primary-container":"#00422b","on-tertiary-container":"#523200","error-container":"#93000a","surface-container-high":"#1e2d2c","primary-container":"#10b981","secondary":"#b4cbca","on-error":"#690005","inverse-surface":"#d5e6e5","surface-container":"#132222","on-surface":"#d5e6e5","primary-fixed":"#6ffbbe","outline-variant":"#3c4a42","on-secondary-container":"#a6bdbc","tertiary-fixed":"#ffddb8","surface-container-low":"#0f1e1e","tertiary":"#ffb95f","on-error-container":"#ffdad6"},borderRadius:{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},spacing:{"gutter":"1.5rem","space-sm":"0.5rem","margin-mobile":"1rem","gutter-mobile":"0.75rem","space-lg":"1.5rem","space-xs":"0.25rem","space-md":"1rem","space-xl":"2.5rem","margin":"2rem"},fontFamily:{"body-sm":["Inter"],"headline-md":["Newsreader"],"headline-lg":["Newsreader"],"label-lg":["JetBrains Mono"],"body-lg":["Inter"],"headline-xl-mobile":["Newsreader"],"display-lg":["Newsreader"],"label-md":["JetBrains Mono"],"display-lg-mobile":["Newsreader"],"body-md":["Inter"],"headline-sm":["Newsreader"],"headline-xl":["Newsreader"],"label-sm":["JetBrains Mono"],"body-xl":["Inter"]},fontSize:{"body-sm":["12px",{"lineHeight":"18px","fontWeight":"400"}],"headline-md":["24px",{"lineHeight":"32px","fontWeight":"500"}],"headline-lg":["32px",{"lineHeight":"40px","letterSpacing":"-0.01em","fontWeight":"500"}],"label-lg":["14px",{"lineHeight":"20px","letterSpacing":"0.02em","fontWeight":"500"}],"body-lg":["16px",{"lineHeight":"24px","fontWeight":"400"}],"headline-xl-mobile":["28px",{"lineHeight":"36px","letterSpacing":"-0.01em","fontWeight":"400"}],"display-lg":["56px",{"lineHeight":"64px","letterSpacing":"-0.02em","fontWeight":"400"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.04em","fontWeight":"500"}],"display-lg-mobile":["36px",{"lineHeight":"44px","letterSpacing":"-0.01em","fontWeight":"400"}],"body-md":["14px",{"lineHeight":"20px","fontWeight":"400"}],"headline-sm":["20px",{"lineHeight":"28px","fontWeight":"600"}],"headline-xl":["40px",{"lineHeight":"48px","letterSpacing":"-0.015em","fontWeight":"400"}],"label-sm":["10px",{"lineHeight":"14px","letterSpacing":"0.08em","fontWeight":"600"}],"body-xl":["18px",{"lineHeight":"28px","fontWeight":"400"}]}}}};</script></head><body class="bg-surface font-body-md text-on-surface antialiased min-h-screen selection:bg-primary selection:text-on-primary"><header class="fixed top-0 left-0 w-full z-50 bg-surface/85 backdrop-blur-xl shadow-[0_4px_30px_rgba(0,0,0,0.5)]"><div class="h-20 w-full px-gutter flex items-center justify-between gap-space-md"><div class="flex items-center gap-space-md"><img alt="Research Guard AI Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1U8UJ61knZ1Q_HML7xcJw-f4owi7Iz4X-AnvqHx8gMJ0XePb0SRRXHCRLKwsd5vimonrH1nC5SCOx7wAFsnNXd30TWaYeed3DvcTZeGOtMobPDEj_d_8MeQc2bbKoLJVRgztCbkF_ThyJRKZWL_C2lPk8JwT0z5bhL2JHArkx5bl9F2QMjJMEBJ30I_A6rJ5QTYU5yfqW72ezOkVIKxSX6k9ovZeFszEPwhJ_s6d0PtNDvJEpJtVVJZoqk"/><div class="flex flex-col"><div class="flex items-center gap-space-xs"><span class="font-headline-sm text-headline-sm text-on-surface tracking-tight font-medium">Research Guard</span><span class="font-label-sm text-label-sm text-primary tracking-widest uppercase px-space-xs py-0.5 rounded bg-surface-container-high">AI v2.4</span></div><span class="font-label-sm text-label-sm text-on-surface-variant">Autonomous Biomedical Verification</span></div></div><nav class="hidden xl:flex items-center gap-space-xs px-space-xs py-1 rounded-lg bg-surface-container-low" data-active-classes="bg-primary-container text-on-primary font-medium rounded"><a class="px-space-md py-1.5 font-body-md text-body-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors rounded" data-path="evidence-review" href="#">Evidence Review</a><a aria-current="page" class="flex items-center gap-space-xs px-space-md py-1.5 transition-colors bg-primary-container text-on-primary font-medium rounded" data-path="ai-chat" href="#"><span>AI Chat</span><span class="font-label-sm text-label-sm text-tertiary px-1.5 py-0.5 rounded-full bg-surface-container-highest tracking-wider uppercase">Unchecked AI</span></a><a class="flex items-center gap-space-xs px-space-md py-1.5 font-body-md text-body-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors rounded" data-path="saved-reviews" href="#"><span>Saved Reviews</span><span class="font-label-sm text-label-sm text-on-primary bg-primary rounded-full px-1.5 py-0.5">8</span></a><a class="px-space-md py-1.5 font-body-md text-body-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors rounded" data-path="documentation-methodology" href="#">Documentation / Methodology</a></nav><div class="flex items-center gap-space-md"><div class="hidden lg:flex items-center gap-space-xs px-space-sm py-1 rounded-full bg-surface-container-lowest"><span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span><span class="font-label-sm text-label-sm text-on-surface-variant">System Operational • Groq/Gemini Active</span></div><button aria-label="Notifications" class="relative p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-tertiary"></span></button><div class="flex items-center gap-space-sm pl-space-sm py-1"><div class="text-right hidden sm:block"><div class="font-body-md text-body-md text-on-surface font-medium leading-none">Dr. Aris Thorne, MD PhD</div><div class="font-label-sm text-label-sm text-on-surface-variant leading-none mt-1">Cell Signaling Lab • Chief Evaluator</div></div><div class="relative"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-primary ring-2 ring-surface"></span></div></div></div></div><div class="h-11 w-full px-gutter bg-surface-container-lowest/80 backdrop-blur-md flex items-center justify-between"><div class="flex items-center gap-space-lg overflow-x-auto py-1"><div class="flex items-center gap-space-xs"><span class="w-5 h-5 rounded-full bg-primary text-on-primary font-label-sm text-label-sm flex items-center justify-center font-semibold">1</span><span class="font-label-md text-label-md text-on-surface font-medium">Define</span><span class="material-symbols-outlined text-on-surface-variant text-[14px]">chevron_right</span></div><div class="flex items-center gap-space-xs"><span class="w-5 h-5 rounded-full bg-surface-container-highest text-primary font-label-sm text-label-sm flex items-center justify-center">2</span><span class="font-label-md text-label-md text-on-surface-variant">Risk</span><span class="material-symbols-outlined text-outline-variant text-[14px]">chevron_right</span></div><div class="flex items-center gap-space-xs"><span class="w-5 h-5 rounded-full bg-surface-container-highest text-on-surface-variant font-label-sm text-label-sm flex items-center justify-center">3</span><span class="font-label-md text-label-md text-on-surface-variant">Assist</span><span class="material-symbols-outlined text-outline-variant text-[14px]">chevron_right</span></div><div class="flex items-center gap-space-xs"><span class="w-5 h-5 rounded-full bg-surface-container-highest text-on-surface-variant font-label-sm text-label-sm flex items-center justify-center">4</span><span class="font-label-md text-label-md text-on-surface-variant">Verify</span><span class="material-symbols-outlined text-outline-variant text-[14px]">chevron_right</span></div><div class="flex items-center gap-space-xs"><span class="w-5 h-5 rounded-full bg-surface-container-highest text-on-surface-variant font-label-sm text-label-sm flex items-center justify-center">5</span><span class="font-label-md text-label-md text-on-surface-variant">Record</span></div></div><div class="flex items-center gap-space-xs bg-surface-container-low p-0.5 rounded-lg"><button class="px-space-sm py-0.5 rounded font-label-sm text-label-sm bg-surface-container-high text-primary font-medium shadow-sm transition-colors" type="button">Live Pipeline</button><button class="px-space-sm py-0.5 rounded font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface transition-colors" type="button">Demonstration Mode</button></div></div></header><main class="w-full pt-[124px] bg-surface min-h-screen"><div class="flex flex-col w-full">
+<!-- Top Regulatory & Verification Banner -->
+<aside aria-label="System Safety Advisory" class="w-full bg-surface-container-lowest px-gutter py-space-sm flex flex-col md:flex-row items-center justify-between gap-space-sm shadow-md">
+<div class="flex items-center gap-space-md w-full md:w-auto">
+<div class="flex items-center gap-space-xs px-space-sm py-1 rounded bg-tertiary-container/10">
+<span class="material-symbols-outlined text-tertiary text-[18px]">warning</span>
+<span class="font-label-sm text-label-sm text-tertiary uppercase tracking-wider font-semibold">Unchecked General Model Inference</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-1 md:line-clamp-none">
+        CAUTION: Responses are direct neural generation. Real-time peer-reviewed cross-referencing is <span class="text-tertiary font-medium">disabled</span> in chat mode.
+      </p>
+</div>
+<div class="flex items-center gap-space-md self-end md:self-auto shrink-0">
+<a class="group flex items-center gap-space-xs font-label-md text-label-md text-primary hover:text-primary-fixed transition-colors" data-path="evidence-review" href="#">
+<span class="material-symbols-outlined text-[16px] transition-transform group-hover:-translate-x-0.5">arrow_back</span>
+<span>Open in Evidence Review Workspace</span>
+</a>
+</div>
+</aside>
+<!-- Workspace Control Center -->
+<section class="w-full px-gutter py-space-md bg-surface-container-low shadow-sm">
+<div class="flex flex-col xl:flex-row xl:items-center justify-between gap-space-md">
+<!-- Title & Operational Paradigm -->
+<div class="flex flex-col">
+<div class="flex items-center gap-space-sm">
+<h1 class="font-headline-md text-headline-md text-on-surface font-medium tracking-tight">Biomedical Research Assistant</h1>
+<span class="font-label-sm text-label-sm px-space-xs py-0.5 rounded bg-surface-container-highest text-secondary uppercase tracking-widest">Sandbox Env</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-0.5">
+          Hypothesis generation, experimental protocol drafting, and predictive target modeling.
+        </p>
+</div>
+<!-- Provider & Model Configuration Matrix -->
+<div class="flex flex-wrap items-center gap-space-sm">
+<!-- Provider Select -->
+<div class="flex items-center bg-surface-container-highest rounded px-space-sm py-1 shadow-inner">
+<span class="font-label-sm text-label-sm text-on-surface-variant mr-space-xs uppercase">Engine</span>
+<select class="bg-transparent text-primary font-label-md text-label-md outline-none cursor-pointer pr-space-xs" id="provider-selector">
+<option class="bg-surface-container-highest text-on-surface" selected="" value="gemini">Google Gemini 1.5 Pro (Active)</option>
+<option class="bg-surface-container-highest text-on-surface" value="groq">Groq (Llama-3.3-70b-Versatile)</option>
+<option class="bg-surface-container-highest text-on-surface" value="openrouter">OpenRouter (Claude-3.5-Sonnet)</option>
+<option class="bg-surface-container-highest text-on-surface" value="nvidia">NVIDIA NIM (Bio-NeMo)</option>
+</select>
+</div>
+<!-- Dynamic Model & Context Window Specs -->
+<div class="hidden sm:flex items-center gap-space-xs px-space-sm py-1 rounded bg-surface-container text-on-surface-variant font-label-md text-label-md">
+<span class="material-symbols-outlined text-primary text-[16px]">token</span>
+<span class="text-on-surface">gemini-1.5-pro-latest</span>
+<span class="text-outline-variant">•</span>
+<span class="text-secondary">1M Context Window</span>
+</div>
+<!-- Telemetry & Latency Status Indicator with Tooltip Trigger -->
+<div class="relative group">
+<button class="flex items-center gap-space-xs px-space-sm py-1 rounded bg-surface-container hover:bg-surface-container-high transition-colors" type="button">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+</span>
+<span class="font-label-sm text-label-sm text-on-surface">142ms</span>
+<span class="font-label-sm text-label-sm text-primary font-semibold px-1 rounded bg-primary/10">Healthy</span>
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">info</span>
+</button>
+<!-- Status Legend Popover -->
+<div class="absolute right-0 top-full mt-2 w-72 p-space-sm bg-surface-container-highest rounded-lg shadow-xl hidden group-hover:block group-focus-within:block z-30">
+<div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-space-xs pb-1">Telemetry Status Index</div>
+<div class="space-y-1.5 font-label-sm text-label-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="text-on-surface">Direct Low-Latency</span>
+</div>
+<span class="text-primary font-mono">&lt;200ms</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<span class="text-on-surface">Rate Limit Warning</span>
+</div>
+<span class="text-tertiary font-mono">Tier 1</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-error"></span>
+<span class="text-on-surface">Circuit Breaker Active</span>
+</div>
+<span class="text-error font-mono">Offline</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-outline"></span>
+<span class="text-on-surface">Cold Fallback Ready</span>
+</div>
+<span class="text-on-surface-variant font-mono">Groq 70B</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Automatic Failover Toggle -->
+<label class="flex items-center gap-space-xs px-space-sm py-1 rounded bg-surface-container cursor-pointer select-none">
+<input checked="" class="w-3.5 h-3.5 accent-primary-container rounded bg-surface-dim" type="checkbox"/>
+<span class="font-label-sm text-label-sm text-on-surface">Auto-Failover</span>
+</label>
+<!-- Utility Action Strip -->
+<div class="flex items-center gap-1 ml-auto">
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="Clear Chat History" type="button">
+<span class="material-symbols-outlined text-[18px]">delete_sweep</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="Export Markdown Transcript" type="button">
+<span class="material-symbols-outlined text-[18px]">download</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="System Prompt Orchestration" type="button">
+<span class="material-symbols-outlined text-[18px]">tune</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Main Chat Matrix Space -->
+<div class="w-full max-w-[1440px] mx-auto px-gutter py-space-lg flex-1 flex flex-col gap-space-lg">
+<!-- User Query Block (Message 1) -->
+<div class="flex flex-col items-end w-full pl-space-xl sm:pl-24">
+<div class="flex items-center gap-space-xs mb-1 text-on-surface-variant font-label-sm text-label-sm">
+<span class="text-secondary font-medium">Dr. Aris Thorne</span>
+<span>•</span>
+<span>Today, 10:42 AM</span>
+</div>
+<div class="w-full max-w-2xl bg-surface-container-high p-space-md rounded-xl shadow-md text-on-surface font-body-lg text-body-lg leading-relaxed">
+        Can you explain the rationale for combining MRTX1133 with SHP2 inhibitors or EGFR inhibitors in KRAS G12D pancreatic cancer, and what compensatory feedback loops have been described?
+      </div>
+</div>
+<!-- AI Response Block (Message 2) -->
+<div class="flex flex-col items-start w-full pr-space-xl sm:pr-24">
+<!-- Assistant Message Container with Ambient Bio-glow -->
+<div class="w-full max-w-4xl bg-surface-container-low rounded-xl shadow-xl overflow-hidden relative">
+<div class="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-primary via-primary-container to-transparent"></div>
+<!-- Inference Header Telemetry Banner -->
+<div class="w-full bg-surface-container px-space-md py-2 flex flex-wrap items-center justify-between gap-space-xs">
+<div class="flex items-center gap-space-sm flex-wrap">
+<div class="flex items-center gap-1 px-2 py-0.5 rounded bg-primary/10 text-primary font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[14px]">psychology</span>
+<span class="font-semibold">Google Gemini 1.5 Pro</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Direct API</span>
+<span class="text-outline-variant font-label-sm">•</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Latency: 1.2s</span>
+<span class="text-outline-variant font-label-sm">•</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Tokens: 642</span>
+</div>
+<!-- Prominent Unverified Notice Badge -->
+<div class="flex items-center gap-1 px-2 py-0.5 rounded bg-tertiary/10 text-tertiary font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[14px]">history_edu</span>
+<span>Unverified Neural Output</span>
+</div>
+</div>
+<!-- Core Scientific Synthesis (Editorial Newsreader + JetBrains Mono) -->
+<div class="p-space-lg text-on-surface space-y-space-md">
+<div class="space-y-space-xs">
+<h2 class="font-headline-md text-headline-md text-on-surface font-medium">Mechanistic Rationale for Dual Target Inhibition</h2>
+<p class="font-body-md text-body-md text-on-surface leading-relaxed">
+              KRAS(G12D) cycling between inactive GDP-bound and active GTP-bound states remains partially dynamic despite oncogenic stabilization. MRTX1133 locks the switch-II pocket in the GDP state with sub-nanomolar affinity, but mono-inhibition universally induces rapid adaptive resistance within 48 to 72 hours.
+            </p>
+</div>
+<!-- Structured Scientific Breakdown -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+<!-- Node 1: RTK Feedback Loop -->
+<div class="bg-surface-container p-space-md rounded-lg flex flex-col justify-between">
+<div>
+<div class="flex items-center gap-space-xs text-primary font-label-md text-label-md mb-1">
+<span class="material-symbols-outlined text-[16px]">device_hub</span>
+<span class="uppercase tracking-wider">1. RTK Reactivation Loop</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-normal">
+                  Inhibition of downstream ERK1/2 abrogates native negative-feedback phosphorylation on upstream Receptor Tyrosine Kinases (predominantly EGFR, HER2, and FGFR1). This unleashes hyper-active SOS1/2 nucleotide exchange complexes.
+                </p>
+</div>
+<div class="mt-space-sm pt-space-xs bg-surface-container-high/40 p-2 rounded font-label-sm text-label-sm text-secondary">
+                Pathway: KRAS(G12D) → pERK⊥ → EGFR Hyperphosphorylation
+              </div>
+</div>
+<!-- Node 2: SHP2 Scaffolding -->
+<div class="bg-surface-container p-space-md rounded-lg flex flex-col justify-between">
+<div>
+<div class="flex items-center gap-space-xs text-primary font-label-md text-label-md mb-1">
+<span class="material-symbols-outlined text-[16px]">hub</span>
+<span class="uppercase tracking-wider">2. SHP2 (PTPN11) Scaffolding</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-normal">
+                  SHP2 acts as an indispensable convergent allosteric bridge connecting phosphorylated RTK cytoplasmic domains to SOS1/GRB2. Combining MRTX1133 with allosteric SHP2 inhibitors (SHP099, RMC-4550) uncouples the signaling relay before wild-type RAS GTP exchange happens.
+                </p>
+</div>
+<div class="mt-space-sm pt-space-xs bg-surface-container-high/40 p-2 rounded font-label-sm text-label-sm text-secondary">
+                Target: Allosteric Tunnel Lock (PTP Domain Stabilizer)
+              </div>
+</div>
+</div>
+<!-- Critical Caveats Box -->
+<div class="bg-surface-container-highest/60 p-space-md rounded-lg">
+<div class="flex items-center gap-space-xs text-tertiary font-label-md text-label-md mb-1">
+<span class="material-symbols-outlined text-[18px]">science</span>
+<span class="uppercase tracking-wider font-semibold">Known Caveats &amp; Unresolved Experimental Vulnerabilities</span>
+</div>
+<ul class="space-y-1 font-body-sm text-body-sm text-on-surface-variant pl-space-md list-disc marker:text-tertiary">
+<li>Systemic cumulative hepatotoxicity and mucosal desquamation have complicated early-phase combinatory dosing regimes.</li>
+<li>Monolayer <span class="italic">in vitro</span> IC50 measurements dramatically overestimate efficacy inside densely fibrotic, hypoxic desmoplastic pancreatic microenvironments.</li>
+<li>Parallel activation of wild-type HRAS and NRAS isoforms under RTK hyperstimulation can sustain downstream PI3K/AKT axis independently of KRAS(G12D).</li>
+</ul>
+</div>
+</div>
+<!-- Synthesis Verification Action Strip -->
+<div class="bg-surface-container px-space-lg py-space-sm flex flex-wrap items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-xs">
+<!-- Critical Transfer Action Button -->
+<button class="group relative flex items-center gap-space-xs px-space-md py-1.5 rounded bg-primary-container hover:bg-primary text-on-primary font-body-md text-body-md font-semibold transition-all shadow-sm" type="button">
+<span class="material-symbols-outlined text-[18px]">verified</span>
+<span>Send to Evidence Review</span>
+<span class="hidden md:inline font-label-sm text-label-sm opacity-80 pl-1">(Extract &amp; Validate Claims)</span>
+</button>
+</div>
+<div class="flex items-center gap-1 text-on-surface-variant">
+<button class="flex items-center gap-1 px-space-sm py-1 rounded hover:bg-surface-container-high hover:text-on-surface transition-colors font-label-sm text-label-sm" title="Copy Raw Text" type="button">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+<span>Copy</span>
+</button>
+<button class="flex items-center gap-1 px-space-sm py-1 rounded hover:bg-surface-container-high hover:text-on-surface transition-colors font-label-sm text-label-sm" title="Export Markdown" type="button">
+<span class="material-symbols-outlined text-[16px]">file_download</span>
+<span>Markdown</span>
+</button>
+<button class="flex items-center gap-1 px-space-sm py-1 rounded hover:bg-error/20 hover:text-error transition-colors font-label-sm text-label-sm" title="Flag Hallucination Risk" type="button">
+<span class="material-symbols-outlined text-[16px]">flag</span>
+<span>Report Bias</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- User Query Block (Message 3) -->
+<div class="flex flex-col items-end w-full pl-space-xl sm:pl-24">
+<div class="flex items-center gap-space-xs mb-1 text-on-surface-variant font-label-sm text-label-sm">
+<span class="text-secondary font-medium">Dr. Aris Thorne</span>
+<span>•</span>
+<span>Today, 10:45 AM</span>
+</div>
+<div class="w-full max-w-2xl bg-surface-container-high p-space-md rounded-xl shadow-md text-on-surface font-body-lg text-body-lg leading-relaxed">
+        What specific assays measure whether the rebound is truly EGFR dependent versus wild-type RAS activation?
+      </div>
+</div>
+<!-- AI Live Streaming Stream State Preview (Message 4) -->
+<div class="flex flex-col items-start w-full pr-space-xl sm:pr-24">
+<div class="w-full max-w-3xl bg-surface-container-low rounded-xl shadow-lg p-space-md space-y-space-sm relative">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-tertiary"></span>
+</span>
+<span class="font-label-sm text-label-sm text-tertiary uppercase tracking-wider font-medium">
+              Generating response using Groq fallback engine...
+            </span>
+</div>
+<span class="font-label-sm text-label-sm text-outline">Streaming • 86 tps</span>
+</div>
+<div class="font-body-md text-body-md text-on-surface-variant flex items-center gap-space-sm">
+<span>Evaluating phosphorylation kinetics using phosphoproteomics and proximity ligation assays...</span>
+<span class="inline-block w-2 h-4 bg-primary animate-pulse"></span>
+</div>
+<!-- Mini Visual Waveform Stream Graphic -->
+<div class="w-full h-1 bg-surface-container rounded overflow-hidden">
+<div class="h-full bg-gradient-to-r from-transparent via-primary to-transparent w-1/3 animate-[shimmer_1.5s_infinite] translate-x-full"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Interactive Composer Console -->
+<section class="sticky bottom-0 left-0 w-full bg-surface-container-lowest/95 backdrop-blur-xl px-gutter py-space-md shadow-[0_-8px_30px_rgba(0,0,0,0.6)] z-20">
+<div class="max-w-[1440px] mx-auto flex flex-col gap-space-sm">
+<!-- Query Quick Prompt Anchors -->
+<div class="flex items-center gap-space-xs overflow-x-auto pb-1 text-on-surface-variant">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline-variant shrink-0 mr-1">Heuristics:</span>
+<button class="shrink-0 px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface hover:text-primary font-body-sm text-body-sm transition-colors flex items-center gap-1" type="button">
+<span class="material-symbols-outlined text-[14px]">labs</span>
+<span>Formulate testable hypothesis</span>
+</button>
+<button class="shrink-0 px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface hover:text-primary font-body-sm text-body-sm transition-colors flex items-center gap-1" type="button">
+<span class="material-symbols-outlined text-[14px]">visibility_off</span>
+<span>Identify assay limitations</span>
+</button>
+<button class="shrink-0 px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface hover:text-primary font-body-sm text-body-sm transition-colors flex items-center gap-1" type="button">
+<span class="material-symbols-outlined text-[14px]">shield</span>
+<span>Suggest negative controls</span>
+</button>
+<button class="shrink-0 px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface hover:text-primary font-body-sm text-body-sm transition-colors flex items-center gap-1" type="button">
+<span class="material-symbols-outlined text-[14px]">biotech</span>
+<span>Design CRISPR sgRNA validation</span>
+</button>
+</div>
+<!-- Main Input Box with Integrated Action Dock -->
+<div class="relative bg-surface-container rounded-xl overflow-hidden shadow-inner focus-within:bg-surface-container-high transition-all">
+<textarea class="w-full bg-transparent px-space-md py-space-md font-body-md text-body-md text-on-surface placeholder:text-outline-variant outline-none resize-none leading-relaxed" id="chat-input" placeholder="Ask a biomedical research question, paste an experimental protocol, or request hypothesis exploration (Shift + Enter for new line)..." rows="3"></textarea>
+<!-- Dynamic Control Bar inside the Box Footer -->
+<div class="flex items-center justify-between px-space-md py-space-xs bg-surface-container-low/60">
+<div class="flex items-center gap-space-sm">
+<!-- Attachment Button -->
+<button class="p-1.5 rounded hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface transition-colors flex items-center gap-1" title="Attach PDF, FASTA, or PDB file" type="button">
+<span class="material-symbols-outlined text-[20px]">attach_file</span>
+<span class="hidden sm:inline font-label-sm text-label-sm">Attach Manuscript / FASTA</span>
+</button>
+<span class="text-outline-variant">•</span>
+<!-- Tone Toggle -->
+<label class="flex items-center gap-1.5 cursor-pointer text-on-surface-variant hover:text-on-surface select-none">
+<input class="w-3.5 h-3.5 accent-primary-container rounded bg-surface-dim" type="checkbox"/>
+<span class="font-label-sm text-label-sm">Strict Scientific Tone (Newsreader)</span>
+</label>
+</div>
+<div class="flex items-center gap-space-sm">
+<span class="hidden md:inline font-label-sm text-label-sm text-outline font-mono">⌘ + Enter</span>
+<button class="flex items-center gap-1.5 px-space-lg py-1.5 rounded bg-primary-container hover:bg-primary text-on-primary font-body-md text-body-md font-semibold transition-all shadow-md active:scale-95" id="send-btn" type="button">
+<span>Send Query</span>
+<span class="material-symbols-outlined text-[18px]">send</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Legal / Regulatory Disclaimer Bar -->
+<div class="flex flex-col sm:flex-row items-center justify-between gap-space-xs text-on-surface-variant px-space-xs">
+<p class="font-body-sm text-body-sm flex items-center gap-1 text-outline">
+<span class="material-symbols-outlined text-[14px]">lock</span>
+<span>Inference routed via zero-retention HIPAA proxy. Proprietary sequences are never utilized for base LLM weights training.</span>
+</p>
+<span class="font-label-sm text-label-sm text-outline shrink-0">Model Safety Layer: Guardrail-v2.8-Bio</span>
+</div>
+</div>
+</section>
+<!-- Client Side Interaction Handlers -->
+<script>
+    (function() {
+      const input = document.getElementById('chat-input');
+      const sendBtn = document.getElementById('send-btn');
+      const providerSelector = document.getElementById('provider-selector');
+
+      // Key shortcut execution
+      if (input && sendBtn) {
+        input.addEventListener('keydown', (e) => {
+          if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+            e.preventDefault();
+            sendBtn.click();
+          }
+        });
+
+        sendBtn.addEventListener('click', () => {
+          const val = input.value.trim();
+          if (!val) return;
+          input.value = '';
+          // UI micro-feedback
+          sendBtn.classList.add('opacity-75');
+          setTimeout(() => sendBtn.classList.remove('opacity-75'), 400);
+        });
+      }
+
+      // Quick heuristic injector
+      document.querySelectorAll('button').forEach(btn => {
+        if (btn.innerText.includes('Formulate') || btn.innerText.includes('Identify') || btn.innerText.includes('Suggest') || btn.innerText.includes('Design')) {
+          btn.addEventListener('click', () => {
+            if (input) {
+              input.value = btn.innerText.trim() + ' for: ';
+              input.focus();
+            }
+          });
+        }
+      });
+    })();
+  </script>
+</div></main><footer class="w-full bg-surface-container-lowest py-space-xl"><div class="w-full px-gutter flex flex-col md:flex-row items-center justify-between gap-space-md"><div class="flex items-center gap-space-sm"><span class="font-label-sm text-label-sm uppercase tracking-widest text-primary">Research Guard AI</span><span class="text-outline text-[12px]">•</span><span class="font-body-sm text-body-sm text-on-surface-variant">Biomedical Sequence Integrity &amp; LLM Guardrail Fabric</span></div><div class="flex items-center gap-space-lg font-body-sm text-body-sm text-on-surface-variant"><a class="hover:text-primary transition-colors" href="#">Audit Logs</a><a class="hover:text-primary transition-colors" href="#">Cryptographic Ledger</a><a class="hover:text-primary transition-colors" href="#">Compliance HIPAA/FDA 21 CFR</a><span class="font-label-sm text-label-sm text-outline">© 2025 Synthetic Bio Labs Inc.</span></div></div></footer></body></html>

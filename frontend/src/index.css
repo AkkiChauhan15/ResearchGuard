@@ -1,21 +1,25 @@
 @import "tailwindcss";
 
 @theme {
-  --color-canvas: #f4f6f0;
-  --color-paper: #fcfdf9;
-  --color-ink: #173b35;
-  --color-muted: #61736e;
-  --color-line: #d4ddd4;
-  --color-accent: #16745d;
-  --color-accent-dark: #0f5948;
-  --color-soft: #e7efe7;
-  --color-warm: #f4e8cb;
-  --color-warm-ink: #76521b;
-  --color-danger: #9d322d;
-  --color-danger-soft: #f8e4df;
+  --color-canvas: #071616;
+  --color-paper: #0f1e1e;
+  --color-panel: #132322;
+  --color-deep: #031111;
+  --color-ink: #dcebea;
+  --color-muted: #a0b3af;
+  --color-line: #31453f;
+  --color-accent: #4edea3;
+  --color-accent-dark: #6ffbbe;
+  --color-accent-ink: #003824;
+  --color-soft: #0d3028;
+  --color-warm: #332815;
+  --color-warm-ink: #ffbd68;
+  --color-danger: #ffb4ab;
+  --color-danger-soft: #3a1818;
   --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-serif: Georgia, Cambria, "Times New Roman", serif;
-  --shadow-card: 0 20px 55px rgba(25, 61, 52, 0.08);
+  --font-serif: Newsreader, Georgia, Cambria, "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --shadow-card: 0 24px 64px rgba(0, 0, 0, 0.26), inset 0 1px 0 rgba(78, 222, 163, 0.06);
 }
 
 :root {
@@ -39,8 +43,10 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background:
-    radial-gradient(circle at 82% 4%, rgba(176, 202, 171, 0.22), transparent 28rem),
+    radial-gradient(circle at 84% -8%, rgba(16, 185, 129, 0.13), transparent 34rem),
+    radial-gradient(circle at 2% 35%, rgba(78, 222, 163, 0.055), transparent 28rem),
     var(--color-canvas);
+  background-attachment: fixed;
 }
 
 button,
@@ -60,7 +66,7 @@ textarea {
 }
 
 :focus-visible {
-  outline: 3px solid #d19b36;
+  outline: 3px solid #ffb95f;
 }
 
 button:disabled {
@@ -73,6 +79,44 @@ summary {
 }
 
 ::selection {
-  color: #fff;
+  color: var(--color-deep);
   background: var(--color-accent);
+}
+
+select {
+  color-scheme: dark;
+}
+
+textarea {
+  resize: vertical;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-deep);
+}
+
+::-webkit-scrollbar-thumb {
+  border: 2px solid var(--color-deep);
+  border-radius: 999px;
+  background: #3b524a;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

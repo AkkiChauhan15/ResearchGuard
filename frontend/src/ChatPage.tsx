@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { api } from './api'
+import { BrandLockup, WorkflowStrip } from './Brand'
 import type { ChatMessageInput, ChatProviderId, ChatProviderOption, ChatProviderStatus } from './types'
 
 interface ChatPageProps {
@@ -20,11 +21,11 @@ interface DisplayMessage extends ChatMessageInput {
 }
 
 const fieldClass =
-  'w-full rounded-xl border border-line bg-white px-3.5 py-3 text-sm text-ink shadow-sm transition hover:border-accent/50 focus:border-accent'
+  'w-full rounded-md border border-line bg-deep/80 px-3.5 py-3 text-sm text-ink shadow-sm transition placeholder:text-muted/60 hover:border-accent/50 focus:border-accent focus:shadow-[inset_0_0_10px_rgba(78,222,163,0.08)]'
 const primaryButton =
-  'inline-flex min-h-11 items-center justify-center rounded-xl bg-accent px-4 py-2.5 text-sm font-black text-white shadow-sm transition hover:bg-accent-dark disabled:hover:bg-accent'
+  'inline-flex min-h-11 items-center justify-center rounded-md bg-accent px-4 py-2.5 text-sm font-black text-accent-ink shadow-[0_0_18px_rgba(78,222,163,0.14)] transition hover:bg-accent-dark hover:shadow-[0_0_24px_rgba(78,222,163,0.24)] disabled:hover:bg-accent'
 const secondaryButton =
-  'inline-flex min-h-11 items-center justify-center rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-black text-ink transition hover:border-accent hover:bg-soft'
+  'inline-flex min-h-11 items-center justify-center rounded-md border border-accent/25 bg-accent/5 px-4 py-2.5 text-sm font-black text-accent transition hover:border-accent/60 hover:bg-accent/10'
 
 function Spinner() {
   return <span aria-hidden="true" className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent" />
@@ -130,15 +131,17 @@ export default function ChatPage({ session, authReady, authAvailable, navigate, 
 
   return (
     <div className="min-h-screen">
-      <a href="#chat-main" className="fixed -top-20 left-3 z-50 rounded-lg bg-ink px-4 py-2 font-bold text-white transition-[top] focus:top-3">Skip to chat</a>
-      <header className="border-b border-line bg-paper/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-7">
-          <button type="button" className="flex items-center gap-3 text-left" onClick={() => navigate('/')}>
-            <span className="grid size-10 place-items-center rounded-xl bg-ink font-serif text-lg font-bold text-white">RG</span>
-            <span><b className="block text-ink">Research Guard AI</b><span className="text-xs text-muted">General AI chat</span></span>
+      <a href="#chat-main" className="fixed -top-20 left-3 z-50 rounded-md bg-accent px-4 py-2 font-bold text-accent-ink transition-[top] focus:top-3">Skip to chat</a>
+      <header className="sticky top-0 z-40 border-b border-line bg-canvas/90 shadow-[0_10px_34px_rgba(0,0,0,0.28)] backdrop-blur-xl">
+        <div className="mx-auto flex max-w-[94rem] flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-7">
+          <button type="button" className="min-w-0 rounded-md" onClick={() => navigate('/')} aria-label="Research Guard evidence review">
+            <BrandLockup subtitle="General AI assistant" />
           </button>
-          <nav aria-label="Account and workspace" className="flex flex-wrap items-center gap-2">
-            <button type="button" className={secondaryButton} onClick={() => navigate('/')}>Evidence review</button>
+          <nav aria-label="Primary navigation" className="order-3 flex w-full items-center gap-1 overflow-x-auto rounded-md bg-deep p-1 md:order-none md:w-auto">
+            <button type="button" className="min-h-10 shrink-0 rounded-sm px-3.5 py-2 text-sm font-bold text-muted transition hover:bg-panel hover:text-ink" onClick={() => navigate('/')}>Evidence review</button>
+            <button type="button" aria-current="page" className="min-h-10 shrink-0 rounded-sm bg-accent px-3.5 py-2 text-sm font-bold text-accent-ink">AI chat <span className="ml-1 font-mono text-[0.55rem] uppercase">unchecked</span></button>
+          </nav>
+          <nav aria-label="Account actions" className="flex flex-wrap items-center gap-2">
             {session ? (
               <>
                 <button type="button" className={secondaryButton} onClick={() => navigate('/account')}>Account</button>
@@ -149,19 +152,23 @@ export default function ChatPage({ session, authReady, authAvailable, navigate, 
             )}
           </nav>
         </div>
+        <WorkflowStrip active={3} />
       </header>
 
-      <main id="chat-main" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-7 sm:px-7 sm:py-10">
-        <div className="mb-6 max-w-3xl">
-          <p className="text-[0.68rem] font-black uppercase tracking-[0.24em] text-accent">Ask, then verify</p>
+      <main id="chat-main" tabIndex={-1} className="mx-auto max-w-[94rem] px-4 py-7 sm:px-7 sm:py-10">
+        <div className="mb-6 grid gap-5 border-b border-line pb-7 lg:grid-cols-[1fr_auto] lg:items-end">
+          <div className="max-w-3xl">
+          <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.18em] text-warm-ink">Unchecked general model inference</p>
           <h1 className="mt-3 font-serif text-4xl leading-tight text-ink sm:text-5xl">Research assistant chat</h1>
           <p className="mt-3 text-sm leading-6 text-muted sm:text-base">Ask general research questions using a configured AI provider. These replies are model output and are not evidence-checked.</p>
+          </div>
+          <div className="rounded-md border border-warm-ink/20 bg-warm/45 px-4 py-3 font-mono text-xs leading-5 text-warm-ink">Use chat to explore a question.<br />Use evidence review to check claims.</div>
         </div>
 
         {!authReady ? (
           <div role="status" className="flex min-h-80 items-center justify-center gap-3 rounded-2xl border border-line bg-paper shadow-card"><Spinner /> Checking your sign-in…</div>
         ) : !session ? (
-          <section className="grid min-h-80 place-items-center rounded-2xl border border-line bg-paper p-8 text-center shadow-card">
+          <section className="grid min-h-80 place-items-center rounded-lg border border-line bg-paper p-8 text-center shadow-card">
             <div className="max-w-md">
               <h2 className="font-serif text-3xl text-ink">Sign in to use AI chat</h2>
               <p className="mt-3 text-sm leading-6 text-muted">Authentication protects the server-side provider keys and applies request limits to each account. The public evidence demonstration remains available without signing in.</p>
@@ -172,8 +179,8 @@ export default function ChatPage({ session, authReady, authAvailable, navigate, 
             </div>
           </section>
         ) : (
-          <section className="overflow-hidden rounded-2xl border border-line bg-paper shadow-card">
-            <div className="grid gap-4 border-b border-line bg-white/70 p-4 md:grid-cols-[1fr_1fr_auto] md:items-end sm:p-5">
+          <section className="overflow-hidden rounded-lg border border-line bg-paper/90 shadow-card">
+            <div className="grid gap-4 border-b border-line bg-panel/70 p-4 md:grid-cols-[1fr_1fr_auto] md:items-end sm:p-5">
               <div>
                 <label htmlFor="chat-provider" className="text-sm font-black text-ink">AI provider</label>
                 <select id="chat-provider" className={`${fieldClass} mt-2`} value={providerId} onChange={(event) => changeProvider(event.target.value as ChatProviderId)} disabled={!status || busy}>
@@ -210,10 +217,10 @@ export default function ChatPage({ session, authReady, authAvailable, navigate, 
               )}
               {messages.map((message) => (
                 <article key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-6 sm:max-w-[76%] ${message.role === 'user' ? 'rounded-br-md bg-accent text-white' : 'rounded-bl-md border border-line bg-white text-ink'}`}>
+                  <div className={`max-w-[88%] rounded-lg px-4 py-3 text-sm leading-6 sm:max-w-[76%] ${message.role === 'user' ? 'rounded-br-sm bg-accent text-accent-ink' : 'rounded-bl-sm border border-line bg-panel text-ink'}`}>
                     <p className="whitespace-pre-wrap break-words">{message.content}</p>
                     {message.role === 'user' && message.failed && (
-                      <p className="mt-2 border-t border-white/30 pt-2 text-xs">Request failed; this message will not be included in later model context.</p>
+                      <p className="mt-2 border-t border-accent-ink/25 pt-2 text-xs">Request failed; this message will not be included in later model context.</p>
                     )}
                     {message.role === 'assistant' && message.provider && (
                       <p className="mt-3 border-t border-line pt-2 text-xs text-muted">Generated by {message.provider} · {message.model}{message.fallbackUsed ? ' · fallback used' : ''} · not evidence-checked</p>
@@ -225,7 +232,7 @@ export default function ChatPage({ session, authReady, authAvailable, navigate, 
               <div ref={endRef} />
             </div>
 
-            <form className="border-t border-line bg-white/70 p-4 sm:p-5" onSubmit={send}>
+            <form className="border-t border-line bg-panel/70 p-4 sm:p-5" onSubmit={send}>
               {error && <div role="alert" className="mb-3 rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm font-bold text-danger">{error}</div>}
               <label htmlFor="chat-message" className="sr-only">Message</label>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
