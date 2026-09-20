@@ -3,6 +3,10 @@
 Date: 2026-09-19  
 Scope: local verification only; no deployment, billing, paid fallback, or private data.
 
+> Historical Phase H record: Gemini was the selected evidence provider during this
+> evaluation. On 2026-09-20 the configured default changed to Groq; no non-Gemini live
+> result has been added to the denominators below.
+
 ## Result
 
 Phase H is **BLOCKED for the complete live browser journey**. The public demonstration,

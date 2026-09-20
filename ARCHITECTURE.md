@@ -16,6 +16,13 @@ saved-review persistence. The prepared hosted layout is a static Vite SPA on Ver
 Hobby, one FastAPI worker on Render Free, and existing Supabase Free Auth/Postgres.
 No hosted journey is verified yet.
 
+On 2026-09-20 the user superseded the Gemini-only runtime choice for evidence tasks.
+Structured extraction and assessment now default to explicitly selected Groq
+`openai/gpt-oss-20b`, with allowlisted OpenRouter-free and NVIDIA NIM adapters also
+available. Gemini remains selectable for migration compatibility. This changes only
+the provider boundary: scientific prompts, review schemas, provenance, validation and
+routes remain intact, and there is still no silent evidence-provider fallback.
+
 Phase B preserves `schemas.py`, retrieval/transport protections, deterministic evidence
 validation, `demo.py` and its archived sources, review decision semantics, and
 JSON/TXT exports. `researchguard/api.py` wraps those services in FastAPI and
@@ -74,7 +81,7 @@ This is session isolation for local drafts, not authenticated ownership.
 The Phase B route and environment contracts are recorded in `docs/API.md`. REST paths
 changed deliberately from the legacy action endpoints and the existing frontend was
 updated with them. The canonical Pydantic `Review` response and `{error: string}`
-error envelope remain. Gemini configuration and failures produce explicit unavailable
+error envelope remain. Provider configuration and failures produce explicit unavailable
 states; no provider failure substitutes demo content.
 
 Phase D retains the existing restricted transport and adapters. PubMed search still
@@ -99,6 +106,9 @@ live Google OAuth and hosted authenticated user isolation remain unverified. Pha
 adds reproducible local verification and competition artifacts without deployment.
 
 ## Phase E — Gemini provider boundary
+
+This section records the original Phase E implementation. The 2026-09-20 provider
+decision below supersedes Gemini as the default while retaining this adapter.
 
 `researchguard/providers/` now owns runtime selection and Gemini SDK calls.
 `assessment.py` retains the scientific system/task prompts, extraction schemas, and
@@ -135,6 +145,28 @@ model/source/access provenance, and the preserved evidence validators. A live sc
 uses only synthetic text and exits before any call unless the operator confirmation and
 key are present. No Phase E live call ran because neither was available, so the phase's
 external integration gate remains blocked.
+
+## 2026-09-20 — Structured non-Gemini provider boundary
+
+`researchguard/providers/openai_compatible.py` implements structured evidence calls to
+fixed Groq, OpenRouter and NVIDIA NIM endpoints. `LLM_PROVIDER` selects exactly one of
+`groq`, `openrouter`, `nvidia`, or the retained `gemini` adapter. Selection never moves
+to another provider after an error. Groq is the code and example-configuration default.
+
+Groq is restricted to `openai/gpt-oss-20b` and sends strict `json_schema` response
+format. OpenRouter is restricted to `openrouter/free`, sends the same strict schema and
+requires routed providers to support requested parameters. NVIDIA NIM is restricted to
+the checked-in Llama model IDs and sends `guided_json`. Every result is bounded to the
+same input/output and token limits as Gemini, reparsed through the canonical Pydantic
+type, and then subjected to original-span or source-ID/quotation/location validation.
+Provider response bodies and keys never enter safe errors, exports or model provenance.
+
+`ModelRun` now records the provider as well as the requested model, returned model,
+prompt version, sources and validation. Its default `legacy_unspecified` value keeps
+previously saved review payloads readable. Groq and NVIDIA need their provider-specific
+free/no-billing confirmation; OpenRouter is limited to its documented free router.
+HTTP 429 produces an explicit quota state, selected 5xx/network failures get one bounded
+retry, and no paid or demonstration result is substituted.
 
 ## Phase F — Supabase Google identity boundary
 
@@ -181,7 +213,7 @@ user's Supabase client so RLS remains authoritative. Migration `202609190002` cr
 one `researcher_profiles` row per `auth.uid()` with optional name, role, field and
 institution. It does not duplicate email or Google provider metadata. Column grants,
 owner-only policies and an immutability trigger prevent browser assignment or changes
-to ownership. Profile fields do not enter review requests or Gemini prompts.
+to ownership. Profile fields do not enter review requests or any model-provider prompt.
 
 The migration is applied to the linked hosted project. Static migration checks and
 browser UI checks pass; live email, Google and two-user hosted profile RLS round trips
@@ -235,9 +267,10 @@ Groq, Gemini and NVIDIA availability requires both a key and an operator confirm
 of free/no-billing access. OpenRouter is allowlisted only to `openrouter/free`. Fallback
 requires the server flag and an explicit per-request user choice, considers only
 configured providers, and always records the actual provider/model and all attempted
-statuses. It is off by default. This authorization does not change the evidence model
-boundary: structured extraction and assessment remain Gemini-only with no provider
-fallback, and the legacy OpenAI evidence adapter remains disabled.
+statuses. It is off by default. The later user authorization extends the same server-only
+providers to the structured evidence boundary through separate adapters and stricter
+schemas. Evidence calls still have no provider fallback, and the legacy OpenAI API
+evidence adapter remains disabled.
 
 ## Previous local-preview decision — historical record
 

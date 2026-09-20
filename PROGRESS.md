@@ -1413,3 +1413,85 @@ Status: **PASS LOCALLY; DEPLOYMENT UPDATE NOT YET VERIFIED.**
 - Live Google OAuth, hosted persistence and live model generation retain their previously
   recorded verification status; a visual redesign does not resolve those external
   configuration or quota blockers.
+
+## 2026-09-20 — Non-Gemini structured evidence providers
+
+Status: **IMPLEMENTATION PASS; LIVE NON-GEMINI GENERATION UNVERIFIED LOCALLY.**
+
+### Changes made
+
+- Changed the structured extraction/assessment default from Gemini to Groq
+  `openai/gpt-oss-20b`. Added explicit `openrouter` and `nvidia` selections while
+  retaining Gemini only as an explicitly selected migration option. Legacy OpenAI
+  selection remains disabled, and evidence requests never fall back to another model.
+- Added fixed-endpoint Groq, OpenRouter and NVIDIA adapters with provider-specific
+  structured-output payloads, server-only credentials, model allowlists, free/no-billing
+  gates, bounded input/output/concurrency/timeouts, one bounded retry for transport or
+  selected 5xx failures, immediate quota reporting, safe errors and Pydantic revalidation.
+  Portable schemas preserve required fields, closed objects, enums and references;
+  Pydantic remains authoritative for string and array length limits.
+- Preserved the existing scientific prompts and deterministic extraction-span,
+  source-ID, exact quotation, location and evidence-relationship validators. Routes,
+  retrieval, canonical reviews, decisions, Supabase saves and exports were not rewritten.
+- Added `provider` to `ModelRun` provenance with a backward-compatible
+  `legacy_unspecified` default for older saved records. New reviews record the actual
+  provider plus requested/returned model and prompt version.
+- Added a generic two-call synthetic live verifier and retained the old Gemini-named
+  script as a compatibility wrapper. Updated environment examples, deployment/API/chat
+  instructions, architecture/context/migration records, feature status, legacy UI copy
+  and the default chat selector. A non-Gemini selection no longer imports the Gemini SDK
+  during provider initialization.
+- Rechecked current official Groq strict structured-output/model/rate-limit contracts,
+  OpenRouter structured-output and zero-price router behavior, and NVIDIA NIM
+  `guided_json` behavior. Documentation confirms request formats, not access in the
+  user's provider accounts.
+
+### Checks actually executed
+
+- `.venv/bin/python -m unittest discover -s tests -v`: **88/88 passed**. This includes
+  request-shape and schema checks for all three added providers, malformed/quota/secret
+  handling, default/allowlist/free-gate checks, and a FastAPI extraction route using a
+  controlled Groq response. Existing review, retrieval, validation, authentication,
+  ownership, invalidation and export tests stayed green.
+- `npm run typecheck`, `npm run lint`, `npm run test:auth`, and `npm run build`: passed.
+  The auth utility suite passed 1/1. Vite built 66 modules; the existing non-failing
+  chunk-size advisory remains.
+- Python compileall and syntax checks for the React smoke, chat smoke and legacy browser
+  scripts passed. `.venv/bin/python -m scripts.evaluate` reported **16/16 fixture
+  definitions consistent**, **0 live model cases attempted**, and **0/16 human-reviewed
+  reference assessments**.
+- The generic verifier was run with explicit Groq selection and no key. It exited 2 with
+  `unavailable_missing_credentials` and `live_calls_attempted: 0`; no fallback or demo
+  result was substituted.
+- `git diff --check` passed. A value-based scan checked the one provider credential
+  configured in the ignored local environment against all four production bundle files:
+  **0 matches**. No credential value was printed.
+
+### Blockers and unverified assumptions
+
+- The ignored local environment has no Groq, OpenRouter or NVIDIA key. The user reports
+  non-Gemini keys in the deployed chat configuration, but the Render environment is not
+  accessible from this workspace. Therefore no non-Gemini structured extraction or
+  assessment completed live, and no hosted redeploy or endpoint behavior is claimed.
+- The free/no-billing confirmation flags are operator attestations. Code cannot inspect
+  billing state. Groq/NVIDIA must stay unavailable until the user confirms that exact
+  account; OpenRouter evidence use is restricted to `openrouter/free`.
+- Provider fixtures validate contracts and deterministic rejection behavior, not model
+  quality, scientific entailment or current provider availability. Browser automation
+  was not rerun because `playwright-core` is absent from this workspace; the earlier
+  Phase H/Stitch browser evidence remains historical and does not establish the new live
+  provider call.
+
+### Manual action required
+
+1. In Render, set `LLM_PROVIDER=groq`, keep/add `GROQ_API_KEY`, set both Groq model
+   variables to `openai/gpt-oss-20b`, and set `GROQ_FREE_TIER_CONFIRMED=true` only after
+   confirming free access and no billing. Remove or override the old
+   `LLM_PROVIDER=gemini` value. Do not put any provider key in Vercel or a `VITE_` value.
+2. Commit/push this implementation and redeploy Render. Confirm `/api/config` reports
+   provider `groq`, state `configured`, and the expected extraction/assessment models.
+3. Sign in and use public/synthetic input for one **Extract claims with AI** call, then
+   retrieve public evidence and run one assessment. Confirm the exported `model_runs`
+   records provider `groq` and the returned model. If the provider returns 429 or an
+   unavailable error, wait for free quota/service recovery; do not enable billing or a
+   fallback.

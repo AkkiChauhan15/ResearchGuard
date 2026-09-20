@@ -1,7 +1,8 @@
 """Capture a bounded, public-only Phase H autophagy source snapshot.
 
 The browser export remains a curated demonstration. This companion artifact records
-fresh adapter results separately and leaves model output null when Gemini is unavailable.
+fresh adapter results separately and leaves model output null when the selected evidence
+provider is unavailable.
 """
 from __future__ import annotations
 

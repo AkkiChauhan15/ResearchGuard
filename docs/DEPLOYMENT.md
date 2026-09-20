@@ -5,12 +5,13 @@ This is the supported first hosted layout for the current application:
 - **Vercel Hobby:** the static Vite/React frontend in `frontend/`.
 - **Render Free:** one long-running FastAPI process from the repository root.
 - **Supabase Free:** the existing Auth and Postgres project.
-- **Gemini Developer API:** the server-side key from the confirmed Free Tier project.
+- **Selected evidence provider:** a server-side Groq, OpenRouter, NVIDIA NIM, or retained
+  Gemini key; Groq is the recommended default and must be confirmed free/no-billing.
 
 Use this only for the personal, non-commercial competition demonstration allowed by
 Vercel Hobby terms. Do not add a payment method, enable billing, select a paid Render
 instance, or configure a paid model. The instructions prepare a public deployment;
-they do not prove Google OAuth, Gemini generation, or hosted owner isolation works.
+they do not prove Google OAuth, selected-provider generation, or hosted owner isolation works.
 
 ## 1. Push a reviewed revision to GitHub
 
@@ -47,23 +48,27 @@ temporary drafts, locks, and source throttling are process-local.
 SUPABASE_URL=https://<PROJECT_REF>.supabase.co
 SUPABASE_PUBLISHABLE_KEY=sb_publishable_<PROJECT_VALUE>
 NCBI_EMAIL=<YOUR_CONTACT_EMAIL>
-LLM_PROVIDER=gemini
-GEMINI_API_KEY=<YOUR_EXISTING_SERVER_SIDE_KEY>
-GEMINI_FREE_TIER_CONFIRMED=true
-GEMINI_EXTRACTION_MODEL=gemini-3.8-flash
-GEMINI_ASSESSMENT_MODEL=gemini-3.8-flash
+LLM_PROVIDER=groq
+GROQ_API_KEY=<YOUR_EXISTING_SERVER_SIDE_KEY>
+GROQ_FREE_TIER_CONFIRMED=true
+GROQ_EXTRACTION_MODEL=openai/gpt-oss-20b
+GROQ_ASSESSMENT_MODEL=openai/gpt-oss-20b
 ```
 
-To enable one or more optional `/chat` providers, add their keys to **Render only**:
+The same Groq key can serve `/chat`. To enable more optional chat providers, add their
+keys to **Render only**:
 
 ```dotenv
-GROQ_API_KEY=<OPTIONAL_SERVER_KEY>
-GROQ_FREE_TIER_CONFIRMED=false
 OPENROUTER_API_KEY=<OPTIONAL_SERVER_KEY>
 NVIDIA_NIM_API_KEY=<OPTIONAL_SERVER_KEY>
 NVIDIA_NIM_FREE_TIER_CONFIRMED=false
 RESEARCHGUARD_CHAT_FALLBACK_ENABLED=false
 ```
+
+To use OpenRouter-free or NVIDIA for structured evidence instead, set `LLM_PROVIDER`
+to `openrouter` or `nvidia` and add its extraction/assessment model variables exactly
+as shown in `.env.example`. Keep only allowlisted models. Gemini remains explicitly
+selectable for migration compatibility but is no longer the default.
 
 Leave unused values absent. Change a confirmation to `true` only after verifying the
 actual account has free access and no billing. Keep fallback false for the first live
@@ -105,7 +110,7 @@ VITE_SUPABASE_PASSWORD_MIN_LENGTH=6
 `VITE_APPLICATION_ORIGIN` must exactly match the production origin: HTTPS, no path,
 and no trailing slash. Match the password minimum to the actual Supabase Auth setting.
 These values are compiled into the browser bundle. The two
-Supabase values and service URLs are public configuration; the Gemini key, Google client
+Supabase values and service URLs are public configuration; model-provider keys, Google client
 secret, Supabase secret/service-role keys, and JWT private keys must never be added.
 
 5. Click **Deploy**. If the assigned production domain differs from the value entered,
@@ -178,11 +183,13 @@ Perform these checks in order with public or synthetic text only:
 7. Repeat saved-review and optional-profile access with a second test user. Each account must list
    only its own records; a copied record UUID from the other user must return not found.
 8. Inspect Render logs for errors, but do not log or paste access tokens, review bodies,
-   the Gemini key, or Google secrets.
+   any model-provider key, or Google secrets.
 
-Gemini is still a separate external gate. A `503 high demand` response is an unavailable
-state, not an authentication failure, and must not trigger billing, a paid model, or a
-demonstration substitution.
+The selected evidence provider is still a separate external gate. A quota or temporary
+availability response is not an authentication success and must not trigger billing,
+a paid model, another provider, or a demonstration substitution. After changing Render
+configuration, run `.venv/bin/python -m scripts.verify_review_provider_live` locally
+with the same provider settings or complete one public/synthetic hosted extraction.
 
 ## Free-plan behavior to expect
 

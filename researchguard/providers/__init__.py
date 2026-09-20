@@ -1,9 +1,4 @@
-"""Runtime model-provider selection.
-
-Only Gemini Free Tier is authorized for the current local build. The legacy
-OpenAI implementation is retained in ``openai_legacy.py`` for provenance, but
-is deliberately not selectable here.
-"""
+"""Runtime structured model-provider selection with no silent fallback."""
 from __future__ import annotations
 
 import os
@@ -12,24 +7,35 @@ from typing import Any
 from pydantic import BaseModel
 
 from .base import ModelProvider, ProviderStatus
-from .gemini import GeminiProvider
+from .openai_compatible import SPECS, compatible_provider
+
+
+def _gemini_provider():
+    """Import the legacy-compatible provider only when it is explicitly selected."""
+    from .gemini import GeminiProvider
+
+    return GeminiProvider
 
 
 def provider_status() -> ProviderStatus:
-    provider = os.environ.get("LLM_PROVIDER", "gemini").strip().lower()
+    provider = os.environ.get("LLM_PROVIDER", "groq").strip().lower()
     if provider in {"openai", "legacy_openai"}:
         return ProviderStatus(
             provider="legacy_openai",
             state="unavailable_provider_disabled",
             detail="The legacy OpenAI adapter is disabled and is not an authorized fallback.",
         )
-    if provider != "gemini":
+    if provider == "gemini":
+        return _gemini_provider().status()
+    if provider in SPECS:
+        return compatible_provider(provider).status()
+    if provider not in {"gemini", *SPECS}:
         return ProviderStatus(
             provider=provider or "unset",
             state="unavailable_invalid_configuration",
-            detail="LLM_PROVIDER must be gemini for the approved local configuration.",
+            detail="LLM_PROVIDER must be groq, openrouter, nvidia, or gemini. No provider was selected automatically.",
         )
-    return GeminiProvider.status()
+    raise AssertionError("Unreachable provider selection.")
 
 
 def configured() -> bool:
@@ -40,7 +46,9 @@ def selected_provider() -> ModelProvider:
     status = provider_status()
     if not status.available:
         raise ValueError(status.detail)
-    return GeminiProvider()
+    if status.provider == "gemini":
+        return _gemini_provider()()
+    return compatible_provider(status.provider)
 
 
 def generate_structured(

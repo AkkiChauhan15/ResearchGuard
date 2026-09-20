@@ -5,6 +5,14 @@ Its replies are labeled **not evidence-checked** and are never inserted into a r
 saved to Supabase, or exported as evidence. A verified Supabase session is required so
 anonymous visitors cannot spend server provider quotas.
 
+The same server keys can now be used by the structured evidence workflow. That workflow
+has a separate explicit `LLM_PROVIDER` selection and never uses chat fallback. Set
+`LLM_PROVIDER=groq` with `GROQ_EXTRACTION_MODEL=openai/gpt-oss-20b` and the matching
+assessment model for the recommended configuration. `openrouter` and `nvidia` are also
+supported with the allowlisted model variables in `.env.example`; `gemini` is retained
+but no longer the default. Chat provider/model choices do not change the evidence
+provider for an in-progress review.
+
 ## Server configuration
 
 Add only the providers you intend to use to the ignored root `.env` for local work and
@@ -103,10 +111,10 @@ again with each follow-up. Clear chat or reload to remove it; it is not persiste
 Run one bounded live connectivity check without printing the answer or key:
 
 ```sh
-.venv/bin/python -m scripts.verify_chat_live --provider gemini
+.venv/bin/python -m scripts.verify_chat_live --provider groq
 ```
 
-Replace `gemini` with `groq`, `openrouter`, or `nvidia` after configuring that provider.
+Replace `groq` with `openrouter`, `nvidia`, or `gemini` after configuring that provider.
 This confirms connectivity and response parsing only, not scientific accuracy.
 
 ## Add another provider

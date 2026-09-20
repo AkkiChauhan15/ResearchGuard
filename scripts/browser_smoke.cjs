@@ -9,7 +9,7 @@ const {chromium} = require(process.env.PLAYWRIGHT_PATH || 'playwright-core');
  page.on('pageerror',e=>errors.push(e.message));
  page.on('requestfailed',request=>errors.push(`Request failed: ${request.url()} ${request.failure()?.errorText||''}`));
  await page.goto('http://127.0.0.1:8000/legacy');
- await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('GEMINI_API_KEY'));
+ await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('GROQ_API_KEY'));
  assert.equal(await page.locator('.empty').count(),1);
  await fs.mkdir('test-results',{recursive:true});
  await page.screenshot({path:'test-results/empty-desktop.png',fullPage:true});

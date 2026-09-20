@@ -2,7 +2,7 @@ import json
 import os
 import time
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import httpx
@@ -236,6 +236,7 @@ class HTTPTests(unittest.IsolatedAsyncioTestCase):
             },
         )
         self.assertEqual(delete_preflight.status_code, 200)
+
         self.assertIn("DELETE", delete_preflight.headers["access-control-allow-methods"])
         same_origin = await self.client.post(
             "/api/reviews/demo", headers={**self.headers(), "Origin": "http://testserver"}, json={}
@@ -268,6 +269,53 @@ class HTTPTests(unittest.IsolatedAsyncioTestCase):
         me = await self.client.get("/api/auth/me", headers=self.headers())
         self.assertEqual(me.status_code, 200, me.text)
         self.assertEqual(me.json()["user_id"], self.user_id)
+
+    async def test_groq_structured_extraction_http_route(self):
+        review = await self.create_live()
+        structured = {
+            "claims": [{
+                "original_span": "A synthetic observation implies a mechanism.",
+                "text": "A synthetic observation implies a mechanism.",
+                "type": "mixed",
+                "observations": ["A synthetic observation was reported."],
+                "inferences": ["The observation was interpreted as a mechanism."],
+                "missing_context": ["Which model and assay were used?"],
+            }],
+        }
+        response = MagicMock(status_code=200)
+        response.iter_bytes.return_value = [json.dumps({
+            "model": "openai/gpt-oss-20b",
+            "choices": [{
+                "finish_reason": "stop",
+                "message": {"content": json.dumps(structured)},
+            }],
+        }).encode()]
+        environment = {
+            "LLM_PROVIDER": "groq",
+            "GROQ_API_KEY": "groq-http-fixture-secret",
+            "GROQ_FREE_TIER_CONFIRMED": "true",
+            "GROQ_EXTRACTION_MODEL": "openai/gpt-oss-20b",
+            "GROQ_ASSESSMENT_MODEL": "openai/gpt-oss-20b",
+        }
+        with (
+            patch.dict(os.environ, environment, clear=True),
+            patch("researchguard.providers.openai_compatible.httpx.Client") as client_class,
+        ):
+            client_class.return_value.__enter__.return_value.stream.return_value.__enter__.return_value = response
+            extracted = await self.client.post(
+                f"/api/reviews/{review['review_id']}/extraction",
+                headers=self.headers(),
+            )
+        self.assertEqual(extracted.status_code, 200, extracted.text)
+        body = extracted.json()
+        self.assertEqual(body["claims"][0]["type"], "mixed")
+        self.assertEqual(body["model_runs"][-1]["provider"], "groq")
+        self.assertEqual(body["model_runs"][-1]["requested_model"], "openai/gpt-oss-20b")
+        self.assertEqual(
+            body["extraction_method"],
+            "AI extraction via groq (openai/gpt-oss-20b); researcher may edit each claim",
+        )
+        self.assertNotIn("groq-http-fixture-secret", extracted.text)
 
     async def test_public_demo_and_live_authentication_boundary(self):
         public_demo = await self.client.post(

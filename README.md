@@ -5,9 +5,11 @@
 > The linked hosted Supabase project reports migrations `202609190001` and
 > `202609190002` applied. Google
 > OAuth, email delivery/recovery and the hosted two-user check remain unverified. The
-> configured Gemini key can access `gemini-3.8-flash`, and the structured-output adapter
-> is repaired, but generation is temporarily blocked by repeated HTTP 503 high-demand
-> responses. Vercel deployed the latest commit, but its generated deployment URL is
+> earlier Gemini check reached `gemini-3.8-flash`, but generation was blocked by repeated
+> HTTP 503 high-demand responses. Structured evidence tasks now support explicitly
+> selected Groq, OpenRouter-free, or NVIDIA NIM providers instead of defaulting to
+> Gemini; their live evidence-generation path remains unverified locally. Vercel deployed
+> the latest checked commit, but its generated deployment URL is
 > currently protected by Vercel SSO; public reachability and the hosted journey remain
 > unverified. No billing or paid fallback has been used.
 
@@ -20,10 +22,9 @@ OpenRouter, Gemini, or NVIDIA NIM adapters. Every reply is labeled as unverified
 output and remains separate from evidence reviews and saved records.
 
 This remains a local-first application with a reported free-tier deployment. The former
-OpenAI adapter is disabled. The Gemini provider
-has passed controlled fixture tests but **has not completed a successful live generation
-in the user's project**. Key/model metadata access is verified; the latest bounded
-generation attempts reached Google and returned HTTP 503 high demand.
+OpenAI API adapter is disabled. Groq, OpenRouter-free and NVIDIA structured adapters
+have passed controlled fixture tests but **have not completed a local live evidence
+generation**. The retained Gemini adapter also has no successful live generation.
 Scientific accuracy has not been measured. See `PROGRESS.md` for actual results
 and incomplete phase gates; read `context.md` before continuing any phase. The exact
 free hosted setup is in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md). A successful host
@@ -87,7 +88,7 @@ only after choosing **Update saved copy**.
 
 The optional account profile is stored separately from reviews and contains only name,
 research role, field and institution. Every field is optional, RLS restricts access to
-the authenticated owner, and profile/account identity is never sent to Gemini. The
+the authenticated owner, and profile/account identity is never sent to a model provider. The
 hosted `202609190002` migration is applied; two-user hosted profile isolation still
 needs browser verification.
 
@@ -106,29 +107,32 @@ The demo and public-source retrieval do not require a model key. The manual
 adapter additionally requires Poppler's `pdftotext` utility (typically packaged
 as `poppler-utils` on Linux or `poppler` on macOS). Missing utility errors remain visible.
 
-For Gemini model actions, first verify in Google AI Studio that the selected project
-is on Free Tier with no linked billing. Then configure the backend process only:
+For the recommended non-Gemini evidence provider, first verify in Groq that the exact
+account is on free access with no billing. Then configure the backend process only:
 
 ```sh
-export LLM_PROVIDER=gemini
-export GEMINI_API_KEY='set-locally-do-not-commit'
-export GEMINI_FREE_TIER_CONFIRMED=true
-export GEMINI_EXTRACTION_MODEL=gemini-3.8-flash
-export GEMINI_ASSESSMENT_MODEL=gemini-3.8-flash
+export LLM_PROVIDER=groq
+export GROQ_API_KEY='set-locally-do-not-commit'
+export GROQ_FREE_TIER_CONFIRMED=true
+export GROQ_EXTRACTION_MODEL=openai/gpt-oss-20b
+export GROQ_ASSESSMENT_MODEL=openai/gpt-oss-20b
 ```
 
-The confirmation variable is an operator attestation; it cannot inspect account
-billing. The model settings are configurable but Phase E permits only identifiers on
-the code's current verified Free Tier allowlist. Do not configure the legacy OpenAI
-variables: that provider is rejected and is not a fallback. Set `NCBI_EMAIL` to an
+Alternatively select `openrouter` with `openrouter/free`, or `nvidia` with one of the
+checked-in NIM model IDs and its free/no-billing confirmation. Gemini remains selectable
+for migration compatibility but is no longer the default. Provider selection is explicit
+and never falls back. Confirmation variables are operator attestations; code cannot
+inspect account billing. Do not configure the legacy OpenAI API variables: that provider
+is rejected. Set `NCBI_EMAIL` to an
 appropriate contact email for NCBI API requests. Requests are throttled below
 three/second per process; multiple processes on the same IP need coordinated rate
 limiting.
 
-The local server, Gemini verifier and evaluation CLI safely load the ignored root
+The local server, review-provider verifier and evaluation CLI safely load the ignored root
 `.env`; existing exported shell variables take priority. They parse assignments without
-executing the file as shell code. Keep `.env` owner-readable only and never put Gemini
-credentials in `frontend/.env.local` or any `VITE_` variable.
+executing the file as shell code. Keep `.env` owner-readable only and never put model
+credentials in `frontend/.env.local` or any `VITE_` variable. Run a bounded synthetic
+connectivity check with `.venv/bin/python -m scripts.verify_review_provider_live`.
 
 The FastAPI route, error, limit, local CORS, startup, and environment-variable
 contracts are documented in [`docs/API.md`](docs/API.md). Interactive OpenAPI docs
@@ -195,7 +199,7 @@ After the Free Tier project and environment are confirmed, run the minimal publi
 live check explicitly:
 
 ```sh
-.venv/bin/python -m scripts.verify_gemini_live
+.venv/bin/python -m scripts.verify_review_provider_live
 ```
 
 It performs one synthetic extraction and one synthetic evidence assessment, then
@@ -229,7 +233,7 @@ create an account, send email, or complete Google OAuth.
 10 development / 6 held-out. References are **agent-authored drafts awaiting knowledgeable
 human review**, not validated ground truth. The fixture checker verifies consistency,
 not scientific accuracy. `docs/evaluation-initial.json` records the initial run with
-zero model cases. `--run-model` now uses the configured Gemini provider and remains
+zero model cases. `--run-model` uses the explicitly configured evidence provider and remains
 explicit: do not run it until Free Tier/no billing and the minimal live check are
 confirmed. Freeze development decisions before a held-out run. Never change expected
 labels merely to match outputs; record legitimate
@@ -253,9 +257,9 @@ the migration is applied. Sign-in and ordinary review edits never autosave.
 The PDF parser briefly writes the public manual to a temporary file and deletes it.
 
 Search terms and URLs go to public source services. Configured model actions send the
-input/context or retrieved passages to the Gemini Developer API. Google's pricing
-documentation states that Free Tier content is used to improve its products, so use
-only public or synthetic material for model checks and the first hosted demonstration.
+input/context or retrieved passages to the selected external model API. Provider data
+terms vary, so use only public or synthetic material for model checks and the first
+hosted demonstration.
 No local-only processing or confidentiality guarantee is made. The API key remains
 server-side. Hosted live reviews require verified Supabase identity and saved records
 use RLS, but the public deployment has not yet passed the hosted two-user journey.
@@ -282,6 +286,15 @@ Phase E checked the current official [Gemini models](https://ai.google.dev/gemin
 [Google Gen AI Python SDK](https://googleapis.github.io/python-genai/) documentation
 on 2026-09-18. These references support the implementation choice; they do not prove
 access in the user's project.
+
+The 2026-09-20 non-Gemini evidence-provider change checked the current official
+[Groq structured-output](https://console.groq.com/docs/structured-outputs) and
+[free-plan rate-limit](https://console.groq.com/docs/rate-limits) documentation,
+[OpenRouter structured-output](https://openrouter.ai/docs/guides/features/structured-outputs)
+and [free-router](https://openrouter.ai/openrouter/free/apps) documentation, and
+[NVIDIA NIM guided JSON](https://docs.nvidia.com/nim/large-language-models/1.14.0/structured-generation.html)
+documentation. Those pages support the fixed request formats and model restrictions;
+they do not prove access, remaining quota, or no-billing status in a particular account.
 
 Phase D rechecked the current official
 [NCBI E-utilities documentation](https://www.ncbi.nlm.nih.gov/books/NBK25499/),

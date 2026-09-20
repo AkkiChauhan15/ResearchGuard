@@ -161,6 +161,7 @@ class GeminiProvider:
             if not isinstance(returned_model, str) or not returned_model.strip():
                 raise ValueError("The Gemini response did not identify the model version used.")
             return parsed, ModelRun(
+                provider=PROVIDER_NAME,
                 task=task,
                 requested_model=model,
                 returned_model=returned_model,

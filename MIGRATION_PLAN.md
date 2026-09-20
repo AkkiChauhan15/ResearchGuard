@@ -364,3 +364,23 @@ access in the user's project:
 call remain blocked. Phase G persistence and Phase H local evaluation work are complete
 within the limits recorded above; hosted Google-user isolation and scientific performance
 remain unverified. Stop after Phase H.
+
+## Post-Phase-H provider direction — 2026-09-20
+
+The user subsequently replaced Gemini as the default evidence-review provider. The
+runtime now defaults to Groq `openai/gpt-oss-20b`; `openrouter/free` and the checked-in
+NVIDIA NIM model IDs may be selected explicitly. Gemini remains available only as a
+migration-compatible explicit selection. This does not reopen or redefine Phases B–H.
+
+The migration is limited to the provider boundary. Existing extraction/assessment
+prompts, Pydantic schemas, routes, retrieval, deterministic original-span and evidence
+validation, decisions, saving and exports are retained. Every provider has a fixed
+endpoint, bounded input/output/concurrency/timeout behavior, structured-output request,
+Pydantic revalidation, actual provider/model provenance and safe quota errors. Evidence
+requests do not use chat fallback and never switch provider after an error.
+
+Fixture and HTTP checks verify the new request and validation paths. A non-Gemini live
+evidence call is still unverified because no corresponding key is available in the
+local environment. The deployed Render configuration must explicitly set the selected
+provider and its server-only key; a hosted key reported through chat configuration is
+not evidence that the structured review environment has been redeployed or tested.

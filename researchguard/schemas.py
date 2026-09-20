@@ -109,6 +109,7 @@ class Claim(Strict):
 
 
 class ModelRun(Strict):
+    provider: str = "legacy_unspecified"
     task: str
     claim_id: str | None = None
     source_ids: list[str] = Field(default_factory=list)

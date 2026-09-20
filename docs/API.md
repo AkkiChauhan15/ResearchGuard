@@ -32,7 +32,7 @@ and leaves the temporary working review intact.
 | Method and path | Request | HTTP 200 response |
 | --- | --- | --- |
 | `GET /api/health` | None | Service status and temporary-storage mode |
-| `GET /api/config` | None | Local mode, retention, Gemini state plus public auth availability; never credential values |
+| `GET /api/config` | None | Local mode, retention, selected evidence-provider state plus public auth availability; never credential values |
 | `GET /api/auth/me` | Verified Supabase bearer token | Verified `user_id` and optional email |
 | `GET /api/chat/providers` | Verified bearer token | Safe configuration state, allowlisted models and fallback flag; never keys |
 | `POST /api/chat` | Bearer token plus `provider`, allowlisted `model`, 1–24 user/assistant `messages`, and optional `allow_fallback` | Normalized answer with requested/actual provider and model, fallback flag and attempt statuses |
@@ -55,11 +55,12 @@ and leaves the temporary working review intact.
 | `GET /api/reviews/{review_id}/export?format=txt` | Session header | Readable attachment containing the same complete canonical JSON record |
 
 Demo claims/context cannot be edited, and demo retrieval/assessment/extraction cannot
-invoke live services. Live failures never fall back to the demo. Phase E selects the
-Gemini provider. Missing credentials, unconfirmed Free Tier, disallowed models,
-authentication failures, and quota exhaustion are explicit unavailable states.
-Extraction returns an error and assessment records the error on the claim. OpenAI
-selection is rejected.
+invoke live services. Live failures never fall back to the demo. `LLM_PROVIDER`
+explicitly selects Groq, OpenRouter-free, NVIDIA NIM, or the retained Gemini adapter.
+Missing credentials, unconfirmed free access, disallowed models, authentication failures,
+and quota exhaustion are explicit unavailable states. Extraction returns an error and
+assessment records the error on the claim. Provider failures never switch providers.
+The legacy OpenAI API selection remains rejected.
 
 `SavedReviewSummary` contains `saved_id`, canonical `review_id`, `schema_version`,
 `revision`, `mode`, `title`, `created_at` and `updated_at`. `SavedReviewRecord` adds the
@@ -128,7 +129,18 @@ change local limits without putting secrets in source control:
 | `RESEARCHGUARD_RETRIEVAL_TIMEOUT_SECONDS` | `90` |
 | `RESEARCHGUARD_ASSESSMENT_TIMEOUT_SECONDS` | `130` |
 | `NCBI_EMAIL` | unset optional NCBI contact |
-| `LLM_PROVIDER` | `gemini`; any other provider is unavailable and OpenAI is explicitly disabled |
+| `LLM_PROVIDER` | `groq` default; accepts `groq`, `openrouter`, `nvidia`, or retained `gemini`; no fallback; legacy OpenAI is disabled |
+| `GROQ_API_KEY` | unset server-only secret used by chat and, when selected, structured review |
+| `GROQ_FREE_TIER_CONFIRMED` | `false`; required for Groq after confirming free access with no billing |
+| `GROQ_EXTRACTION_MODEL` | `openai/gpt-oss-20b` |
+| `GROQ_ASSESSMENT_MODEL` | `openai/gpt-oss-20b` |
+| `OPENROUTER_API_KEY` | unset server-only secret; evidence and chat are restricted to `openrouter/free` |
+| `OPENROUTER_EXTRACTION_MODEL` | `openrouter/free` |
+| `OPENROUTER_ASSESSMENT_MODEL` | `openrouter/free` |
+| `NVIDIA_NIM_API_KEY` | unset server-only secret used by chat and, when selected, structured review |
+| `NVIDIA_NIM_FREE_TIER_CONFIRMED` | `false`; required for NVIDIA after confirming free access with no billing |
+| `NVIDIA_NIM_EXTRACTION_MODEL` | `meta/llama-3.3-70b-instruct` |
+| `NVIDIA_NIM_ASSESSMENT_MODEL` | `meta/llama-3.3-70b-instruct` |
 | `GEMINI_API_KEY` | unset server-only secret |
 | `GEMINI_FREE_TIER_CONFIRMED` | unset; set `true` only after checking AI Studio project tier and billing |
 | `GEMINI_EXTRACTION_MODEL` | `gemini-3.8-flash` |
@@ -137,11 +149,6 @@ change local limits without putting secrets in source control:
 | `SUPABASE_PUBLISHABLE_KEY` | unset public `sb_publishable_...` key used with the user bearer token; secret/service-role keys are rejected |
 | `RESEARCHGUARD_AUTH_TIMEOUT_SECONDS` | `10` |
 | `RESEARCHGUARD_PERSISTENCE_TIMEOUT_SECONDS` | `10` |
-| `GROQ_API_KEY` | unset server-only optional chat credential |
-| `GROQ_FREE_TIER_CONFIRMED` | `false`; operator confirmation required before Groq chat is available |
-| `OPENROUTER_API_KEY` | unset server-only optional chat credential; only `openrouter/free` is allowlisted |
-| `NVIDIA_NIM_API_KEY` | unset server-only optional chat credential |
-| `NVIDIA_NIM_FREE_TIER_CONFIRMED` | `false`; operator confirmation required before NVIDIA chat is available |
 | `RESEARCHGUARD_CHAT_FALLBACK_ENABLED` | `false`; requires per-request user opt-in too |
 | `RESEARCHGUARD_CHAT_REQUESTS_PER_MINUTE` | `6` per verified user, process-local |
 | `RESEARCHGUARD_CHAT_TIMEOUT_SECONDS` | `45` total |
@@ -159,16 +166,15 @@ Migration application and saved-review RLS checks are documented in
 The full Vercel/Render configuration is documented in `docs/DEPLOYMENT.md`.
 Optional chat-provider setup and extension instructions are in `docs/CHAT_SETUP.md`.
 
-The provider limits serialized model input to 120,000 bytes, output to 64,000 bytes,
-and local Gemini concurrency to two calls. Extraction and assessment request at most
-2,048 and 4,096 output tokens respectively. The SDK deadline is 60 seconds. It makes
-at most two attempts for HTTP 500/502/503/504; HTTP 429 is reported immediately as
-Free Tier rate/quota exhaustion. The request config contains no tools, Google Search
-grounding, or cached content. The FastAPI bounded worker pool and route deadline are
-an additional outer bound.
+The selected evidence provider limits serialized model input to 120,000 bytes, output
+to 64,000 bytes, and local provider concurrency to two calls. Extraction and assessment
+request at most 2,048 and 4,096 output tokens respectively. The provider deadline is
+60 seconds. Compatible providers make one bounded retry for selected 5xx/network
+failures; HTTP 429 is reported immediately as free rate/quota exhaustion. Requests
+contain no tools, search grounding, or cached content. The FastAPI bounded worker pool
+and route deadline are an additional outer bound.
 
-`GEMINI_FREE_TIER_CONFIRMED` is a local attestation, not an API-derived billing check.
-The official model/pricing pages and the user's AI Studio project must be rechecked
-before changing model IDs. Free Tier data can be used by Google to improve products;
-use only public or synthetic material in this verification phase. The old OpenAI
-environment variables have no active code path.
+Provider free-access confirmations are local attestations, not API-derived billing
+checks. Official model/pricing pages and the actual account must be rechecked before
+changing model IDs. Provider data terms vary; use only public or synthetic material in
+this verification phase. The old OpenAI API environment variables have no active path.

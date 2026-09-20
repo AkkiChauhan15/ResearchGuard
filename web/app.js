@@ -58,4 +58,4 @@ function render(){
 }
 $('#review-form').onsubmit=e=>{e.preventDefault();run(async()=>{const context={};for(const key of ['organism_model','assay','reagent','conditions'])context[key]=$('#'+key).value;review=await api('/api/reviews',{text:$('#answer').value,intended_use:$('#intended-use').value,context,source_urls:$('#source-urls').value.split('\n').map(s=>s.trim()).filter(Boolean)});render();},'Creating an editable review…');};
 $('#demo-button').onclick=()=>run(async()=>{review=await api('/api/reviews/demo',{});render();},'Loading curated demonstration…');
-api('/api/config').then(c=>{config=c;message(c.model_configured?'Gemini Free Tier configuration is present; provider access is checked when used.':`${c.model_detail} Public retrieval and the curated demo remain available.`);}).catch(e=>message(e.message,true));
+api('/api/config').then(c=>{config=c;message(c.model_configured?`${c.model_provider} free-access configuration is present; provider access is checked when used.`:`${c.model_detail} Public retrieval and the curated demo remain available.`);}).catch(e=>message(e.message,true));

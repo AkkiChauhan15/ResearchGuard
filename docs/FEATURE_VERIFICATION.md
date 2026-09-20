@@ -13,10 +13,11 @@ responses. It is not a live external integration result.
 | Demo paper PMC access | Live-verified abstract-only | PMC4502790 returned no readable body |
 | Exact Enzo page and manual | Live-verified | Current product page and 22 bounded manual page extracts |
 | Unsafe URL and response limits | Fixture-verified | DNS, redirect, host/path/port, MIME, timeout and size tests |
-| Gemini provider boundary | Fixture-verified and live configuration-verified | Key/model metadata accepted; JSON Schema adapter repaired; bounds and error tests pass |
-| Gemini extraction/assessment | **Blocked by provider availability** | Repaired requests reached Google; repeated HTTP 503 high demand produced no output |
+| Non-Gemini evidence-provider boundary | Fixture-verified | Groq, OpenRouter-free and NVIDIA request shapes, bounds, structured parsing, safe errors and provenance pass controlled tests |
+| Non-Gemini extraction/assessment | **Live-unverified locally** | No non-Gemini provider key is available in the local environment; hosted key/configuration was not accessible to this run |
+| Retained Gemini compatibility | Fixture-verified; live generation blocked historically | Earlier requests reached Google but repeated HTTP 503 high demand produced no output; Gemini is no longer the default |
 | General chat API and React UI | Fixture/browser-verified | Auth, allowlists, provider formats, context, explicit fallback metadata, errors, clear action and 390 px layout |
-| Live general chat providers | **Blocked/partly configured** | Gemini is configured but the bounded request returned temporarily unavailable; other provider keys are absent |
+| Live general chat providers | **Blocked/partly configured locally** | Gemini is configured locally but its bounded request returned temporarily unavailable; deployed non-Gemini configuration was not accessible to this run |
 | Supabase JWT verification | Live-verified locally | Two real local asymmetric access tokens plus tamper rejection |
 | Supabase saved-review RLS | Live-verified locally | 16 pgTAP checks and two-user local PostgREST/FastAPI journey |
 | Hosted Supabase migration | Applied, partially verified | CLI histories match; JWKS responds; anonymous REST is denied |

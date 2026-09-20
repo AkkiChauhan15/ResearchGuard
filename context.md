@@ -1,7 +1,7 @@
 # Research Guard AI — Project context
 
-Version: 2.0
-Prepared: 2026-09-15; migration status updated 2026-09-19
+Version: 2.1
+Prepared: 2026-09-15; provider direction updated 2026-09-20
 Purpose: Reference for the coding agent implementing the agreed phased build.
 
 ## Read this first
@@ -67,6 +67,17 @@ only among configured providers confirmed for free/no-billing access, and always
 the provider and model that answered. No paid model, billing, purchased credit, search
 tool, or silent fallback is authorized.
 
+On 2026-09-20 the user then authorized the already configured free chat-provider APIs
+for structured evidence extraction and assessment **instead of Gemini**. The evidence
+workflow now defaults to Groq with `openai/gpt-oss-20b`, whose official documentation
+lists strict JSON Schema support. The operator may explicitly select `openrouter` or
+`nvidia` instead; their model IDs remain narrowly allowlisted and their structured
+outputs are still reparsed with Pydantic. Gemini is retained as an explicitly selectable
+migration option, not the active default. Evidence requests never silently switch
+providers. Keys remain server-side, free/no-billing gates remain mandatory, and
+deterministic source-ID, quotation, location and original-span validation remain
+authoritative.
+
 Preserve working Pydantic schemas, retrieval adapters, evidence validation, curated
 demo sources, review decisions, and exports. Adapt framework/provider boundaries
 instead of rewriting the scientific review core. See `ARCHITECTURE.md` and
@@ -102,8 +113,8 @@ Inspect the repository before describing its state. Do not infer that the applic
 | Framework and hosting | FastAPI backend plus a Vite React/TypeScript/Tailwind frontend. Vercel successfully deployed the SPA commit; its generated URL is currently SSO-protected. The user reports Render deployment, but its URL and health are unverified. |
 | Existing implementation | FastAPI/Uvicorn backend, React/TypeScript/Tailwind SPA, preserved legacy interface, process-local transient store, and reusable Pydantic/core modules. Verify against code and tests before claiming behavior. |
 | Authentication and saving | Supabase supports Google and enabled email/password account pages, with backend token verification and owner binding for transient live reviews. Phase G adds explicit saved-review CRUD and versioned RLS. Both hosted migrations are applied; local two-user saved-review RLS/token behavior passed. Google OAuth, email delivery/recovery, hosted profile RLS behavior and hosted authenticated two-user behavior remain unverified. Unsaved drafts stay transient. |
-| API keys and account access | Gemini key/model metadata access verified on 2026-09-19 without displaying the key. Free Tier is operator-attested in local configuration; billing state cannot be inspected by code. Generation remains blocked by HTTP 503 high demand. Never display secrets. |
-| Model choices | Gemini Developer API Free Tier remains the evidence extraction/assessment provider. The separate general chat surface has allowlisted Groq, OpenRouter-free, Gemini and NVIDIA adapters. Each chat provider remains unavailable until its key and required free/no-billing confirmation are present. OpenAI models are previous evidence-workflow candidates and the adapter is disabled. |
+| API keys and account access | Gemini key/model metadata access was verified on 2026-09-19 without displaying the key, but generation remained blocked by HTTP 503. Non-Gemini provider keys are reported by the user as configured in the deployed chat environment but are absent from the local environment, so live structured generation through them remains unverified here. Never display secrets. |
+| Model choices | Groq `openai/gpt-oss-20b` is the default structured extraction/assessment provider. `openrouter/free`, approved NVIDIA NIM models, and Gemini remain explicitly selectable. There is no evidence-provider fallback. Each provider remains unavailable until its key and required free/no-billing gate are present. The legacy OpenAI API adapter remains disabled. |
 | Cost boundary | Free tiers only. No billing activation, purchases, paid services, upgrades, or paid fallback. |
 | Performance, user adoption, savings | Unmeasured; do not invent results. |
 | Demonstration interaction | Reconstructed; not a historical transcript or a recorded live tool run. |
@@ -206,14 +217,17 @@ Keep absent metadata null or explicitly unavailable. Do not infer missing page o
 
 ## 7. Models and implementation roles
 
-Active approved runtime direction (2026-09-16): Gemini Developer API through an
-AI Studio Free Tier project. Phase E selects `gemini-3.8-flash` for extraction and
-assessment because the official pricing table listed free input and output on
-2026-09-18. Both identifiers remain server-configurable but are checked against a
-narrow verified-free allowlist. This documentation check does not establish access
-in the user's project. Live use also requires an operator confirmation that the
-project is Free Tier with no billing. Do not activate billing or silently switch
-providers/models to resolve quota or access failures.
+Active approved runtime direction (updated 2026-09-20): use one explicitly selected
+non-Gemini free provider for structured extraction and assessment. The default is Groq
+`openai/gpt-oss-20b`; OpenRouter is restricted to `openrouter/free`, and NVIDIA NIM is
+restricted to the checked-in model allowlist. Groq and NVIDIA require an operator
+confirmation that the exact account has free access with no billing. OpenRouter uses
+only its zero-price free router. Documentation does not establish access in the user's
+project, and no paid model or provider fallback is allowed.
+
+Gemini `gemini-3.8-flash` was the Phase E provider and remains explicitly selectable
+for migration compatibility, but it is no longer the default or active requirement.
+Its previous 503 live-generation result does not establish that another provider works.
 
 Previous planning candidates, **not active requirements or authorized fallbacks**:
 
@@ -225,7 +239,7 @@ evidence database. The former OpenAI implementation is retained only as a disabl
 migration marker; provider selection rejects it and it is not an authorized fallback.
 
 Previous candidates are not evidence of access or a reason to retain a paid runtime
-dependency. One suitable Gemini model may perform both runtime tasks initially.
+dependency. One explicitly selected provider may perform both runtime tasks initially.
 
 Record the model actually used and any available snapshot/version information. Keep AI use during development separate from AI use inside the application.
 
@@ -289,7 +303,7 @@ These URLs identify material to inspect. This context file is not a substitute f
 The numbered phases below are the original product gates and remain requirements,
 not claims of completion. The later migration uses letters A–H to avoid confusing
 the two sequences. Migration Phases A–H have been supplied and executed within their
-recorded limits. External Google OAuth and successful Gemini generation gates remain
+recorded limits. External Google OAuth and successful selected-provider generation gates remain
 blocked. Do not begin later work without the user's next instruction.
 
 | Phase | Deliverable | Completion evidence |
@@ -332,9 +346,9 @@ saved reviews may reside in Supabase; unsaved review bodies must remain transien
 Derive ownership from a server-verified Supabase identity, not the existing client-made
 session header or a request-body user ID. Enforce owner isolation in the application
 and database row-level security; test two distinct users and signed-out access.
-Keep Gemini keys, OAuth client secrets, and database service secrets out of frontend
-bundles, logs, and exports. Revise processing/retention notices for Gemini Free Tier
-and Supabase rather than carrying over OpenAI-specific statements. Local application
+Keep every model-provider key, OAuth client secret, and database service secret out of
+frontend bundles, logs, and exports. Revise processing/retention notices for the
+actually selected external provider and Supabase. Local application
 hosting does not mean authentication, saved data, or model processing stay local.
 
 ## 13. Competition context

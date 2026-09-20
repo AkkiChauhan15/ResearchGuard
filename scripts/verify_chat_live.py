@@ -11,7 +11,7 @@ from researchguard.settings import Settings
 def main() -> None:
     load_local_env()
     parser = argparse.ArgumentParser(description="Verify one configured Research Guard chat provider")
-    parser.add_argument("--provider", choices=("groq", "openrouter", "gemini", "nvidia"), default="gemini")
+    parser.add_argument("--provider", choices=("groq", "openrouter", "gemini", "nvidia"), default="groq")
     args = parser.parse_args()
     settings = Settings.from_env()
     service = ChatService(

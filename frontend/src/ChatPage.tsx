@@ -40,7 +40,7 @@ function providerState(provider: ChatProviderOption): string {
 export default function ChatPage({ session, authReady, authAvailable, navigate, onSignOut }: ChatPageProps) {
   const [status, setStatus] = useState<ChatProviderStatus | null>(null)
   const [statusError, setStatusError] = useState<string | null>(null)
-  const [providerId, setProviderId] = useState<ChatProviderId>('gemini')
+  const [providerId, setProviderId] = useState<ChatProviderId>('groq')
   const [model, setModel] = useState('')
   const [messages, setMessages] = useState<DisplayMessage[]>([])
   const [draft, setDraft] = useState('')
@@ -56,7 +56,7 @@ export default function ChatPage({ session, authReady, authAvailable, navigate, 
       .then((value) => {
         if (!active) return
         setStatus(value)
-        const preferred = value.providers.find((item) => item.id === 'gemini' && item.configured)
+        const preferred = value.providers.find((item) => item.id === 'groq' && item.configured)
           ?? value.providers.find((item) => item.configured)
           ?? value.providers[0]
         if (preferred) {

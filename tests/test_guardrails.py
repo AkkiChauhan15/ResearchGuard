@@ -101,7 +101,7 @@ class RuntimeTests(unittest.TestCase):
     def test_missing_credentials(self):
         r=self.live();assess(r,r.claims[0].claim_id)
         self.assertIsNone(r.claims[0].assessment)
-        self.assertIn('GEMINI_API_KEY',r.claims[0].assessment_error)
+        self.assertIn('GROQ_API_KEY',r.claims[0].assessment_error)
         self.assertEqual(r.mode,'live')
 
     @patch.dict(os.environ,gemini_env,clear=True)

@@ -1,4 +1,4 @@
-"""Inspect the case set, or explicitly run Gemini Free Tier evaluation on fixtures.
+"""Inspect the case set, or run the selected free evidence provider on fixtures.
 
 Run: python3 -m scripts.evaluate [--run-model --split dev|held_out --max-cases 2]
 This never rewrites expected labels and never grades scientific entailment with a model.

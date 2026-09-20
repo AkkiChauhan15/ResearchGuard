@@ -210,7 +210,7 @@ function AccountProfile({ session, onSignOut, navigate }: { session: Session; on
       </div>
       <div className="my-7 h-px bg-line" />
       <h3 className="text-lg font-black text-ink">Optional research profile</h3>
-      <p className="mt-2 text-sm leading-6 text-muted">These details stay in your Supabase profile and are never included in Gemini research-verification requests. You may leave every field blank.</p>
+      <p className="mt-2 text-sm leading-6 text-muted">These details stay in your Supabase profile and are never included in research-verification model requests. You may leave every field blank.</p>
       {loading ? <p role="status" className="mt-5 text-sm text-muted">Loading profile…</p> : (
         <form className="mt-5 space-y-4" onSubmit={submit}>
           <label className="block text-sm font-black text-ink">Full name

@@ -105,6 +105,7 @@ export interface Claim {
 }
 
 export interface ModelRun {
+  provider: string
   task: string
   claim_id: string | null
   source_ids: string[]

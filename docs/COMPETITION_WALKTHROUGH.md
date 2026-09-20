@@ -1,6 +1,7 @@
 # Short competition walkthrough
 
-Use the local public demonstration until Google OAuth and Gemini live checks pass.
+Use the local public demonstration until Google OAuth and the selected evidence-provider
+live checks pass.
 The demonstration is reconstructed and visibly labeled; do not describe it as a live
 model result.
 
@@ -21,8 +22,8 @@ model result.
    add a note, and select **Save edited wording**.
 7. Export JSON. Explain that the export keeps the input, access levels, passages,
    limitations, decision and provenance.
-8. End with: “The local demo is verified. Live Google sign-in and Gemini assessment are
-   still blocked until their manual Free Tier setup and browser checks pass.”
+8. End with: “The local demo is verified. Live Google sign-in and the configured
+   evidence provider still need their hosted browser checks.”
 
 ## Evidence to show judges
 
@@ -35,5 +36,5 @@ model result.
 - Verification results and denominators:
   [`EVALUATION_PHASE_H.md`](EVALUATION_PHASE_H.md)
 
-Do not claim measured accuracy, time savings, a live Gemini result, completed Google
+Do not claim measured accuracy, time savings, a live model result, completed Google
 OAuth, full-text access to PMC4502790, or public deployment.
