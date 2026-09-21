@@ -1,6 +1,6 @@
 # Feature verification status
 
-Status as of 2026-09-20. “Fixture” means controlled local inputs or mocked provider
+Status as of 2026-09-21. “Fixture” means controlled local inputs or mocked provider
 responses. It is not a live external integration result.
 
 | Feature | Status | Evidence |
@@ -17,6 +17,7 @@ responses. It is not a live external integration result.
 | Non-Gemini extraction/assessment | **Live-unverified locally** | No non-Gemini provider key is available in the local environment; hosted key/configuration was not accessible to this run |
 | Retained Gemini compatibility | Fixture-verified; live generation blocked historically | Earlier requests reached Google but repeated HTTP 503 high demand produced no output; Gemini is no longer the default |
 | General chat API and React UI | Fixture/browser-verified | Auth, allowlists, provider formats, context, explicit fallback metadata, errors, clear action and 390 px layout |
+| Private saved chat and PDF | Fixture-verified; hosted migration pending | Owner-bound list/open/continue/delete, stale-history rejection and server PDF pass local HTTP tests; `202609210001` is prepared, not applied or browser-verified |
 | Live general chat providers | **Blocked/partly configured locally** | Gemini is configured locally but its bounded request returned temporarily unavailable; deployed non-Gemini configuration was not accessible to this run |
 | Supabase JWT verification | Live-verified locally | Two real local asymmetric access tokens plus tamper rejection |
 | Supabase saved-review RLS | Live-verified locally | 16 pgTAP checks and two-user local PostgREST/FastAPI journey |

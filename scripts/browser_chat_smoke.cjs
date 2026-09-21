@@ -61,6 +61,7 @@ function fixtureToken(userId) {
     const requests = [];
     let failNextChat = false;
     let expectingApiFailure = false;
+    let chatRecord = null;
     page.on('pageerror', (error) => errors.push(error.message));
     page.on('console', (message) => {
       if (message.type() === 'error' && !expectingApiFailure) errors.push(`Console: ${message.text()}`);
@@ -88,6 +89,8 @@ function fixtureToken(userId) {
         live_auth_required: true,
         persistence_configured: false,
         persistence_state: 'unavailable_missing_configuration',
+        chat_persistence_configured: true,
+        chat_persistence_state: 'configured',
       }),
     }));
     await page.route('**/api/auth/me', (route) => route.fulfill({
@@ -109,6 +112,24 @@ function fixtureToken(userId) {
         ],
       }),
     }));
+    await page.route('**/api/chats', (route) => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ items: chatRecord ? [Object.fromEntries(Object.entries(chatRecord).filter(([key]) => key !== 'messages'))] : [] }),
+    }));
+    await page.route(/\/api\/chats\/[0-9a-f-]+\/export\.pdf$/, (route) => route.fulfill({
+      status: 200,
+      contentType: 'application/pdf',
+      headers: { 'Content-Disposition': 'attachment; filename="research-guard-chat-fixture.pdf"' },
+      body: Buffer.from('%PDF-1.4\nfixture chat PDF\n%%EOF\n'),
+    }));
+    await page.route(/\/api\/chats\/[0-9a-f-]+$/, (route) => {
+      if (route.request().method() === 'DELETE') {
+        chatRecord = null;
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ deleted: {} }) });
+      }
+      return route.fulfill({ status: chatRecord ? 200 : 404, contentType: 'application/json', body: JSON.stringify(chatRecord ?? { error: 'Saved chat not found.' }) });
+    });
     await page.route('**/api/chat', async (route) => {
       const body = route.request().postDataJSON();
       requests.push(body);
@@ -117,6 +138,35 @@ function fixtureToken(userId) {
         await route.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ error: 'Fixture free quota is exhausted. Retry later.' }) });
         return;
       }
+      const answer = requests.length === 1
+        ? 'MELAS is a mitochondrial disorder.'
+        : requests.length === 2
+          ? 'A common cause is the m.3243A>G variant.'
+          : 'Conversation continued after the failed call.';
+      const timestamp = new Date().toISOString();
+      const messages = [
+        ...body.messages.map((item) => ({ ...item, timestamp, provider: null, model: null, fallback_used: false })),
+        { role: 'assistant', content: answer, timestamp, provider: body.provider, model: body.model, fallback_used: false },
+      ];
+      // Restore provenance for assistant messages sent back as request history.
+      for (const message of messages) {
+        if (message.role === 'assistant' && !message.provider) {
+          message.provider = body.provider;
+          message.model = body.model;
+        }
+      }
+      chatRecord = {
+        chat_id: body.chat_id ?? '55555555-5555-4555-8555-555555555555',
+        schema_version: 1,
+        revision: (body.expected_revision ?? 0) + 1,
+        title: body.messages[0].content,
+        message_count: messages.length,
+        last_provider: body.provider,
+        last_model: body.model,
+        created_at: timestamp,
+        updated_at: timestamp,
+        messages,
+      };
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -126,20 +176,17 @@ function fixtureToken(userId) {
           requested_provider: body.provider,
           model: body.model,
           requested_model: body.model,
-          answer: requests.length === 1
-            ? 'MELAS is a mitochondrial disorder.'
-            : requests.length === 2
-              ? 'A common cause is the m.3243A>G variant.'
-              : 'Conversation continued after the failed call.',
+          answer,
           fallback_used: false,
           attempts: [{ provider: body.provider, model: body.model, status: 'success' }],
+          chat: chatRecord,
         }),
       });
     });
 
     await page.goto(new URL('/chat', frontendUrl).toString(), { waitUntil: 'networkidle' });
     await page.getByRole('heading', { name: 'Research assistant chat' }).waitFor();
-    await page.getByText('These replies are model output and are not evidence-checked.', { exact: false }).waitFor();
+    await page.getByText('Replies are model output and are not evidence-checked.', { exact: false }).waitFor();
     await page.getByLabel('AI provider').selectOption('openrouter');
     assert.equal(await page.getByLabel('Model', { exact: true }).inputValue(), 'openrouter/free');
     await page.getByLabel('Message').fill('What is MELAS?');
@@ -151,6 +198,8 @@ function fixtureToken(userId) {
     await page.getByRole('button', { name: 'Send', exact: true }).click();
     await page.getByText('A common cause is the m.3243A>G variant.', { exact: true }).waitFor();
     assert.equal(requests.length, 2);
+    assert.equal(requests[1].chat_id, '55555555-5555-4555-8555-555555555555');
+    assert.equal(requests[1].expected_revision, 1);
     assert.deepEqual(requests[1].messages.map((item) => item.role), ['user', 'assistant', 'user']);
     assert.equal(requests[1].messages[1].content, 'MELAS is a mitochondrial disorder.');
 
@@ -173,12 +222,17 @@ function fixtureToken(userId) {
     await fsp.mkdir(screenshotDir, { recursive: true });
     await page.screenshot({ path: `${screenshotDir}/chat-mobile.png`, fullPage: true });
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.getByRole('button', { name: 'Clear chat' }).click();
+    const downloadPromise = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Export PDF' }).click();
+    await downloadPromise;
+    await page.getByRole('button', { name: 'New chat', exact: true }).click();
     await page.getByRole('heading', { name: 'What would you like to understand?' }).waitFor();
+    await page.getByRole('button', { name: /What is MELAS\?/ }).click();
+    await page.getByText('MELAS is a mitochondrial disorder.', { exact: true }).waitFor();
     await page.screenshot({ path: `${screenshotDir}/chat-empty-desktop.png`, fullPage: true });
 
     assert.deepEqual(errors, []);
-    console.log('Chat browser smoke passed: signed-in route, provider/model selection, two-turn context, normalized metadata, error retention/exclusion from later context, clear action, and 390 px layout.');
+    console.log('Chat browser smoke passed: signed-in route, provider/model selection, saved continuation, PDF export, reopen, error retention/exclusion from later context, and 390 px layout.');
   } finally {
     await browser.close();
   }

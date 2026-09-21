@@ -6,6 +6,10 @@ from uuid import uuid4
 import httpx
 
 from researchguard.demo import demo_review
+from researchguard.chat_persistence import (
+    SavedChatMessage,
+    SupabaseChatRepository,
+)
 from researchguard.persistence import (
     PersistenceConflict,
     PersistenceNotFound,
@@ -56,6 +60,44 @@ class RepositoryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(saved.review, review)
         self.assertEqual(captured["authorization"], "Bearer signed-user-jwt")
         self.assertEqual(captured["apikey"], "sb_publishable_fixture_value")
+        self.assertNotIn("owner_id", captured["body"])
+        self.assertNotIn("email", captured["body"])
+        await client.aclose()
+
+    async def test_saved_chat_uses_user_jwt_and_never_sends_owner(self):
+        messages = [
+            SavedChatMessage(role="user", content="Synthetic question"),
+            SavedChatMessage(role="assistant", content="Synthetic answer", provider="groq", model="fixture-model"),
+        ]
+        saved_id = str(uuid4())
+        captured = {}
+        expected = {
+            "id": saved_id,
+            "schema_version": 1,
+            "revision": 1,
+            "title": "Synthetic question",
+            "message_count": 2,
+            "last_provider": "groq",
+            "last_model": "fixture-model",
+            "created_at": "2026-09-21T00:00:00+00:00",
+            "updated_at": "2026-09-21T00:00:00+00:00",
+            "record": {"messages": [message.model_dump(mode="json") for message in messages]},
+        }
+
+        def handler(request: httpx.Request):
+            captured["authorization"] = request.headers.get("authorization")
+            captured["body"] = json.loads(request.content)
+            return httpx.Response(201, json=[expected])
+
+        client = httpx.AsyncClient(base_url="https://fixture.supabase.co", transport=httpx.MockTransport(handler))
+        repository = SupabaseChatRepository(
+            "https://fixture.supabase.co",
+            "sb_publishable_fixture_value",
+            client=client,
+        )
+        saved = await repository.create("signed-user-jwt", messages)
+        self.assertEqual(saved.summary.chat_id, saved_id)
+        self.assertEqual(captured["authorization"], "Bearer signed-user-jwt")
         self.assertNotIn("owner_id", captured["body"])
         self.assertNotIn("email", captured["body"])
         await client.aclose()
@@ -162,6 +204,29 @@ class MigrationContractTests(unittest.TestCase):
         self.assertIn("profile owner cannot be changed", rls_test)
         self.assertIn("optional profile details can all be skipped", rls_test)
         self.assertIn("signed-out clients cannot read profiles", rls_test)
+
+    def test_saved_chat_migration_has_owner_only_rls_contract(self):
+        migration = (ROOT / "supabase/migrations/202609210001_create_saved_chats.sql").read_text()
+        normalized = " ".join(migration.lower().split())
+        self.assertIn("alter table public.saved_chats enable row level security", normalized)
+        self.assertIn("alter table public.saved_chats force row level security", normalized)
+        for operation in ("select", "insert", "update", "delete"):
+            self.assertIn(f"on public.saved_chats for {operation} to authenticated", normalized)
+        self.assertGreaterEqual(normalized.count("(select auth.uid()) = owner_id"), 5)
+        self.assertIn("revoke all on table public.saved_chats from anon, authenticated", normalized)
+        self.assertIn("owner_id uuid not null default auth.uid()", normalized)
+        self.assertIn("new.owner_id is distinct from old.owner_id", normalized)
+        self.assertIn("grant update (title, message_count, last_provider, last_model, record)", normalized)
+        self.assertNotIn("grant update on table public.saved_chats", normalized)
+        self.assertIn("octet_length(record::text) <= 250000", normalized)
+
+        rls_test = (ROOT / "supabase/tests/003_saved_chats_rls.test.sql").read_text().lower()
+        self.assertIn("chat owner is derived from auth.uid()", rls_test)
+        self.assertIn("user two cannot read user one chats", rls_test)
+        self.assertIn("user two cannot update user one chats", rls_test)
+        self.assertIn("user two cannot delete user one chats", rls_test)
+        self.assertIn("user one cannot forge chat owner_id", rls_test)
+        self.assertIn("signed-out clients cannot read saved chats", rls_test)
 
 
 if __name__ == "__main__":

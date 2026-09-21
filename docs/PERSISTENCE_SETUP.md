@@ -9,6 +9,11 @@ The account-page work adds a separate minimal table for optional researcher prof
 fields. It stores full name, role, research field and institution only; it does not
 duplicate email addresses or store review content. Every field may be left blank.
 
+Authenticated AI chat uses a third, separate table, `saved_chats`. Successful complete
+turns save automatically at the user's request; each assistant message keeps its actual
+provider/model and fallback flag. Chat PDFs are generated from this canonical record and
+remain labeled as unverified model output. No Google profile data is copied into it.
+
 ## 1. Copy the two public project values
 
 In the intended Supabase **Free** project, open the Connect dialog or project API-key
@@ -51,10 +56,16 @@ The new optional-profile migration is:
 
 `supabase/migrations/202609190002_create_researcher_profiles.sql`
 
+The saved-chat migration prepared on 2026-09-21 is:
+
+`supabase/migrations/202609210001_create_saved_chats.sql`
+
 Choose the already-created Free project when `supabase link` prompts. On 2026-09-19, a
 fresh linked query confirmed both `202609190001` and `202609190002` in remote migration
-history. Do **not** push either migration again. For future migrations, review the push
-preview and confirm the new version in the final migration list. Do not
+history. Do **not** push either migration again. Migration `202609210001` is prepared in
+this repository but has not been confirmed in hosted migration history. Review the push
+preview, apply it with `supabase db push`, and confirm that exact version in the final
+`supabase migration list`. Do not
 create the table manually in the Dashboard Table Editor or SQL Editor; current Supabase
 guidance warns that remote manual schema changes bypass migration history.
 
@@ -69,6 +80,12 @@ The profile migration creates `public.researcher_profiles`, derives `user_id` fr
 enforces owner-only SELECT/INSERT/UPDATE with RLS. The owner and creation timestamp are
 immutable. There is no browser profile-delete operation and no anonymous access.
 
+The chat migration enables and forces RLS, derives `owner_id` from `auth.uid()`, omits
+owner columns from authenticated insert/update grants, and applies owner-only SELECT,
+INSERT, UPDATE and DELETE policies. A trigger prevents ownership/identity changes and
+increments the revision for stale-update protection. Records are capped at 24 messages
+and 250,000 serialized bytes.
+
 ## 3. Optional local database policy test
 
 The saved-review and profile pgTAP files are under `supabase/tests/`. Start the local
@@ -81,8 +98,9 @@ supabase test db
 
 On 2026-09-19 the policy suite passed 16/16 checks. The second command also passed with
 two disposable local identities, real asymmetric access tokens, PostgREST and FastAPI.
-Those results predate the new profile migration. Its source contract passed automated
-tests, but applying and executing its 12 pgTAP assertions was blocked in this task.
+Those results predate the new profile and chat migrations. Their source contracts pass
+automated tests, but the new chat pgTAP file must be run after the local stack applies
+`202609210001`.
 This does not replace the Google OAuth/hosted two-user browser check below.
 
 ## 4. Verify with two accounts after Auth is configured
@@ -108,17 +126,32 @@ Use only public or synthetic review content.
    original suggestions and researcher decisions.
 8. Delete the saved record and confirm it no longer lists or opens.
 
+Then verify chat history:
+
+1. As user A, open `/chat`, send public/synthetic text, reload, and reopen the saved
+   conversation. Continue it and confirm its revision/message count increase.
+2. Export PDF and confirm it contains all messages, timestamps, actual provider/model,
+   fallback status and the `not evidence-checked` warning.
+3. As user B, confirm user A's UUID cannot be listed, opened, exported, continued or
+   deleted. Confirm signed-out requests receive HTTP 401.
+4. Continue the same chat from two browser sessions; the stale revision must receive
+   HTTP 409 and must not lose or silently overwrite the local conversation.
+5. Delete the chat as its owner and confirm it disappears after reload.
+
 For the optional profile, sign in as each user and open `/account`. Confirm blank fields
 can be saved, repeat saves update one row, and user B cannot select or update user A's
 row through PostgREST. Confirm no email address is stored in `researcher_profiles`.
 
-If Supabase is paused, unreachable or the migration is absent, the application shows a
-saved-review unavailable error and retains the local working review. It does not switch
-to a privileged key, paid service, model fallback or demo substitution.
+If Supabase is paused, unreachable or a migration is absent, the application shows a
+clear persistence error. Evidence reviews retain their local working copy. Chat does not
+present a model response as saved unless persistence confirms the canonical turn. The
+application does not switch to a privileged key, paid service, model fallback or demo
+substitution.
 
-Official references checked 2026-09-19:
+Official references checked through 2026-09-21:
 
 - [Supabase database migrations](https://supabase.com/docs/guides/deployment/database-migrations)
 - [Supabase row-level security](https://supabase.com/docs/guides/database/postgres/row-level-security)
 - [Supabase advanced pgTAP testing](https://supabase.com/docs/guides/local-development/testing/pgtap-extended)
 - [Supabase API keys](https://supabase.com/docs/guides/getting-started/api-keys)
+- [ReportLab PDF generation](https://docs.reportlab.com/reportlab/userguide/ch2_graphics/)

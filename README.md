@@ -3,7 +3,8 @@
 > **Phase H status:** the local public demonstration, current public-source retrieval,
 > application checks, and real local Supabase Auth/PostgREST/RLS paths are verified.
 > The linked hosted Supabase project reports migrations `202609190001` and
-> `202609190002` applied. Google
+> `202609190002` applied. Saved-chat migration `202609210001` is prepared but is not
+> yet confirmed applied. Google
 > OAuth, email delivery/recovery and the hosted two-user check remain unverified. The
 > earlier Gemini check reached `gemini-3.8-flash`, but generation was blocked by repeated
 > HTTP 503 high-demand responses. Structured evidence tasks now support explicitly
@@ -18,8 +19,31 @@ experimental context, and limitations inspectable. Start with the clearly labele
 CYTO-ID demonstration, or create a live review and retrieve public sources.
 
 The signed-in `/chat` page is an optional general assistant using server-side Groq,
-OpenRouter, Gemini, or NVIDIA NIM adapters. Every reply is labeled as unverified model
-output and remains separate from evidence reviews and saved records.
+OpenRouter, Gemini, or NVIDIA NIM adapters. Successful conversations are saved privately
+to the signed-in account, can be reopened or deleted, and can be exported as PDF. Every
+reply remains labeled as unverified model output and separate from evidence reviews.
+
+## Features
+
+- **Evidence review workspace:** paste scientific text, edit extracted claims, separate
+  observations from interpretations, retrieve supported public sources, inspect exact
+  passages and access limitations, and record accept/edit/reject decisions.
+- **Validated provenance:** reviews retain source IDs, URLs, access levels, hashes,
+  locations, retrieval attempts, timestamps, requested/returned models and deterministic
+  quotation checks.
+- **Public demonstration:** the curated CYTO-ID example works without an account and is
+  labeled as demonstration content rather than a live result.
+- **Private accounts and records:** Supabase authentication protects live model actions,
+  owner-only saved reviews, optional profiles and saved chat history through RLS.
+- **Multi-provider AI:** Groq is the default structured-review provider; OpenRouter-free,
+  NVIDIA NIM and retained Gemini adapters are explicitly selectable. Evidence requests
+  never silently switch provider or use a paid fallback.
+- **Saved AI chat:** successful turns save automatically with timestamps and actual
+  provider/model provenance. Users can list, reopen, continue and delete their chats.
+- **Exports:** reviews export as canonical JSON or readable TXT. Saved chats export as
+  paginated PDF with an explicit `not evidence-checked` warning.
+- **Security boundaries:** verified JWTs, owner-only database policies, exact CORS/host
+  allowlists, protected URL retrieval, bounded concurrency and stale-update detection.
 
 This remains a local-first application with a reported free-tier deployment. The former
 OpenAI API adapter is disabled. Groq, OpenRouter-free and NVIDIA structured adapters
@@ -69,8 +93,9 @@ drafts and locks are process-local.
 
 After signing in, open http://127.0.0.1:5173/chat or choose **AI chat** in the header.
 The browser sends the selected allowlisted provider/model and bounded conversation
-history to `POST /api/chat`; FastAPI calls the provider with its server-only key and
-returns one normalized answer. Provider/model setup, fallback rules, a bounded live
+history to `POST /api/chat`; FastAPI calls the provider with its server-only key, saves
+the successful turn through owner-scoped Supabase RLS, and returns the canonical chat.
+Provider/model setup, persistence/PDF behavior, fallback rules, a bounded live
 check, and adapter extension steps are documented in
 [`docs/CHAT_SETUP.md`](docs/CHAT_SETUP.md).
 
@@ -85,6 +110,11 @@ Apply the saved-review migration and configure the backend public project values
 following [`docs/PERSISTENCE_SETUP.md`](docs/PERSISTENCE_SETUP.md). The app never
 autosaves: opening a saved record creates a temporary working copy, and changes persist
 only after choosing **Update saved copy**.
+
+That no-autosave rule applies to evidence reviews. AI chat has a separate user-authorized
+policy: successful turns save automatically after sign-in. Apply migration
+`202609210001` before enabling hosted chat. If saving fails, the request reports the
+failure rather than presenting the response as saved.
 
 The optional account profile is stored separately from reviews and contains only name,
 research role, field and institution. Every field is optional, RLS restricts access to
@@ -254,6 +284,9 @@ server removes all unsaved working reviews. There is no automatic disk storage
 of user input and no request-content logging. Explicit downloads remain local files;
 signed-in users may explicitly create or update private Supabase saved records after
 the migration is applied. Sign-in and ordinary review edits never autosave.
+Successful AI chat messages, timestamps and actual provider/model provenance are stored
+in the signed-in user's owner-scoped Supabase row until that user deletes the chat.
+Chat PDF export reads this saved record and does not call a model.
 The PDF parser briefly writes the public manual to a temporary file and deletes it.
 
 Search terms and URLs go to public source services. Configured model actions send the

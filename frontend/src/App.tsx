@@ -813,6 +813,7 @@ function App() {
   if (pathname === '/chat') {
     return (
       <ChatPage
+        key={authSession?.user.id ?? 'signed-out'}
         session={authSession}
         authReady={authReady}
         authAvailable={authAvailable}

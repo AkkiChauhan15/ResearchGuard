@@ -1495,3 +1495,84 @@ Status: **IMPLEMENTATION PASS; LIVE NON-GEMINI GENERATION UNVERIFIED LOCALLY.**
    records provider `groq` and the returned model. If the provider returns 429 or an
    unavailable error, wait for free quota/service recovery; do not enable billing or a
    fallback.
+
+## 2026-09-21 — Private saved AI chats and PDF export
+
+Status: **IMPLEMENTATION PASS LOCALLY; HOSTED MIGRATION AND BROWSER JOURNEY PENDING.**
+
+### Changes made
+
+- Added a separate canonical saved-chat schema and asynchronous Supabase repository.
+  Successful complete user/assistant turns now save automatically under the verified
+  user's access token. Users can list, reopen, continue and delete their own chats.
+  Evidence reviews and their explicit-save policy remain unchanged.
+- Added `GET /api/chats`, `GET /api/chats/{chat_id}`,
+  `GET /api/chats/{chat_id}/export.pdf` and revision-checked `DELETE`; `POST /api/chat`
+  now returns the canonical saved record. Continuing requires the exact saved history
+  plus one user message and the current revision, preventing stale or forged overwrites.
+- Preserved actual assistant provider, returned model, fallback flag and timestamp per
+  message. User identity is used only for verified ownership and is not sent to a model.
+- Added server-side ReportLab PDF export from the canonical saved record. The PDF contains
+  all messages and provenance, page numbers, and a clear warning that chat output is not
+  evidence-checked or scientific evidence.
+- Added the responsive **Saved chats** panel and **New chat**, **Export PDF** and
+  **Delete** controls. Authentication identity changes remount the page so one user's
+  local chat state cannot appear in another user's session.
+- Added versioned migration `202609210001_create_saved_chats.sql` with forced RLS,
+  owner-only SELECT/INSERT/UPDATE/DELETE policies, ownership derived from `auth.uid()`,
+  restricted column grants, immutable identity/owner fields, revision increments and
+  24-message/250,000-byte limits. Added 15 dedicated pgTAP assertions.
+- Updated README feature documentation, API/chat/persistence/deployment instructions,
+  architecture and context records. No provider, billing, public deployment or hosted
+  database setting was changed.
+
+### Checks actually executed
+
+- `.venv/bin/python -m unittest discover -s tests -v`: **91/91 passed**. This includes
+  authenticated chat creation/continuation/list/open/PDF/delete, cross-user and signed-out
+  rejection, forged/stale history rejection, repository JWT/public-key behavior, migration
+  contract checks, PDF framing, and all existing auth/review/retrieval/provider tests.
+- `supabase migration up --local`: applied `202609190002` and `202609210001` to the
+  disposable local stack. `supabase test db`: **43/43 passed** across saved reviews,
+  optional profiles and saved chats. The first pgTAP attempt correctly failed because
+  the restored local database had not yet applied those two migrations; the rerun after
+  local migration application passed completely.
+- `npm run typecheck --prefix frontend`, `npm run lint --prefix frontend`,
+  `npm run test:auth --prefix frontend` and `npm run build --prefix frontend`: passed.
+  Vite built 66 modules; its existing non-failing bundle-size advisory remains.
+- Python compileall, `pip check`, browser-script JavaScript syntax checks,
+  `git diff --check`, and a production-bundle credential-pattern scan passed. No Gemini,
+  Groq, NVIDIA, OpenRouter or privileged Supabase credential pattern was found in the
+  built frontend.
+- The updated browser smoke was syntax-checked but not executed because
+  `playwright-core` is unavailable in this workspace. No browser or hosted round-trip is
+  claimed from fixture/HTTP tests.
+
+### Blockers and unverified assumptions
+
+- Hosted migration `202609210001` is prepared and locally executed, but it has not been
+  pushed to or confirmed in hosted Supabase migration history. Deployed chat persistence
+  will return an explicit unavailable error until that table exists.
+- The real hosted journey—sign in, send, reload/reopen, continue, PDF download, delete,
+  sign out, and cross-account isolation—remains unverified. Browser automation could not
+  run locally because its existing Playwright dependency is absent.
+- The tests use controlled provider replies. They establish persistence/export behavior,
+  not current external model availability or answer quality. Existing live-provider
+  limitations remain unchanged.
+- ReportLab 5.0.1 is installed and passed local PDF generation tests. Render must install
+  the updated requirements during redeployment.
+
+### Manual action required
+
+1. Review, commit and push these files. In the linked Supabase project run
+   `supabase migration list`, `supabase db push`, then `supabase migration list`; confirm
+   `202609210001` appears remotely. Do not create the table manually or add a service-role
+   key.
+2. Redeploy Render so it installs `reportlab==5.0.1` and serves the new API, then redeploy
+   Vercel for the new chat UI. No new environment variable is required; keep the existing
+   Supabase URL/publishable key and provider secrets in their current server/public
+   boundaries.
+3. With two test users and public/synthetic prompts, run the hosted sequence documented
+   in `docs/PERSISTENCE_SETUP.md`: save/reload/continue/export/delete as user A; verify
+   user B and signed-out requests cannot access user A's chat; verify a stale revision
+   returns HTTP 409.

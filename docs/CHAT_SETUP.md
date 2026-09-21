@@ -1,9 +1,11 @@
 # AI chat setup
 
 The optional `/chat` page is a general assistant beside the evidence-review workflow.
-Its replies are labeled **not evidence-checked** and are never inserted into a review,
-saved to Supabase, or exported as evidence. A verified Supabase session is required so
-anonymous visitors cannot spend server provider quotas.
+Its replies are labeled **not evidence-checked** and are never inserted into or exported
+as an evidence review. Successful turns are saved in the separate owner-only Supabase
+`saved_chats` table and may be exported as a clearly labeled chat PDF. A verified
+Supabase session is required so anonymous visitors cannot spend server provider quotas
+or access private history.
 
 The same server keys can now be used by the structured evidence workflow. That workflow
 has a separate explicit `LLM_PROVIDER` selection and never uses chat fallback. Set
@@ -58,11 +60,11 @@ The signed-in SPA first calls `GET /api/chat/providers`, then sends its own back
   "provider": "openrouter",
   "model": "openrouter/free",
   "messages": [
-    {"role": "user", "content": "What is MELAS?"},
-    {"role": "assistant", "content": "Earlier assistant reply"},
-    {"role": "user", "content": "What mutation commonly causes it?"}
+    {"role": "user", "content": "What mutation commonly causes MELAS?"}
   ],
-  "allow_fallback": false
+  "allow_fallback": false,
+  "chat_id": null,
+  "expected_revision": null
 }
 ```
 
@@ -79,12 +81,28 @@ The normalized success response is:
   "fallback_used": false,
   "attempts": [
     {"provider": "openrouter", "model": "openrouter/free", "status": "success"}
-  ]
+  ],
+  "chat": {
+    "chat_id": "00000000-0000-4000-8000-000000000000",
+    "schema_version": 1,
+    "revision": 1,
+    "title": "What mutation commonly causes MELAS?",
+    "message_count": 2,
+    "last_provider": "openrouter",
+    "last_model": "actual-returned-model",
+    "created_at": "2026-09-21T00:00:00+00:00",
+    "updated_at": "2026-09-21T00:00:00+00:00",
+    "messages": ["canonical user and assistant message objects"]
+  }
 }
 ```
 
 The backend accepts no URL field. React renders answer text without HTML interpretation.
-Messages are bounded and treated as untrusted model input.
+Messages are bounded and treated as untrusted model input. Follow-up requests include
+the returned `chat_id`, `expected_revision`, and the stored history plus one new user
+message. `GET /api/chats` lists history, `GET /api/chats/{id}` reopens it,
+`GET /api/chats/{id}/export.pdf` exports it, and `DELETE /api/chats/{id}` requires the
+current revision. All routes use the verified user's token and Supabase RLS.
 
 ## Model list
 
@@ -105,8 +123,11 @@ npm run dev --prefix frontend
 ```
 
 Open `http://127.0.0.1:5173/chat`, sign in, choose an available provider and model, and
-send public or synthetic text. Conversation history stays in React memory and is sent
-again with each follow-up. Clear chat or reload to remove it; it is not persisted.
+send public or synthetic text. Each successful turn is saved automatically, appears in
+**Saved chats**, and can be reopened after reload. Use **Export PDF** for the active
+saved conversation or **Delete** to remove it. Apply migration `202609210001` first;
+otherwise the page reports saved-chat service unavailability and does not show an
+unsaved model response as though it were stored.
 
 Run one bounded live connectivity check without printing the answer or key:
 

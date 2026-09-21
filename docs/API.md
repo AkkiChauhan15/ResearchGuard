@@ -16,8 +16,9 @@ signature through the project's JWKS plus issuer, expiry, audience, role and sub
 then binds the record to that verified subject. A review created under another browser
 session or verified user returns `404`. Health and configuration routes need no token.
 `GET /api/auth/me` requires a valid token and returns only the verified user ID/email.
-The two general-chat routes also require a valid bearer token. Chat does not use the
-draft session header because it has no server-side conversation record.
+General-chat routes also require a valid bearer token. Chat does not use the draft
+session header. Successful turns are stored in the separate owner-scoped
+`saved_chats` table and are never inserted into an evidence review.
 
 JSON request bodies use `application/json`. Validation and service-rule failures return
 `400 {"error": "..."}`; inaccessible/expired reviews return `404`; bodies over the
@@ -35,7 +36,11 @@ and leaves the temporary working review intact.
 | `GET /api/config` | None | Local mode, retention, selected evidence-provider state plus public auth availability; never credential values |
 | `GET /api/auth/me` | Verified Supabase bearer token | Verified `user_id` and optional email |
 | `GET /api/chat/providers` | Verified bearer token | Safe configuration state, allowlisted models and fallback flag; never keys |
-| `POST /api/chat` | Bearer token plus `provider`, allowlisted `model`, 1–24 user/assistant `messages`, and optional `allow_fallback` | Normalized answer with requested/actual provider and model, fallback flag and attempt statuses |
+| `POST /api/chat` | Bearer token plus `provider`, allowlisted `model`, 1–24 user/assistant `messages`, optional `allow_fallback`, and paired `chat_id`/`expected_revision` when continuing | Normalized answer plus the canonical saved chat; a new chat must start with one user message |
+| `GET /api/chats` | Bearer token | `{items: SavedChatSummary[]}` for the verified owner only |
+| `GET /api/chats/{chat_id}` | Bearer token | Canonical owner-scoped `SavedChatRecord` |
+| `GET /api/chats/{chat_id}/export.pdf` | Bearer token | PDF attachment generated from the canonical saved chat |
+| `DELETE /api/chats/{chat_id}?expected_revision=1` | Bearer token | `{deleted: SavedChatSummary}`; HTTP 409 on a stale revision |
 | `GET /api/saved-reviews` | Bearer token; no draft session required | `{items: SavedReviewSummary[]}` for the verified owner only |
 | `POST /api/saved-reviews` | Bearer token, draft session and `{"review_id":"review_..."}` | HTTP 201 `SavedReviewRecord`; explicit snapshot of that canonical temporary review |
 | `POST /api/saved-reviews/{saved_id}/open` | Bearer token and draft session | `SavedReviewRecord`; also creates an owner-bound temporary working copy in that session |
@@ -67,8 +72,15 @@ The legacy OpenAI API selection remains rejected.
 unchanged canonical `review`. Saved records never accept an owner ID from the browser.
 The backend forwards the verified access token to Supabase PostgREST with the public
 publishable key, so database RLS derives ownership from `auth.uid()`. No privileged key
-or UI-only owner filter is used. Opening does not autosave later edits; the user must
-choose Update saved copy.
+or UI-only owner filter is used. Opening does not autosave later review edits; the user
+must choose Update saved copy.
+
+`SavedChatSummary` contains `chat_id`, `schema_version`, `revision`, `title`,
+`message_count`, the last actual provider/model, and timestamps. `SavedChatRecord` adds
+the complete alternating message list. Assistant messages retain actual provider/model
+and fallback provenance. The backend accepts no owner ID. Continuing a chat requires an
+exact extension of its stored history and matching revision; stale or forged history
+receives HTTP 409 rather than overwriting the saved conversation.
 
 ## Limits and concurrency
 
@@ -84,11 +96,14 @@ a 90-second request deadline and extraction/assessment have a 130-second deadlin
 Timed-out worker functions cannot commit their private review copy. Use one Uvicorn
 worker because temporary records, locks, and NCBI throttling are process-local.
 
-Chat messages are limited to 4,000 characters each and 24,000 characters total. The
+Chat messages are limited to 8,000 characters each and 24,000 characters total. Saved
+conversations are limited to 24 alternating messages and 250,000 serialized bytes. The
 default authenticated-user limit is six requests per rolling minute. Chat runs in the
 same bounded external pool, has a 45-second total deadline, a 20-second provider
 deadline, and at most 1,024 output tokens. Provider failures return safe `429`, `503`,
-or `504` errors. No failed chat call substitutes demo content.
+or `504` errors. No failed chat call substitutes demo content. A new request preflights
+the saved-chat/RLS path before using model quota; the UI presents only a response that
+the persistence layer confirmed.
 
 ## Local startup and configuration
 
@@ -161,7 +176,7 @@ public origins `VITE_API_BASE_URL` and `VITE_APPLICATION_ORIGIN`; local developm
 leaves both absent. Full dashboard and
 redirect setup is documented in `docs/AUTH_SETUP.md`. Google secrets, Supabase
 secret/service-role keys and JWT signing keys are not backend settings for this app.
-Migration application and saved-review RLS checks are documented in
+Migration application and saved-review/saved-chat RLS checks are documented in
 `docs/PERSISTENCE_SETUP.md`.
 The full Vercel/Render configuration is documented in `docs/DEPLOYMENT.md`.
 Optional chat-provider setup and extension instructions are in `docs/CHAT_SETUP.md`.

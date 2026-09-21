@@ -12,6 +12,8 @@ from researchguard.auth import AuthenticatedUser
 from researchguard.chat.base import ChatProviderError, ProviderMessage, ProviderReply
 from researchguard.chat.gemini import GeminiChatProvider
 from researchguard.chat.http_provider import groq_provider, nvidia_provider, openrouter_provider
+from researchguard.chat_persistence import SavedChatMessage, SavedChatRecord, SavedChatSummary
+from researchguard.persistence import PersistenceConflict, PersistenceNotFound
 from researchguard.settings import Settings
 
 
@@ -28,6 +30,62 @@ class FakeProvider:
         if self.error:
             raise self.error
         return self.reply
+
+
+class FakeSavedChats:
+    configured = True
+
+    def __init__(self):
+        self.records = {}
+
+    async def close(self):
+        pass
+
+    async def list(self, token):
+        return [record.summary for owner, record in self.records.values() if owner == token]
+
+    async def get(self, token, chat_id):
+        item = self.records.get(chat_id)
+        if item is None or item[0] != token:
+            raise PersistenceNotFound("Saved chat not found, or it belongs to another user.")
+        return item[1]
+
+    async def create(self, token, messages):
+        chat_id = str(uuid4())
+        record = self._record(chat_id, 1, messages)
+        self.records[chat_id] = (token, record)
+        return record
+
+    async def update(self, token, chat_id, expected_revision, messages):
+        current = await self.get(token, chat_id)
+        if current.summary.revision != expected_revision:
+            raise PersistenceConflict("The saved chat changed elsewhere.")
+        record = self._record(chat_id, expected_revision + 1, messages)
+        self.records[chat_id] = (token, record)
+        return record
+
+    async def delete(self, token, chat_id, expected_revision):
+        current = await self.get(token, chat_id)
+        if current.summary.revision != expected_revision:
+            raise PersistenceConflict("The saved chat changed elsewhere.")
+        del self.records[chat_id]
+        return current.summary
+
+    @staticmethod
+    def _record(chat_id, revision, messages):
+        title = " ".join(messages[0].content.split())[:160]
+        summary = SavedChatSummary(
+            chat_id=chat_id,
+            schema_version=1,
+            revision=revision,
+            title=title,
+            message_count=len(messages),
+            last_provider=messages[-1].provider,
+            last_model=messages[-1].model,
+            created_at="2026-09-21T00:00:00+00:00",
+            updated_at="2026-09-21T00:01:00+00:00",
+        )
+        return SavedChatRecord(summary=summary, messages=tuple(messages))
 
 
 def settings(**changes):
@@ -61,6 +119,9 @@ class ChatHTTPTests(unittest.IsolatedAsyncioTestCase):
         self.app = create_app(settings(chat_fallback_enabled=True))
         self.lifespan = self.app.router.lifespan_context(self.app)
         await self.lifespan.__aenter__()
+        await self.app.state.saved_chats.close()
+        self.saved_chats = FakeSavedChats()
+        self.app.state.saved_chats = self.saved_chats
         self.user_id = str(uuid4())
         self.app.state.auth_verifier.verify = lambda _token: AuthenticatedUser(
             user_id=self.user_id,
@@ -104,15 +165,29 @@ class ChatHTTPTests(unittest.IsolatedAsyncioTestCase):
     async def test_normalized_response_and_bounded_conversation(self):
         fake = FakeProvider()
         self.app.state.chat_service.adapters["groq"] = fake
+        first = await self.client.post("/api/chat", headers=self.headers, json={
+            "provider": "groq",
+            "model": "llama-3.1-8b-instant",
+            "messages": [{"role": "user", "content": "What is MELAS?"}],
+            "allow_fallback": False,
+        })
+        self.assertEqual(first.status_code, 200, first.text)
+        first_body = first.json()
+        self.assertEqual(first_body["chat"]["revision"], 1)
+        self.assertEqual(first_body["chat"]["message_count"], 2)
+        chat_id = first_body["chat"]["chat_id"]
+
         response = await self.client.post("/api/chat", headers=self.headers, json={
             "provider": "groq",
             "model": "llama-3.1-8b-instant",
             "messages": [
                 {"role": "user", "content": "What is MELAS?"},
-                {"role": "assistant", "content": "A mitochondrial disorder."},
+                {"role": "assistant", "content": "A bounded fixture answer."},
                 {"role": "user", "content": "What mutation commonly causes it?"},
             ],
             "allow_fallback": False,
+            "chat_id": chat_id,
+            "expected_revision": 1,
         })
         self.assertEqual(response.status_code, 200, response.text)
         body = response.json()
@@ -121,10 +196,58 @@ class ChatHTTPTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(body["model"], "fixture-returned-model")
         self.assertFalse(body["fallback_used"])
         self.assertEqual(body["attempts"][0]["status"], "success")
-        self.assertEqual(len(fake.calls), 1)
-        sent_messages = fake.calls[0][1]
+        self.assertEqual(body["chat"]["revision"], 2)
+        self.assertEqual(body["chat"]["message_count"], 4)
+        self.assertEqual(len(fake.calls), 2)
+        sent_messages = fake.calls[1][1]
         self.assertEqual(sent_messages[-1].content, "What mutation commonly causes it?")
         self.assertEqual(sent_messages[0].role, "system")
+
+        listed = await self.client.get("/api/chats", headers=self.headers)
+        self.assertEqual(listed.status_code, 200)
+        self.assertEqual(listed.json()["items"][0]["chat_id"], chat_id)
+        opened = await self.client.get(f"/api/chats/{chat_id}", headers=self.headers)
+        self.assertEqual(opened.json(), body["chat"])
+        exported = await self.client.get(f"/api/chats/{chat_id}/export.pdf", headers=self.headers)
+        self.assertEqual(exported.status_code, 200, exported.text)
+        self.assertEqual(exported.headers["content-type"], "application/pdf")
+        self.assertTrue(exported.content.startswith(b"%PDF-"))
+        self.assertTrue(exported.content.rstrip().endswith(b"%%EOF"))
+        deleted = await self.client.delete(f"/api/chats/{chat_id}?expected_revision=2", headers=self.headers)
+        self.assertEqual(deleted.status_code, 200)
+        self.assertEqual((await self.client.get("/api/chats", headers=self.headers)).json()["items"], [])
+
+    async def test_saved_chat_owner_stale_history_and_signed_out_boundaries(self):
+        self.app.state.chat_service.adapters["groq"] = FakeProvider()
+        created = await self.client.post("/api/chat", headers=self.headers, json={
+            "provider": "groq",
+            "model": "llama-3.1-8b-instant",
+            "messages": [{"role": "user", "content": "Owner-only question"}],
+        })
+        chat = created.json()["chat"]
+        other_headers = {"Authorization": "Bearer other-token"}
+        for method, path in (
+            ("get", f"/api/chats/{chat['chat_id']}"),
+            ("get", f"/api/chats/{chat['chat_id']}/export.pdf"),
+            ("delete", f"/api/chats/{chat['chat_id']}?expected_revision=1"),
+        ):
+            response = await getattr(self.client, method)(path, headers=other_headers)
+            self.assertEqual(response.status_code, 404, (method, response.text))
+        self.assertEqual((await self.client.get("/api/chats", headers=other_headers)).json()["items"], [])
+        self.assertEqual((await self.client.get("/api/chats")).status_code, 401)
+
+        stale = await self.client.post("/api/chat", headers=self.headers, json={
+            "provider": "groq",
+            "model": "llama-3.1-8b-instant",
+            "messages": [
+                {"role": "user", "content": "Changed history"},
+                {"role": "assistant", "content": "A bounded fixture answer."},
+                {"role": "user", "content": "Continue"},
+            ],
+            "chat_id": chat["chat_id"],
+            "expected_revision": 1,
+        })
+        self.assertEqual(stale.status_code, 409)
 
     async def test_invalid_model_history_and_extra_fields_are_rejected(self):
         base = {
@@ -199,6 +322,8 @@ class ChatRateLimitTests(unittest.IsolatedAsyncioTestCase):
                     user_id=str(uuid4()) if token == "second-user" else "00000000-0000-4000-8000-000000000001",
                     email=None,
                 )
+                await app.state.saved_chats.close()
+                app.state.saved_chats = FakeSavedChats()
                 app.state.chat_service.adapters["openrouter"] = FakeProvider()
                 async with httpx.AsyncClient(
                     transport=httpx.ASGITransport(app=app, raise_app_exceptions=False),

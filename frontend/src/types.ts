@@ -152,6 +152,8 @@ export interface ApiConfig {
   live_auth_required: boolean
   persistence_configured: boolean
   persistence_state: 'configured' | 'unavailable_missing_configuration'
+  chat_persistence_configured: boolean
+  chat_persistence_state: 'configured' | 'unavailable_missing_configuration'
 }
 
 export interface AuthenticatedUser {
@@ -204,6 +206,33 @@ export interface ChatMessageInput {
   content: string
 }
 
+export interface SavedChatMessage extends ChatMessageInput {
+  timestamp: string
+  provider: string | null
+  model: string | null
+  fallback_used: boolean
+}
+
+export interface SavedChatSummary {
+  chat_id: string
+  schema_version: number
+  revision: number
+  title: string
+  message_count: number
+  last_provider: string
+  last_model: string
+  created_at: string
+  updated_at: string
+}
+
+export interface SavedChatRecord extends SavedChatSummary {
+  messages: SavedChatMessage[]
+}
+
+export interface SavedChatList {
+  items: SavedChatSummary[]
+}
+
 export interface ChatAttempt {
   provider: ChatProviderId
   model: string
@@ -219,4 +248,5 @@ export interface ChatResponse {
   answer: string
   fallback_used: boolean
   attempts: ChatAttempt[]
+  chat: SavedChatRecord
 }

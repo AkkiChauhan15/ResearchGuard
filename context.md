@@ -60,7 +60,7 @@ On 2026-09-20 the user explicitly authorized a separate general AI chat page usi
 Groq, OpenRouter, Gemini and NVIDIA NIM. This supersedes the earlier exclusion only for
 this clearly labeled assistant surface; it does not replace or feed the structured
 evidence-review workflow. Chat responses are unverified model output, require a verified
-Supabase user, remain temporary in browser memory, and are not saved as reviews. Keys
+Supabase user, and are not saved as reviews. Keys
 remain backend-only. Provider/model input is allowlisted in a versioned configuration.
 Fallback is disabled by default and may run only when both the operator and user opt in,
 only among configured providers confirmed for free/no-billing access, and always reports
@@ -77,6 +77,16 @@ migration option, not the active default. Evidence requests never silently switc
 providers. Keys remain server-side, free/no-billing gates remain mandatory, and
 deterministic source-ID, quotation, location and original-span validation remain
 authoritative.
+
+On 2026-09-21 the user authorized private saved chat history and PDF chat exports.
+Successful user/assistant turns are automatically saved in a separate Supabase
+`saved_chats` table for the verified owner; they never enter the canonical evidence
+review schema. Users can list, reopen, continue, export and delete their own chats.
+Each assistant message retains its actual provider/model and fallback flag. Revision
+checks prevent stale history overwrites, and row-level security derives immutable
+ownership from `auth.uid()`. Migration `202609210001` is prepared but must not be
+described as applied until hosted migration history confirms it. PDF exports remain
+clearly labeled as unverified model output, not scientific evidence.
 
 Preserve working Pydantic schemas, retrieval adapters, evidence validation, curated
 demo sources, review decisions, and exports. Adapt framework/provider boundaries
@@ -112,7 +122,7 @@ Inspect the repository before describing its state. Do not infer that the applic
 | Target deliverable | Working web application with evidence-linked reviews and exports. |
 | Framework and hosting | FastAPI backend plus a Vite React/TypeScript/Tailwind frontend. Vercel successfully deployed the SPA commit; its generated URL is currently SSO-protected. The user reports Render deployment, but its URL and health are unverified. |
 | Existing implementation | FastAPI/Uvicorn backend, React/TypeScript/Tailwind SPA, preserved legacy interface, process-local transient store, and reusable Pydantic/core modules. Verify against code and tests before claiming behavior. |
-| Authentication and saving | Supabase supports Google and enabled email/password account pages, with backend token verification and owner binding for transient live reviews. Phase G adds explicit saved-review CRUD and versioned RLS. Both hosted migrations are applied; local two-user saved-review RLS/token behavior passed. Google OAuth, email delivery/recovery, hosted profile RLS behavior and hosted authenticated two-user behavior remain unverified. Unsaved drafts stay transient. |
+| Authentication and saving | Supabase supports Google and enabled email/password account pages, with backend token verification and owner binding for transient live reviews. Phase G adds explicit saved-review CRUD and versioned RLS. The review/profile migrations are applied; local two-user saved-review RLS/token behavior passed. A new owner-only saved-chat migration is prepared but not yet applied or live-verified. Google OAuth, email delivery/recovery, hosted profile/chat RLS behavior and hosted authenticated two-user behavior remain unverified. Unsaved review drafts stay transient. |
 | API keys and account access | Gemini key/model metadata access was verified on 2026-09-19 without displaying the key, but generation remained blocked by HTTP 503. Non-Gemini provider keys are reported by the user as configured in the deployed chat environment but are absent from the local environment, so live structured generation through them remains unverified here. Never display secrets. |
 | Model choices | Groq `openai/gpt-oss-20b` is the default structured extraction/assessment provider. `openrouter/free`, approved NVIDIA NIM models, and Gemini remain explicitly selectable. There is no evidence-provider fallback. Each provider remains unavailable until its key and required free/no-billing gate are present. The legacy OpenAI API adapter remains disabled. |
 | Cost boundary | Free tiers only. No billing activation, purchases, paid services, upgrades, or paid fallback. |
@@ -138,7 +148,8 @@ Include:
   save action (hosted migration applied; hosted authenticated journey unverified).
 - Readable and structured JSON review exports.
 - Clearly separated demonstration and live modes.
-- A separate, authenticated general assistant chat, visibly labeled as unverified model output and never treated as retrieved evidence.
+- A separate authenticated general assistant chat with owner-only saved history and PDF
+  export, visibly labeled as unverified model output and never treated as retrieved evidence.
 
 Exclude from the first release:
 

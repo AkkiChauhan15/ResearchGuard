@@ -20,6 +20,11 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .assessment import assess, extract
 from .chat import ChatProviderError, ChatRateLimiter, ChatService, ProviderMessage
+from .chat_persistence import (
+    SavedChatMessage,
+    SupabaseChatRepository,
+    export_chat_pdf,
+)
 from .auth import (
     AuthenticatedUser,
     AuthenticationError,
@@ -79,7 +84,7 @@ class UpdateSavedReviewRequest(Strict):
 
 class ChatMessageRequest(Strict):
     role: Literal["user", "assistant"]
-    content: str = Field(min_length=1, max_length=4000)
+    content: str = Field(min_length=1, max_length=8000)
 
     @field_validator("content")
     @classmethod
@@ -94,6 +99,8 @@ class ChatRequest(Strict):
     model: str = Field(min_length=1, max_length=120, pattern=r"^[A-Za-z0-9._:/-]+$")
     messages: list[ChatMessageRequest] = Field(min_length=1, max_length=24)
     allow_fallback: bool = False
+    chat_id: UUID | None = None
+    expected_revision: int | None = Field(default=None, ge=1)
 
     @model_validator(mode="after")
     def validate_conversation(self):
@@ -101,6 +108,8 @@ class ChatRequest(Strict):
             raise ValueError("The last chat message must be from the user.")
         if sum(len(message.content) for message in self.messages) > 24_000:
             raise ValueError("Chat history exceeds the 24,000-character limit.")
+        if (self.chat_id is None) != (self.expected_revision is None):
+            raise ValueError("chat_id and expected_revision must be supplied together.")
         return self
 
 
@@ -193,6 +202,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             settings.supabase_publishable_key,
             timeout_seconds=settings.persistence_timeout_seconds,
         )
+        application.state.saved_chats = SupabaseChatRepository(
+            settings.supabase_url,
+            settings.supabase_publishable_key,
+            timeout_seconds=settings.persistence_timeout_seconds,
+        )
         application.state.chat_service = ChatService(
             fallback_enabled=settings.chat_fallback_enabled,
             provider_timeout_seconds=settings.chat_provider_timeout_seconds,
@@ -207,11 +221,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             yield
         finally:
             await application.state.saved_reviews.close()
+            await application.state.saved_chats.close()
             application.state.external_executor.shutdown(wait=True, cancel_futures=True)
 
     application = FastAPI(
         title="Research Guard AI local API",
-        version="0.5.0",
+        version="0.6.0",
         lifespan=lifespan,
         docs_url="/api/docs",
         openapi_url="/api/openapi.json",
@@ -432,6 +447,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "configured" if application.state.saved_reviews.configured
                 else "unavailable_missing_configuration"
             ),
+            "chat_persistence_configured": application.state.saved_chats.configured,
+            "chat_persistence_state": (
+                "configured" if application.state.saved_chats.configured
+                else "unavailable_missing_configuration"
+            ),
         }
 
     @application.get("/api/auth/me")
@@ -446,7 +466,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @application.post("/api/chat")
     async def chat(payload: ChatRequest, authorization: Authorization = None):
-        user = await authenticated_user(authorization)
+        identity = await authenticated_request(authorization)
+        user = identity.user
         retry_after = await application.state.chat_rate_limiter.check(user.user_id)
         if retry_after is not None:
             raise HTTPException(
@@ -454,6 +475,23 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "Chat request limit reached. Wait before trying again.",
                 headers={"Retry-After": str(retry_after)},
             )
+        previous = None
+        if payload.chat_id is None:
+            if len(payload.messages) != 1:
+                raise ValueError("A new saved chat must begin with one user message.")
+            # Check the table/RLS path before spending provider quota.
+            await application.state.saved_chats.list(identity.access_token)
+        else:
+            previous = await application.state.saved_chats.get(identity.access_token, str(payload.chat_id))
+            if previous.summary.revision != payload.expected_revision:
+                raise PersistenceConflict("The saved chat changed elsewhere. Reload it before continuing.")
+            stored = [(message.role, message.content) for message in previous.messages]
+            submitted = [(message.role, message.content) for message in payload.messages]
+            if submitted[:-1] != stored or len(submitted) != len(stored) + 1:
+                raise PersistenceConflict("The submitted chat history does not match the saved conversation. Reload it before continuing.")
+            if len(previous.messages) >= 24:
+                raise ValueError("This saved chat reached 24 messages. Start a new chat to continue.")
+
         try:
             result = await run_in_external_pool(
                 application.state.chat_service.complete,
@@ -467,7 +505,68 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         except ChatProviderError as exc:
             status = 429 if exc.category == "rate_limited" else 504 if exc.category == "timeout" else 503
             raise HTTPException(status, exc.detail) from None
-        return {"success": True, **asdict(result)}
+        messages = list(previous.messages) if previous is not None else []
+        messages.extend([
+            SavedChatMessage(role="user", content=payload.messages[-1].content),
+            SavedChatMessage(
+                role="assistant",
+                content=result.answer,
+                provider=result.provider,
+                model=result.model,
+                fallback_used=result.fallback_used,
+            ),
+        ])
+        if previous is None:
+            saved = await application.state.saved_chats.create(identity.access_token, messages)
+        else:
+            saved = await application.state.saved_chats.update(
+                identity.access_token,
+                previous.summary.chat_id,
+                previous.summary.revision,
+                messages,
+            )
+        return {"success": True, **asdict(result), "chat": saved.as_dict()}
+
+    @application.get("/api/chats")
+    async def list_saved_chats(authorization: Authorization = None):
+        identity = await authenticated_request(authorization)
+        chats = await application.state.saved_chats.list(identity.access_token)
+        return {"items": [chat.as_dict() for chat in chats]}
+
+    @application.get("/api/chats/{chat_id}")
+    async def get_saved_chat(chat_id: SavedReviewId, authorization: Authorization = None):
+        identity = await authenticated_request(authorization)
+        chat = await application.state.saved_chats.get(identity.access_token, str(chat_id))
+        return chat.as_dict()
+
+    @application.get("/api/chats/{chat_id}/export.pdf")
+    async def export_saved_chat_pdf(chat_id: SavedReviewId, authorization: Authorization = None):
+        identity = await authenticated_request(authorization)
+        chat = await application.state.saved_chats.get(identity.access_token, str(chat_id))
+        content = await run_in_external_pool(
+            export_chat_pdf,
+            chat,
+            timeout=settings.assessment_timeout_seconds,
+        )
+        return Response(
+            content=content,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="research-guard-chat-{chat.summary.chat_id}.pdf"'},
+        )
+
+    @application.delete("/api/chats/{chat_id}")
+    async def delete_saved_chat(
+        chat_id: SavedReviewId,
+        expected_revision: Annotated[int, Query(ge=1)],
+        authorization: Authorization = None,
+    ):
+        identity = await authenticated_request(authorization)
+        deleted = await application.state.saved_chats.delete(
+            identity.access_token,
+            str(chat_id),
+            expected_revision,
+        )
+        return {"deleted": deleted.as_dict()}
 
     async def local_review_for_save(
         session_id: str,

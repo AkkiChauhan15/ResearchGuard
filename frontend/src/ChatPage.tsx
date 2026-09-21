@@ -1,8 +1,15 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { api } from './api'
+import { api, downloadSavedChatPdf } from './api'
 import { BrandLockup, WorkflowStrip } from './Brand'
-import type { ChatMessageInput, ChatProviderId, ChatProviderOption, ChatProviderStatus } from './types'
+import type {
+  ChatMessageInput,
+  ChatProviderId,
+  ChatProviderOption,
+  ChatProviderStatus,
+  SavedChatRecord,
+  SavedChatSummary,
+} from './types'
 
 interface ChatPageProps {
   session: Session | null
@@ -18,6 +25,7 @@ interface DisplayMessage extends ChatMessageInput {
   model?: string
   fallbackUsed?: boolean
   failed?: boolean
+  timestamp?: string
 }
 
 const fieldClass =
@@ -37,6 +45,23 @@ function providerState(provider: ChatProviderOption): string {
   return 'API key missing'
 }
 
+function displayedMessages(chat: SavedChatRecord): DisplayMessage[] {
+  return chat.messages.map((message, index) => ({
+    id: `${chat.chat_id}-${index}-${message.timestamp}`,
+    role: message.role,
+    content: message.content,
+    timestamp: message.timestamp,
+    provider: message.provider as ChatProviderId | undefined,
+    model: message.model ?? undefined,
+    fallbackUsed: message.fallback_used,
+  }))
+}
+
+function shortDate(value: string): string {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
+}
+
 export default function ChatPage({ session, authReady, authAvailable, navigate, onSignOut }: ChatPageProps) {
   const [status, setStatus] = useState<ChatProviderStatus | null>(null)
   const [statusError, setStatusError] = useState<string | null>(null)
@@ -47,6 +72,11 @@ export default function ChatPage({ session, authReady, authAvailable, navigate, 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [allowFallback, setAllowFallback] = useState(false)
+  const [savedChats, setSavedChats] = useState<SavedChatSummary[]>([])
+  const [activeChat, setActiveChat] = useState<SavedChatRecord | null>(null)
+  const [historyBusy, setHistoryBusy] = useState(Boolean(session))
+  const [historyError, setHistoryError] = useState<string | null>(null)
+  const [exportBusy, setExportBusy] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -66,6 +96,28 @@ export default function ChatPage({ session, authReady, authAvailable, navigate, 
       })
       .catch((reason) => {
         if (active) setStatusError(reason instanceof Error ? reason.message : 'Provider status could not be loaded.')
+      })
+    return () => { active = false }
+  }, [session])
+
+  const refreshSavedChats = async () => {
+    const value = await api.listSavedChats()
+    setSavedChats(value.items)
+    return value.items
+  }
+
+  useEffect(() => {
+    if (!session) return
+    let active = true
+    api.listSavedChats()
+      .then((value) => {
+        if (active) setSavedChats(value.items)
+      })
+      .catch((reason) => {
+        if (active) setHistoryError(reason instanceof Error ? reason.message : 'Saved chats could not be loaded.')
+      })
+      .finally(() => {
+        if (active) setHistoryBusy(false)
       })
     return () => { active = false }
   }, [session])
@@ -90,9 +142,14 @@ export default function ChatPage({ session, authReady, authAvailable, navigate, 
     event?.preventDefault()
     const content = draft.trim()
     if (!content || busy || !provider?.configured || !model) return
+    const successfulMessages = messages.filter((message) => !message.failed)
+    if (successfulMessages.length >= 24) {
+      setError('This saved chat reached 24 messages. Start a new chat to continue.')
+      return
+    }
     const userMessage: DisplayMessage = { id: crypto.randomUUID(), role: 'user', content }
-    const requestHistory = [...messages.filter((message) => !message.failed), userMessage].slice(-24)
-    setMessages((current) => [...current, userMessage].slice(-24))
+    const requestHistory = [...successfulMessages, userMessage]
+    setMessages((current) => [...current, userMessage])
     setDraft('')
     setBusy(true)
     setError(null)
@@ -102,16 +159,16 @@ export default function ChatPage({ session, authReady, authAvailable, navigate, 
         model,
         requestHistory.map(({ role, content: text }) => ({ role, content: text })),
         allowFallback,
+        activeChat?.chat_id ?? null,
+        activeChat?.revision ?? null,
       )
-      const assistantMessage: DisplayMessage = {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: result.answer,
-        provider: result.provider,
-        model: result.model,
-        fallbackUsed: result.fallback_used,
+      setActiveChat(result.chat)
+      setMessages(displayedMessages(result.chat))
+      try {
+        await refreshSavedChats()
+      } catch (reason) {
+        setHistoryError(reason instanceof Error ? reason.message : 'The saved-chat list could not be refreshed.')
       }
-      setMessages((current) => [...current, assistantMessage].slice(-24))
     } catch (reason) {
       setMessages((current) => current.map((message) => (
         message.id === userMessage.id ? { ...message, failed: true } : message
@@ -119,6 +176,64 @@ export default function ChatPage({ session, authReady, authAvailable, navigate, 
       setError(reason instanceof Error ? reason.message : 'The chat request failed without a response.')
     } finally {
       setBusy(false)
+    }
+  }
+
+  const startNewChat = () => {
+    setActiveChat(null)
+    setMessages([])
+    setDraft('')
+    setError(null)
+  }
+
+  const openSavedChat = async (chatId: string) => {
+    if (busy || historyBusy) return
+    setHistoryBusy(true)
+    setHistoryError(null)
+    try {
+      const record = await api.getSavedChat(chatId)
+      setActiveChat(record)
+      setMessages(displayedMessages(record))
+      setError(null)
+      const configuredProvider = status?.providers.find((item) => item.id === record.last_provider && item.configured)
+      if (configuredProvider) {
+        setProviderId(configuredProvider.id)
+        const savedModel = configuredProvider.models.find((item) => item.id === record.last_model)
+        setModel(savedModel?.id ?? configuredProvider.models[0]?.id ?? '')
+      }
+    } catch (reason) {
+      setHistoryError(reason instanceof Error ? reason.message : 'The saved chat could not be opened.')
+    } finally {
+      setHistoryBusy(false)
+    }
+  }
+
+  const deleteActiveChat = async () => {
+    if (!activeChat || busy || historyBusy) return
+    if (!window.confirm('Delete this saved chat permanently?')) return
+    setHistoryBusy(true)
+    setHistoryError(null)
+    try {
+      await api.deleteSavedChat(activeChat.chat_id, activeChat.revision)
+      startNewChat()
+      await refreshSavedChats()
+    } catch (reason) {
+      setHistoryError(reason instanceof Error ? reason.message : 'The saved chat could not be deleted.')
+    } finally {
+      setHistoryBusy(false)
+    }
+  }
+
+  const exportActiveChat = async () => {
+    if (!activeChat || exportBusy) return
+    setExportBusy(true)
+    setHistoryError(null)
+    try {
+      await downloadSavedChatPdf(activeChat.chat_id)
+    } catch (reason) {
+      setHistoryError(reason instanceof Error ? reason.message : 'The chat PDF could not be created.')
+    } finally {
+      setExportBusy(false)
     }
   }
 
@@ -160,7 +275,7 @@ export default function ChatPage({ session, authReady, authAvailable, navigate, 
           <div className="max-w-3xl">
           <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.18em] text-warm-ink">Unchecked general model inference</p>
           <h1 className="mt-3 font-serif text-4xl leading-tight text-ink sm:text-5xl">Research assistant chat</h1>
-          <p className="mt-3 text-sm leading-6 text-muted sm:text-base">Ask general research questions using a configured AI provider. These replies are model output and are not evidence-checked.</p>
+          <p className="mt-3 text-sm leading-6 text-muted sm:text-base">Ask general research questions using a configured AI provider. Successful conversations are saved to your private account and can be exported as PDF. Replies are model output and are not evidence-checked.</p>
           </div>
           <div className="rounded-md border border-warm-ink/20 bg-warm/45 px-4 py-3 font-mono text-xs leading-5 text-warm-ink">Use chat to explore a question.<br />Use evidence review to check claims.</div>
         </div>
@@ -179,7 +294,28 @@ export default function ChatPage({ session, authReady, authAvailable, navigate, 
             </div>
           </section>
         ) : (
-          <section className="overflow-hidden rounded-lg border border-line bg-paper/90 shadow-card">
+          <div className="grid gap-5 lg:grid-cols-[18rem_minmax(0,1fr)]">
+          <aside className="h-fit rounded-lg border border-line bg-paper/90 p-4 shadow-card lg:sticky lg:top-28" aria-label="Saved chats">
+            <div className="flex items-center justify-between gap-3">
+              <div><p className="font-mono text-[0.64rem] font-black uppercase tracking-[0.16em] text-muted">Private history</p><h2 className="mt-1 font-serif text-2xl text-ink">Saved chats</h2></div>
+              <button type="button" className={secondaryButton} disabled={busy} onClick={startNewChat}>New</button>
+            </div>
+            <p className="mt-3 text-xs leading-5 text-muted">Successful turns save automatically under your signed-in account.</p>
+            {historyError && <div role="alert" className="mt-3 rounded-md border border-danger/25 bg-danger-soft px-3 py-2 text-xs font-bold text-danger">{historyError}</div>}
+            {historyBusy && <p role="status" className="mt-4 flex items-center gap-2 text-xs text-muted"><Spinner /> Loading saved chats…</p>}
+            {!historyBusy && savedChats.length === 0 && <p className="mt-4 rounded-md border border-dashed border-line p-3 text-xs leading-5 text-muted">No saved chats yet. Your first successful reply will appear here.</p>}
+            <div className="mt-4 max-h-[52vh] space-y-2 overflow-y-auto">
+              {savedChats.map((chat) => (
+                <button key={chat.chat_id} type="button" onClick={() => void openSavedChat(chat.chat_id)} disabled={busy || historyBusy} className={`w-full rounded-md border p-3 text-left transition ${activeChat?.chat_id === chat.chat_id ? 'border-accent bg-accent/10' : 'border-line bg-panel/60 hover:border-accent/50'}`}>
+                  <span className="block line-clamp-2 text-sm font-black text-ink">{chat.title}</span>
+                  <span className="mt-1 block text-[0.68rem] leading-4 text-muted">{chat.message_count} messages · {shortDate(chat.updated_at)}</span>
+                  <span className="mt-1 block truncate font-mono text-[0.62rem] text-muted">{chat.last_provider} · {chat.last_model}</span>
+                </button>
+              ))}
+            </div>
+          </aside>
+
+          <section className="min-w-0 overflow-hidden rounded-lg border border-line bg-paper/90 shadow-card">
             <div className="grid gap-4 border-b border-line bg-panel/70 p-4 md:grid-cols-[1fr_1fr_auto] md:items-end sm:p-5">
               <div>
                 <label htmlFor="chat-provider" className="text-sm font-black text-ink">AI provider</label>
@@ -193,7 +329,11 @@ export default function ChatPage({ session, authReady, authAvailable, navigate, 
                   {provider?.models.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
                 </select>
               </div>
-              <button type="button" className={secondaryButton} disabled={busy || messages.length === 0} onClick={() => { setMessages([]); setError(null) }}>Clear chat</button>
+              <div className="flex flex-wrap gap-2 md:justify-end">
+                <button type="button" className={secondaryButton} disabled={busy} onClick={startNewChat}>New chat</button>
+                <button type="button" className={secondaryButton} disabled={!activeChat || busy || exportBusy} onClick={() => void exportActiveChat()}>{exportBusy ? 'Exporting…' : 'Export PDF'}</button>
+                <button type="button" className={secondaryButton} disabled={!activeChat || busy || historyBusy} onClick={() => void deleteActiveChat()}>Delete</button>
+              </div>
               {status?.fallback_enabled && (
                 <label className="flex min-h-11 items-center gap-2 text-sm text-muted md:col-span-3">
                   <input type="checkbox" checked={allowFallback} onChange={(event) => setAllowFallback(event.target.checked)} />
@@ -236,12 +376,13 @@ export default function ChatPage({ session, authReady, authAvailable, navigate, 
               {error && <div role="alert" className="mb-3 rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm font-bold text-danger">{error}</div>}
               <label htmlFor="chat-message" className="sr-only">Message</label>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                <textarea id="chat-message" rows={3} maxLength={4000} className={fieldClass} value={draft} disabled={busy} placeholder="Ask a research question…" onChange={(event) => setDraft(event.target.value)} onKeyDown={handleKeyDown} />
-                <button type="submit" className={`${primaryButton} shrink-0 sm:min-w-28`} disabled={busy || !draft.trim() || !provider?.configured || !model}>{busy ? <><Spinner /> <span className="ml-2">Sending</span></> : 'Send'}</button>
+                <textarea id="chat-message" rows={3} maxLength={8000} className={fieldClass} value={draft} disabled={busy} placeholder="Ask a research question…" onChange={(event) => setDraft(event.target.value)} onKeyDown={handleKeyDown} />
+                <button type="submit" className={`${primaryButton} shrink-0 sm:min-w-28`} disabled={busy || !draft.trim() || !provider?.configured || !model || messages.filter((message) => !message.failed).length >= 24}>{busy ? <><Spinner /> <span className="ml-2">Sending</span></> : 'Send'}</button>
               </div>
-              <div className="mt-2 flex flex-wrap justify-between gap-2 text-xs text-muted"><span>Enter to send · Shift+Enter for a new line</span><span>{draft.length}/4000</span></div>
+              <div className="mt-2 flex flex-wrap justify-between gap-2 text-xs text-muted"><span>Enter to send · Shift+Enter for a new line · successful turns save automatically</span><span>{draft.length}/8000</span></div>
             </form>
           </section>
+          </div>
         )}
       </main>
     </div>

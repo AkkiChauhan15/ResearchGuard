@@ -244,10 +244,11 @@ separate unverified gate.
 The user separately authorized a general AI chat page after the phased evidence-review
 build. It lives at `/chat` in the existing React SPA and uses `/api/chat/providers` plus
 `/api/chat` in the existing FastAPI service. It is deliberately outside the canonical
-`Review` schema: chat history stays in browser memory, is never saved to Supabase, and
-cannot become evidence, an assessment, a decision, or an export. The interface and each
-assistant message state that output is not evidence-checked and point users back to the
-structured review when verification matters.
+`Review` schema: chat history cannot become evidence, an assessment, a decision, or a
+review export. The 2026-09-21 extension stores successful conversations separately in
+Supabase `saved_chats`, with owner-only RLS, optimistic revisions and explicit deletion.
+The interface, each assistant message and every chat PDF state that output is not
+evidence-checked and point users back to the structured review when verification matters.
 
 All chat routes require the same verified Supabase access token as live reviews. The
 backend applies a process-local per-user request limit, a 24-message/24,000-character
@@ -271,6 +272,19 @@ statuses. It is off by default. The later user authorization extends the same se
 providers to the structured evidence boundary through separate adapters and stricter
 schemas. Evidence calls still have no provider fallback, and the legacy OpenAI API
 evidence adapter remains disabled.
+
+`POST /api/chat` treats persistence as part of a successful turn. A new conversation
+begins with one user message. Continuing a saved chat requires its UUID, expected
+revision and an exact copy of its stored history followed by one new user message.
+FastAPI checks the saved-chat table before spending provider quota, appends the actual
+assistant provider/model provenance, then conditionally updates the expected revision.
+Concurrent or forged history returns a conflict instead of overwriting the record.
+
+Owner-scoped list/open/delete/PDF routes use the user's verified access token with
+PostgREST, retaining Supabase RLS enforcement without a privileged key. PDF generation
+runs in the bounded worker pool using the open-source ReportLab toolkit. It exports the
+canonical saved messages, timestamps and provider provenance with an unverified-output
+warning; it does not call a model or send account identity to a provider.
 
 ## Previous local-preview decision — historical record
 

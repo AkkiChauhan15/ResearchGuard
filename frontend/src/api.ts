@@ -13,6 +13,9 @@ import type {
   ChatProviderId,
   ChatProviderStatus,
   ChatResponse,
+  SavedChatList,
+  SavedChatRecord,
+  SavedChatSummary,
 } from './types'
 
 const sessionId = crypto.randomUUID()
@@ -96,11 +99,33 @@ export const api = {
   config: () => request<ApiConfig>('/api/config', {}, 'none'),
   authMe: () => request<AuthenticatedUser>('/api/auth/me', {}, 'required'),
   chatProviders: () => request<ChatProviderStatus>('/api/chat/providers', {}, 'required'),
-  chat: (provider: ChatProviderId, model: string, messages: ChatMessageInput[], allowFallback: boolean) =>
+  chat: (
+    provider: ChatProviderId,
+    model: string,
+    messages: ChatMessageInput[],
+    allowFallback: boolean,
+    chatId: string | null,
+    expectedRevision: number | null,
+  ) =>
     request<ChatResponse>('/api/chat', {
       method: 'POST',
-      body: JSON.stringify({ provider, model, messages, allow_fallback: allowFallback }),
+      body: JSON.stringify({
+        provider,
+        model,
+        messages,
+        allow_fallback: allowFallback,
+        chat_id: chatId,
+        expected_revision: expectedRevision,
+      }),
     }, 'required'),
+  listSavedChats: () => request<SavedChatList>('/api/chats', {}, 'required'),
+  getSavedChat: (chatId: string) => request<SavedChatRecord>(`/api/chats/${chatId}`, {}, 'required'),
+  deleteSavedChat: (chatId: string, expectedRevision: number) =>
+    request<{ deleted: SavedChatSummary }>(
+      `/api/chats/${chatId}?expected_revision=${expectedRevision}`,
+      { method: 'DELETE' },
+      'required',
+    ),
   createReview: (input: ReviewInput) =>
     request<Review>('/api/reviews', { method: 'POST', body: JSON.stringify(input) }, 'required'),
   createDemo: () => request<Review>('/api/reviews/demo', { method: 'POST' }, 'none'),
@@ -147,6 +172,30 @@ export const api = {
       { method: 'DELETE' },
       'required',
     ),
+}
+
+export async function downloadSavedChatPdf(chatId: string): Promise<void> {
+  let token: string
+  try {
+    token = (await getAccessToken(true))!
+  } catch (reason) {
+    throw new ApiError(reason instanceof Error ? reason.message : 'Sign in again before exporting.', 401)
+  }
+  let response: Response
+  try {
+    response = await fetch(apiUrl(`/api/chats/${chatId}/export.pdf`), {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+  } catch {
+    throw new ApiError('The backend service is unavailable. The PDF was not created.', 0)
+  }
+  if (!response.ok) throw new ApiError(await errorMessage(response), response.status)
+  const objectUrl = URL.createObjectURL(await response.blob())
+  const anchor = document.createElement('a')
+  anchor.href = objectUrl
+  anchor.download = `research-guard-chat-${chatId}.pdf`
+  anchor.click()
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000)
 }
 
 export async function downloadExport(review: Review, format: 'json' | 'txt'): Promise<void> {

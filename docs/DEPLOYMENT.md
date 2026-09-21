@@ -168,11 +168,13 @@ Perform these checks in order with public or synthetic text only:
 3. Open `/login` and `/signup`. Sign in with Google from each page, reload to confirm
    session restoration, then sign out.
    Also cancel one Google sign-in attempt and confirm the app remains signed out.
-4. Open `/chat`, confirm only configured providers show Available, send one public or
+4. Confirm hosted migration history contains `202609210001`. Open `/chat`, confirm only
+   configured providers show Available, send one public or
    synthetic question, ask one follow-up, and verify the reply names the actual provider
-   and model and says it is not evidence-checked. Check browser Network and confirm the
-   provider key is absent. Do not enable fallback until each candidate account has been
-   confirmed free/no-billing.
+   and model and says it is not evidence-checked. Reload, reopen the chat from **Saved
+   chats**, export its PDF, then delete the disposable chat. Check browser Network and
+   confirm the provider key is absent. Do not enable fallback until each candidate
+   account has been confirmed free/no-billing.
 5. Create one disposable email/password account, follow its confirmation email to
    `/account`, request a password reset, and follow the recovery link to
    `/update-password`. If the Free project's default sender cannot deliver to that
