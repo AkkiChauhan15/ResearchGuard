@@ -6,6 +6,7 @@ tokens, keys, passwords, record bodies, or account identifiers.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import subprocess
 from uuid import uuid4
@@ -14,6 +15,8 @@ import httpx
 from fastapi.testclient import TestClient
 
 from researchguard.api import create_app
+from researchguard.chat_persistence import SavedChatMessage, SupabaseChatRepository
+from researchguard.persistence import PersistenceNotFound
 from researchguard.settings import Settings
 
 
@@ -59,6 +62,47 @@ def sign_up(client: httpx.Client, url: str, key: str, label: str) -> str:
     if not isinstance(token, str) or not token:
         raise RuntimeError(f"create local identity {label}: no access token returned")
     return token
+
+
+async def verify_saved_chat_update(url: str, key: str, token_one: str, token_two: str) -> None:
+    repository = SupabaseChatRepository(url, key)
+    try:
+        messages = [
+            SavedChatMessage(role="user", content="Synthetic local chat question."),
+            SavedChatMessage(
+                role="assistant",
+                content="Synthetic local chat answer.",
+                provider="groq",
+                model="fixture-model",
+            ),
+        ]
+        created = await repository.create(token_one, messages)
+        messages.extend([
+            SavedChatMessage(role="user", content="Synthetic follow-up question."),
+            SavedChatMessage(
+                role="assistant",
+                content="Synthetic follow-up answer.",
+                provider="groq",
+                model="fixture-model",
+            ),
+        ])
+        updated = await repository.update(
+            token_one,
+            created.summary.chat_id,
+            created.summary.revision,
+            messages,
+        )
+        if updated.summary.revision != 2 or len(updated.messages) != 4:
+            raise RuntimeError("saved-chat follow-up did not persist the complete canonical history")
+        try:
+            await repository.get(token_two, created.summary.chat_id)
+        except PersistenceNotFound:
+            pass
+        else:
+            raise RuntimeError("another user opened the saved chat")
+        await repository.delete(token_one, created.summary.chat_id, updated.summary.revision)
+    finally:
+        await repository.close()
 
 
 def main() -> None:
@@ -217,6 +261,8 @@ def main() -> None:
         if after_delete.get("items") != []:
             raise RuntimeError("deleted saved review remains visible")
 
+    asyncio.run(verify_saved_chat_update(url, key, token_one, token_two))
+
     print(json.dumps({
         "status": "passed",
         "identity_provider": "local Supabase Auth email fixture; not Google OAuth",
@@ -229,6 +275,8 @@ def main() -> None:
         "forged_owner_field": "rejected",
         "stale_update": "rejected with local review retained",
         "canonical_saved_export": "matched",
+        "saved_chat_create_follow_up_delete": "passed through real PostgREST/RLS",
+        "saved_chat_cross_owner_read": "rejected",
     }, indent=2))
 
 

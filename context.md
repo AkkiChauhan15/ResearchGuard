@@ -88,6 +88,12 @@ ownership from `auth.uid()`. Migration `202609210001` is prepared but must not b
 described as applied until hosted migration history confirms it. PDF exports remain
 clearly labeled as unverified model output, not scientific evidence.
 
+The 2026-09-21 follow-up-chat failure was traced to the backend PATCH payload including
+immutable `schema_version`, which the authenticated role is intentionally not permitted
+to update. The repository now sends only mutable columns on continuation. A real local
+Supabase Auth/PostgREST/RLS create-follow-up-delete journey passed after the fix; hosted
+behavior still requires a backend redeploy and browser confirmation.
+
 Preserve working Pydantic schemas, retrieval adapters, evidence validation, curated
 demo sources, review decisions, and exports. Adapt framework/provider boundaries
 instead of rewriting the scientific review core. See `ARCHITECTURE.md` and

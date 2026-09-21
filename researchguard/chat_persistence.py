@@ -284,6 +284,11 @@ class SupabaseChatRepository:
         expected_revision: int,
         messages: list[SavedChatMessage],
     ) -> SavedChatRecord:
+        body = self._body(messages)
+        # schema_version is immutable and intentionally absent from the authenticated
+        # role's UPDATE column grant. Sending it unchanged still requires UPDATE
+        # privilege in Postgres, so PATCH only the mutable columns.
+        del body["schema_version"]
         try:
             response = await self.client.patch(
                 "/rest/v1/saved_chats",
@@ -293,7 +298,7 @@ class SupabaseChatRepository:
                     "select": ROW_COLUMNS,
                 },
                 headers=self._headers(access_token, write=True),
-                json=self._body(messages),
+                json=body,
             )
         except httpx.HTTPError:
             raise PersistenceUnavailable("Saved-chat service is unreachable. The new turn was not saved.") from None

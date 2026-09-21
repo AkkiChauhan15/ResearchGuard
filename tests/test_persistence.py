@@ -102,6 +102,49 @@ class RepositoryTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("email", captured["body"])
         await client.aclose()
 
+    async def test_saved_chat_update_sends_only_mutable_columns(self):
+        messages = [
+            SavedChatMessage(role="user", content="Synthetic question"),
+            SavedChatMessage(role="assistant", content="Synthetic answer", provider="groq", model="fixture-model"),
+            SavedChatMessage(role="user", content="Follow-up question"),
+            SavedChatMessage(role="assistant", content="Follow-up answer", provider="groq", model="fixture-model"),
+        ]
+        saved_id = str(uuid4())
+        captured = {}
+        expected = {
+            "id": saved_id,
+            "schema_version": 1,
+            "revision": 2,
+            "title": "Synthetic question",
+            "message_count": 4,
+            "last_provider": "groq",
+            "last_model": "fixture-model",
+            "created_at": "2026-09-21T00:00:00+00:00",
+            "updated_at": "2026-09-21T00:01:00+00:00",
+            "record": {"messages": [message.model_dump(mode="json") for message in messages]},
+        }
+
+        def handler(request: httpx.Request):
+            captured["body"] = json.loads(request.content)
+            return httpx.Response(200, json=[expected])
+
+        client = httpx.AsyncClient(base_url="https://fixture.supabase.co", transport=httpx.MockTransport(handler))
+        repository = SupabaseChatRepository(
+            "https://fixture.supabase.co",
+            "sb_publishable_fixture_value",
+            client=client,
+        )
+        saved = await repository.update("signed-user-jwt", saved_id, 1, messages)
+        self.assertEqual(saved.summary.revision, 2)
+        self.assertEqual(
+            set(captured["body"]),
+            {"title", "message_count", "last_provider", "last_model", "record"},
+        )
+        self.assertNotIn("schema_version", captured["body"])
+        self.assertNotIn("owner_id", captured["body"])
+        self.assertNotIn("revision", captured["body"])
+        await client.aclose()
+
     async def test_stale_update_and_cross_owner_empty_results_are_distinct(self):
         review = demo_review()
         saved_id = str(uuid4())

@@ -1576,3 +1576,41 @@ Status: **IMPLEMENTATION PASS LOCALLY; HOSTED MIGRATION AND BROWSER JOURNEY PEND
    in `docs/PERSISTENCE_SETUP.md`: save/reload/continue/export/delete as user A; verify
    user B and signed-out requests cannot access user A's chat; verify a stale revision
    returns HTTP 409.
+
+## 2026-09-21 — Saved-chat follow-up RLS repair
+
+Status: **FIXED AND VERIFIED AGAINST LOCAL SUPABASE; HOSTED REDEPLOY PENDING.**
+
+### Cause and repair
+
+- Reproduced the reported error through real local Supabase Auth, PostgREST and RLS:
+  initial chat creation returned HTTP 201, while the first continuation PATCH returned
+  HTTP 403 `permission denied for table saved_chats`.
+- The repository reused its insert body for updates, so it sent `schema_version` even
+  though the value was unchanged. The migration correctly makes that identity field
+  immutable and excludes it from the authenticated UPDATE column grant. PostgreSQL
+  therefore rejected the request before any model-specific behavior.
+- Changed saved-chat continuation to PATCH only `title`, `message_count`,
+  `last_provider`, `last_model` and `record`. Ownership, schema version, revision and
+  timestamps remain server/database authoritative. No RLS policy was weakened and no
+  new migration, privileged key or model-specific workaround was added.
+- Extended `scripts.verify_supabase_local` with a real saved-chat create, follow-up,
+  cross-owner denial and delete sequence, and added a unit regression asserting that
+  immutable columns can never re-enter the PATCH body.
+
+### Checks actually executed
+
+- Direct disposable PostgREST reproduction after the patch: create **201**, follow-up
+  update **200**, revision advanced from 1 to 2.
+- `.venv/bin/python -m scripts.verify_supabase_local`: **passed** with two real local
+  access tokens, including saved-chat create/follow-up/delete and cross-owner rejection.
+- `.venv/bin/python -m unittest discover -s tests -v`: **92/92 passed**.
+- Python compileall, `pip check`, and `git diff --check`: passed.
+
+### Remaining action
+
+- Redeploy the FastAPI/Render backend containing this code change. The frontend and
+  database migration do not need a new setting for this repair. After Render finishes,
+  reopen an existing saved chat and send a follow-up with each enabled provider; the
+  common persistence PATCH should now succeed. Hosted behavior is not claimed until
+  that redeploy and browser check complete.
