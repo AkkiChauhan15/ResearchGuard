@@ -60,12 +60,16 @@ The saved-chat migration prepared on 2026-09-21 is:
 
 `supabase/migrations/202609210001_create_saved_chats.sql`
 
-Choose the already-created Free project when `supabase link` prompts. On 2026-09-19, a
-fresh linked query confirmed both `202609190001` and `202609190002` in remote migration
-history. Do **not** push either migration again. Migration `202609210001` is prepared in
-this repository but has not been confirmed in hosted migration history. Review the push
-preview, apply it with `supabase db push`, and confirm that exact version in the final
-`supabase migration list`. Do not
+The Phase III normalized provider-assessment migration prepared on 2026-09-25 is:
+
+`supabase/migrations/202609250001_multi_provider_assessments.sql`
+
+Choose the already-created Free project when `supabase link` prompts. A read-only linked
+query on 2026-09-25 confirmed `202609190001`, `202609190002`, and `202609210001` in
+remote migration history. Do **not** push those versions again. Migration `202609250001`
+is applied and policy-tested only on the disposable local stack; it has not been applied
+to the hosted project. Review the push preview, apply it with `supabase db push`, and
+confirm that exact version in the final `supabase migration list`. Do not
 create the table manually in the Dashboard Table Editor or SQL Editor; current Supabase
 guidance warns that remote manual schema changes bypass migration history.
 
@@ -86,6 +90,15 @@ INSERT, UPDATE and DELETE policies. A trigger prevents ownership/identity change
 increments the revision for stale-update protection. Records are capped at 24 messages
 and 250,000 serialized bytes.
 
+The provider-assessment migration creates `public.multi_provider_assessments` as an
+owner-scoped projection of each explicitly saved review's canonical JSON. It stores the
+saved review/claim identity, provider, actual model, primary flag, structural label,
+qualitative confidence, quote-check result, source IDs, and creation time. A
+`SECURITY DEFINER` trigger derives rows only from an owned `saved_reviews` record; the
+browser cannot assign or change ownership. Forced RLS and separate SELECT, INSERT,
+UPDATE, and DELETE policies restrict every row to `auth.uid()`. This table does not
+autosave temporary reviews and does not send account identity to a provider.
+
 ## 3. Optional local database policy test
 
 The saved-review and profile pgTAP files are under `supabase/tests/`. Start the local
@@ -96,11 +109,12 @@ supabase test db
 .venv/bin/python -m scripts.verify_supabase_local
 ```
 
-On 2026-09-19 the policy suite passed 16/16 checks. The second command also passed with
-two disposable local identities, real asymmetric access tokens, PostgREST and FastAPI.
-Those results predate the new profile and chat migrations. Their source contracts pass
-automated tests, but the new chat pgTAP file must be run after the local stack applies
-`202609210001`.
+On 2026-09-25 all four pgTAP files passed 57 checks after the local stack applied every
+migration through `202609250001`. The provider-assessment checks cover trigger syncing,
+two-user isolation, forged owner rejection, signed-out denial, and cascade deletion.
+The separate two-user local Auth/PostgREST/FastAPI verifier passed previously with real
+asymmetric access tokens. These local checks do not establish hosted application or
+Google OAuth behavior.
 This does not replace the Google OAuth/hosted two-user browser check below.
 
 ## 4. Verify with two accounts after Auth is configured

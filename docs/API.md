@@ -33,7 +33,7 @@ and leaves the temporary working review intact.
 | Method and path | Request | HTTP 200 response |
 | --- | --- | --- |
 | `GET /api/health` | None | Service status and temporary-storage mode |
-| `GET /api/config` | None | Local mode, retention, selected evidence-provider state plus public auth availability; never credential values |
+| `GET /api/config` | None | Local mode, retention, selected provider plus safe availability/model state for every allowlisted evidence provider and public auth availability; never credential values |
 | `GET /api/auth/me` | Verified Supabase bearer token | Verified `user_id` and optional email |
 | `GET /api/chat/providers` | Verified bearer token | Safe configuration state, allowlisted models and fallback flag; never keys |
 | `POST /api/chat` | Bearer token plus `provider`, allowlisted `model`, 1–24 user/assistant `messages`, optional `allow_fallback`, and paired `chat_id`/`expected_revision` when continuing | Normalized answer plus the canonical saved chat; a new chat must start with one user message |
@@ -53,8 +53,9 @@ and leaves the temporary working review intact.
 | `PATCH /api/reviews/{review_id}/claims/{claim_id}` | `{"text": "1-12000 characters"}` | Updated `Review`; material edit resets that claim's assessment and decision and detaches old attempts |
 | `PATCH /api/reviews/{review_id}/context` | Complete existing `Context` object | Updated `Review`; a material context change resets every assessment/decision and detaches current attempts |
 | `POST /api/reviews/{review_id}/extraction` | No semantic body | Updated `Review`; existing provider service performs extraction |
-| `POST /api/reviews/{review_id}/claims/{claim_id}/retrievals` | `{"query": "1-500 characters"}` | Updated `Review` with attempt/access states and any validated source records |
+| `POST /api/reviews/{review_id}/claims/{claim_id}/retrievals` | `{"query": "1-500 characters"}` | Updated `Review` with attempt/access states, validated sources and publication-integrity provenance |
 | `POST /api/reviews/{review_id}/claims/{claim_id}/assessment` | No semantic body | Updated `Review`; expected provider/access failures are recorded as `assessment=null` plus `assessment_error` |
+| `POST /api/reviews/{review_id}/claims/{claim_id}/second-opinions` | Verified bearer token plus `{"provider":"groq|openrouter|nvidia|gemini"}` | Updated `Review` with a successful independently validated provider assessment or a visible failed attempt; only valid after the primary assessment completes |
 | `PUT /api/reviews/{review_id}/claims/{claim_id}/decision` | `{"decision": {"status": "pending|accepted|edited|rejected", "final_wording": "...", "notes": "..."}}` | Updated `Review`; the server derives accepted final wording and enforces assessment presence |
 | `GET /api/reviews/{review_id}/export?format=json` | Session header | Validated canonical JSON attachment |
 | `GET /api/reviews/{review_id}/export?format=txt` | Session header | Readable attachment containing the same complete canonical JSON record |
@@ -66,6 +67,17 @@ Missing credentials, unconfirmed free access, disallowed models, authentication 
 and quota exhaustion are explicit unavailable states. Extraction returns an error and
 assessment records the error on the claim. Provider failures never switch providers.
 The legacy OpenAI API selection remains rejected.
+
+Each current claim may contain `provider_assessments` and
+`second_opinion_attempts`. A provider assessment records its provider, returned model,
+primary flag, structural label (`supports`, `contradicts`, `uncertain`, or
+`insufficient`), qualitative uncalibrated confidence (`low`, `medium`, or `high`),
+quote-check result, exact source IDs, timestamp, and complete validated assessment.
+Attempts record the requested provider/model, timestamp, success/failure, and safe
+detail so an extra quota-consuming call or preflight rejection stays visible. The route
+rejects the primary provider, duplicate successful providers, demos, missing primary
+metadata, and providers that fail the existing credential/free/no-billing/model gates.
+There is no provider fallback or combined model-written verdict.
 
 `SavedReviewSummary` contains `saved_id`, canonical `review_id`, `schema_version`,
 `revision`, `mode`, `title`, `created_at` and `updated_at`. `SavedReviewRecord` adds the
@@ -82,17 +94,27 @@ and fallback provenance. The backend accepts no owner ID. Continuing a chat requ
 exact extension of its stored history and matching revision; stale or forged history
 receives HTTP 409 rather than overwriting the saved conversation.
 
+Every newly retrieved source includes `integrity`. Its status is `clean`, `retracted`,
+`correction`, `expression_of_concern`, `not_applicable`, or `check_failed`, with the
+check method, timestamp, outcome, detail and bounded notice links. PubMed relationships
+come from the source's EFetch XML; DOI fallback checks bounded Crossref update metadata.
+Older canonical records without this optional field remain readable and render as
+unavailable/not confirmed clean. `clean` is limited to the checked metadata and is not
+a scientific-quality verdict.
+
 ## Limits and concurrency
 
 Defaults are a one-hour lifetime, 24 process-local reviews, 5,000,000 bytes per
 canonical review, 100,000 bytes per HTTP request, 60 retrieval histories per review,
-and 30 recorded model runs per review. One asyncio lock serializes mutations of each
+and 30 recorded model attempts per review. A claim retains at most four provider
+assessments and eight second-opinion attempts. One asyncio lock serializes mutations of each
 review. A mutation operates on a deep copy, validates the complete review, then commits;
 failure or timeout leaves the canonical record unchanged.
 
 Synchronous retrieval, PDF parsing, provider calls, and export validation run outside
 the event loop in a bounded thread pool. The default pool limit is four. Retrieval has
-a 90-second request deadline and extraction/assessment have a 130-second deadline.
+a 90-second request deadline and extraction, primary assessment, and second-opinion
+assessment have a 130-second deadline.
 Timed-out worker functions cannot commit their private review copy. Use one Uvicorn
 worker because temporary records, locks, and NCBI throttling are process-local.
 
@@ -123,10 +145,13 @@ The built React preview is served from `http://127.0.0.1:8000` when
 `frontend/dist/index.html` exists. The pre-React interface remains at `/legacy`, and
 is also used at `/` if no React build is present. For development, Vite runs at
 `http://127.0.0.1:5173` and proxies relative `/api` requests to this FastAPI process.
-FastAPI serves the same SPA entry at `/login`, `/signup`, `/forgot-password`,
-`/update-password`, `/account`, and `/chat`; Vercel uses equivalent exact rewrites. These are
-client-side account views. Backend authorization still occurs on `/api` through the
-verified Supabase bearer token.
+FastAPI serves the same SPA entry at `/`, `/about`, `/dashboard`, `/reviews`,
+`/review/new`, `/review/{review_id}`, `/demo/cyto-id`, `/chat`, `/login`, `/signup`,
+`/forgot-password`, `/update-password`, and `/account`; Vercel uses equivalent rewrites.
+These are client-side views, not additional JSON APIs. Backend authorization still
+occurs on `/api` through the verified Supabase bearer token. `/` is marketing-only,
+`/dashboard` is the signed-in hub, and the five-step review strip is restricted to the
+new-review, active-review and demonstration workspaces.
 The permitted
 cross-origin frontend defaults are exactly `http://127.0.0.1:5173` and
 `http://localhost:5173`, with credentials disabled. These environment variables may
@@ -144,6 +169,7 @@ change local limits without putting secrets in source control:
 | `RESEARCHGUARD_RETRIEVAL_TIMEOUT_SECONDS` | `90` |
 | `RESEARCHGUARD_ASSESSMENT_TIMEOUT_SECONDS` | `130` |
 | `NCBI_EMAIL` | unset optional NCBI contact |
+| `CROSSREF_MAILTO` | unset; optional Crossref polite-pool contact, falling back to `NCBI_EMAIL` when present |
 | `LLM_PROVIDER` | `groq` default; accepts `groq`, `openrouter`, `nvidia`, or retained `gemini`; no fallback; legacy OpenAI is disabled |
 | `GROQ_API_KEY` | unset server-only secret used by chat and, when selected, structured review |
 | `GROQ_FREE_TIER_CONFIRMED` | `false`; required for Groq after confirming free access with no billing |

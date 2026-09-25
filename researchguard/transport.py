@@ -8,7 +8,7 @@ from urllib.parse import urljoin, urlsplit
 
 MAX_BYTES = 2_000_000
 HOSTS = {'eutils.ncbi.nlm.nih.gov', 'pubmed.ncbi.nlm.nih.gov',
-         'pmc.ncbi.nlm.nih.gov', 'www.enzo.com'}
+         'pmc.ncbi.nlm.nih.gov', 'www.enzo.com', 'api.crossref.org'}
 
 
 class FetchError(ValueError):

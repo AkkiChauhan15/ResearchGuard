@@ -17,8 +17,11 @@ def _gemini_provider():
     return GeminiProvider
 
 
-def provider_status() -> ProviderStatus:
-    provider = os.environ.get("LLM_PROVIDER", "groq").strip().lower()
+PROVIDER_IDS = ("groq", "openrouter", "nvidia", "gemini")
+
+
+def provider_status_for(provider: str) -> ProviderStatus:
+    provider = provider.strip().lower()
     if provider in {"openai", "legacy_openai"}:
         return ProviderStatus(
             provider="legacy_openai",
@@ -38,12 +41,16 @@ def provider_status() -> ProviderStatus:
     raise AssertionError("Unreachable provider selection.")
 
 
+def provider_status() -> ProviderStatus:
+    return provider_status_for(os.environ.get("LLM_PROVIDER", "groq"))
+
+
 def configured() -> bool:
     return provider_status().available
 
 
-def selected_provider() -> ModelProvider:
-    status = provider_status()
+def selected_provider(provider: str | None = None) -> ModelProvider:
+    status = provider_status_for(provider) if provider is not None else provider_status()
     if not status.available:
         raise ValueError(status.detail)
     if status.provider == "gemini":
@@ -58,8 +65,9 @@ def generate_structured(
     *,
     system_instruction: str,
     task_instruction: str,
+    provider: str | None = None,
 ):
-    return selected_provider().generate(
+    return selected_provider(provider).generate(
         output_type,
         task,
         payload,
@@ -71,6 +79,8 @@ def generate_structured(
 __all__ = [
     "configured",
     "generate_structured",
+    "PROVIDER_IDS",
     "provider_status",
+    "provider_status_for",
     "selected_provider",
 ]

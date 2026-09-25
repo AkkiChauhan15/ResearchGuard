@@ -23,6 +23,13 @@ gate for inaccessible/no-results cases, rather than asking the model to invent a
 Model mode defaults to a bounded two-case batch (`--max-cases 2`). Run development
 batches first and never increase the batch to consume free quota or avoid a rate limit.
 
+Phase III second opinions are excluded from `--run-model` evaluation batches. They are
+explicit per-user manual actions made only after a completed primary assessment, and
+each action consumes a separate provider request that is recorded in review provenance.
+Do not double the development or held-out batch by invoking another provider. If the
+second provider is unavailable or its free quota is exhausted, record that failed attempt
+and stop; do not enable billing or substitute another provider.
+
 A human reviewer should grade actual outputs with these separate counts:
 
 | Measure | Numerator / denominator | What to inspect |

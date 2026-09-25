@@ -4,6 +4,8 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .integrity import IntegrityResult
+
 
 def now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -21,6 +23,9 @@ Status = Literal["Supported within the stated context", "Partially supported",
                  "Conflicting evidence", "Contradicted by retrieved evidence",
                  "Insufficient evidence found"]
 Access = Literal["ok", "no_results", "partial_access", "rate_limited", "fetch_failed", "parse_failed"]
+ProviderId = Literal["groq", "openrouter", "nvidia", "gemini"]
+ComparisonLabel = Literal["supports", "contradicts", "uncertain", "insufficient"]
+AssessmentConfidence = Literal["low", "medium", "high"]
 
 
 class Context(Strict):
@@ -59,6 +64,7 @@ class Source(Strict):
     content_sha256: str
     passages: list[Passage]
     limitations: list[str] = Field(default_factory=list)
+    integrity: IntegrityResult | None = None
 
 
 class Attempt(Strict):
@@ -89,6 +95,27 @@ class Assessment(Strict):
     next_verification_step: str
 
 
+class ProviderAssessment(Strict):
+    assessment_id: str = Field(default_factory=lambda: uid("assessment"))
+    provider: ProviderId
+    model: str = Field(min_length=1, max_length=200)
+    is_primary: bool
+    label: ComparisonLabel
+    confidence: AssessmentConfidence
+    quote_check_passed: bool
+    source_ids: list[str] = Field(default_factory=list, max_length=24)
+    created_at: str = Field(default_factory=now)
+    assessment: Assessment
+
+
+class SecondOpinionAttempt(Strict):
+    provider: ProviderId
+    requested_model: str = Field(min_length=1, max_length=200)
+    outcome: Literal["succeeded", "failed"]
+    timestamp: str = Field(default_factory=now)
+    detail: str = Field(min_length=1, max_length=2000)
+
+
 class Decision(Strict):
     status: Literal["pending", "accepted", "edited", "rejected"] = "pending"
     final_wording: str = Field(default="", max_length=12000)
@@ -105,6 +132,8 @@ class Claim(Strict):
     missing_context: list[str] = Field(default_factory=list)
     assessment: Assessment | None = None
     assessment_error: str | None = None
+    provider_assessments: list[ProviderAssessment] = Field(default_factory=list, max_length=4)
+    second_opinion_attempts: list[SecondOpinionAttempt] = Field(default_factory=list, max_length=8)
     decision: Decision = Field(default_factory=Decision)
 
 

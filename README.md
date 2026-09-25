@@ -2,9 +2,10 @@
 
 > **Phase H status:** the local public demonstration, current public-source retrieval,
 > application checks, and real local Supabase Auth/PostgREST/RLS paths are verified.
-> The linked hosted Supabase project reports migrations `202609190001` and
-> `202609190002` applied. Saved-chat migration `202609210001` is prepared but is not
-> yet confirmed applied. Google
+> The linked hosted Supabase project reports migrations `202609190001`,
+> `202609190002`, and `202609210001` applied. The Phase III multi-provider assessment
+> migration `202609250001` is applied and policy-tested locally but is not applied to
+> the hosted project. Google
 > OAuth, email delivery/recovery and the hosted two-user check remain unverified. The
 > earlier Gemini check reached `gemini-3.8-flash`, but generation was blocked by repeated
 > HTTP 503 high-demand responses. Structured evidence tasks now support explicitly
@@ -13,6 +14,19 @@
 > the latest checked commit, but its generated deployment URL is
 > currently protected by Vercel SSO; public reachability and the hosted journey remain
 > unverified. No billing or paid fallback has been used.
+
+> **Phase I routing status (2026-09-22):** the dedicated Home, About, Dashboard,
+> New Review, review workspace, CYTO-ID demo, chat and account routes are verified in
+> the local Vite/FastAPI setup. A headless Chrome smoke confirmed that the home page has
+> no workflow controls and the five-step strip appears only on review/demo routes.
+> Direct FastAPI SPA route fallbacks, type checking, lint and the production build also
+> pass. These source changes have not been confirmed on the hosted deployment. Phase II
+> is now also locally complete: all six publication-integrity states pass fixtures,
+> the source-card states pass the browser journey, and bounded live PubMed/Crossref
+> checks found the documented retraction notices. Phase III is also locally complete:
+> mocked-provider, HTTP, browser, export, and local RLS checks pass. No live second-provider
+> model call was made, and none of these Phase I–III source changes has been confirmed on
+> the hosted deployment.
 
 A local research-review application for making claim-to-evidence relationships,
 experimental context, and limitations inspectable. Start with the clearly labeled
@@ -31,6 +45,9 @@ reply remains labeled as unverified model output and separate from evidence revi
 - **Validated provenance:** reviews retain source IDs, URLs, access levels, hashes,
   locations, retrieval attempts, timestamps, requested/returned models and deterministic
   quotation checks.
+- **Publication-notice checks:** PubMed correction/retraction relationships are parsed
+  from the retrieved EFetch record. Crossref is queried only as a DOI fallback after no
+  PMID-level notice is found. Failed checks remain visibly unconfirmed rather than clean.
 - **Public demonstration:** the curated CYTO-ID example works without an account and is
   labeled as demonstration content rather than a live result.
 - **Private accounts and records:** Supabase authentication protects live model actions,
@@ -38,6 +55,10 @@ reply remains labeled as unverified model output and separate from evidence revi
 - **Multi-provider AI:** Groq is the default structured-review provider; OpenRouter-free,
   NVIDIA NIM and retained Gemini adapters are explicitly selectable. Evidence requests
   never silently switch provider or use a paid fallback.
+- **Explicit second opinions:** after a primary assessment, a signed-in user may make one
+  visible extra call to another configured free/no-billing provider over the same evidence.
+  The interface compares label, qualitative confidence, and quote validation directly;
+  it does not ask a model to synthesize a combined verdict.
 - **Saved AI chat:** successful turns save automatically with timestamps and actual
   provider/model provenance. Users can list, reopen, continue and delete their chats.
 - **Exports:** reviews export as canonical JSON or readable TXT. Saved chats export as
@@ -112,8 +133,8 @@ autosaves: opening a saved record creates a temporary working copy, and changes 
 only after choosing **Update saved copy**.
 
 That no-autosave rule applies to evidence reviews. AI chat has a separate user-authorized
-policy: successful turns save automatically after sign-in. Apply migration
-`202609210001` before enabling hosted chat. If saving fails, the request reports the
+policy: successful turns save automatically after sign-in. Hosted migration history now
+contains `202609210001`. If saving fails, the request reports the
 failure rather than presenting the response as saved.
 
 The optional account profile is stored separately from reviews and contains only name,
@@ -170,23 +191,33 @@ are available at http://127.0.0.1:8000/api/docs while the server is running.
 
 ## Use the review
 
-1. Paste public or synthetic text, choose intended use, and optionally add context
+1. Start at `/`. Choose **Start a review** to open `/review/new` (or `/login` when
+   signed out), or choose **Open the demo** to open the public `/demo/cyto-id` example.
+   After sign-in, `/dashboard` is the hub for new work, saved reviews and saved chats.
+2. On `/review/new`, paste public or synthetic text, choose intended use, and optionally add context
    and up to three supported source URLs. Initial claims are editable sentence
    segments, explicitly **not AI extraction**. With a configured key, use AI extraction.
-2. Inspect/edit claims and missing-context questions. Editing invalidates previous
+   The created draft opens at `/review/<review_id>`.
+3. Inspect/edit claims and missing-context questions. Editing invalidates previous
    evidence links, assessments, and decisions for that claim. Re-extraction replaces
    the claim set; export previous work first if you need it.
-3. Enter concise search terms with organism/assay context, then retrieve evidence.
+4. Enter concise search terms with organism/assay context, then retrieve evidence.
    Two PubMed queries include a limitation/contradiction/replication variant, with
    at most three records per query. Inspect the search/access history and relevance.
-4. Use “Assess retrieved evidence” to call the configured model. With missing
+5. Use “Assess retrieved evidence” to call the configured model. With missing
    credentials, failed retrieval, or invalid output, no assessment is fabricated.
    A quote membership check does not establish scientific entailment.
-5. Inspect passages and original sources. Accept the suggestion, save edited wording,
+6. After a primary assessment, a signed-in user may explicitly request a second opinion
+   from another available provider. This makes one additional provider call over the
+   exact same source IDs. Each output is validated independently, and only differences
+   in label, qualitative uncalibrated confidence, or quote-check result trigger the
+   structural disagreement warning.
+7. Inspect passages and original sources. Accept the suggestion, save edited wording,
    reject, or reset to pending. Use a decision button to record notes before exporting.
-6. Download JSON or the readable TXT review. TXT also contains the complete canonical
+8. Download JSON or the readable TXT review. TXT also contains the complete canonical
    record so provenance is not lost. Signed-in users may explicitly save, reopen,
-   update, export or delete their own records after the Phase G migration is applied.
+   update, export or delete their own records from `/dashboard` or `/reviews` after the
+   Phase G migration is applied. Evidence reviews still never autosave.
 
 ## Supported public sources
 
@@ -204,6 +235,13 @@ are available at http://127.0.0.1:8000/api/docs while the server is running.
 inspection. The current 28-page manual supplies 22 complete pages within the
 45,000-character evidence budget. Later pages are explicitly outside that extract.
 
+PubMed and PMC publication sources carry a deterministic integrity result: `clean`,
+`retracted`, `correction`, `expression_of_concern`, `not_applicable`, or `check_failed`.
+Each result records the method, timestamp, outcome and notice links. `clean` means only
+that no relevant notice was found in the checked PubMed/Crossref metadata at that time;
+it is not proof that a paper is correct. Manufacturer documents are `not_applicable`.
+This check is limited to PubMed/Crossref-indexed notices and is not exhaustive.
+
 The product identity in a source does not identify the reagent actually used. An
 unspecified reagent triggers a question; the software does not guess a catalog number.
 Other URLs are rejected before fetching. Redirect destinations and DNS addresses are
@@ -218,9 +256,11 @@ PMC/body extracts and manual extracts are bounded; this is not an exhaustive rev
 npm run typecheck --prefix frontend
 npm run lint --prefix frontend
 npm run build --prefix frontend
+npm run test:comparison --prefix frontend
 node --check web/app.js
 node --check scripts/browser_react_smoke.cjs
 .venv/bin/python -m scripts.evaluate
+.venv/bin/python -m scripts.verify_integrity_live
 supabase test db
 .venv/bin/python -m scripts.verify_supabase_local
 ```
@@ -307,6 +347,9 @@ and hosted integrations remain unverified.
 
 - [NCBI E-utilities parameters and response formats](https://www.ncbi.nlm.nih.gov/books/NBK25499/)
 - [PMC approved retrieval services and reuse limitations](https://pmc.ncbi.nlm.nih.gov/tools/developers/)
+- [NCBI PubMed related-article XML guidance](https://www.ncbi.nlm.nih.gov/books/NBK179288/)
+- [Crossref Retraction Watch metadata](https://www.crossref.org/documentation/retrieve-metadata/retraction-watch/)
+- [Crossref REST access and current request limits](https://www.crossref.org/documentation/retrieve-metadata/rest-api/access-and-authentication/)
 - OpenAI references were inspected for the previous candidate implementation. They
   are not active runtime requirements; current target references are recorded in
   `MIGRATION_PLAN.md`.

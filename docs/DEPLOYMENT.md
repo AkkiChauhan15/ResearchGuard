@@ -48,6 +48,7 @@ temporary drafts, locks, and source throttling are process-local.
 SUPABASE_URL=https://<PROJECT_REF>.supabase.co
 SUPABASE_PUBLISHABLE_KEY=sb_publishable_<PROJECT_VALUE>
 NCBI_EMAIL=<YOUR_CONTACT_EMAIL>
+CROSSREF_MAILTO=<YOUR_CONTACT_EMAIL>
 LLM_PROVIDER=groq
 GROQ_API_KEY=<YOUR_EXISTING_SERVER_SIDE_KEY>
 GROQ_FREE_TIER_CONFIRMED=true
@@ -168,7 +169,9 @@ Perform these checks in order with public or synthetic text only:
 3. Open `/login` and `/signup`. Sign in with Google from each page, reload to confirm
    session restoration, then sign out.
    Also cancel one Google sign-in attempt and confirm the app remains signed out.
-4. Confirm hosted migration history contains `202609210001`. Open `/chat`, confirm only
+4. Confirm hosted migration history contains `202609210001` and apply pending
+   `202609250001` through the reviewed CLI migration workflow before testing saved
+   provider comparisons. Open `/chat`, confirm only
    configured providers show Available, send one public or
    synthetic question, ask one follow-up, and verify the reply names the actual provider
    and model and says it is not evidence-checked. Reload, reopen the chat from **Saved
@@ -180,8 +183,11 @@ Perform these checks in order with public or synthetic text only:
    `/update-password`. If the Free project's default sender cannot deliver to that
    address, record this check as blocked rather than changing to a paid service.
 6. Sign in again. Create a live review, edit a claim, retrieve sources, run assessment,
-   make a decision, explicitly save, reload/open it, export it, and delete a disposable
-   record.
+   and explicitly request a second opinion from another provider only if that provider's
+   exact account is confirmed free/no-billing. Confirm the UI shows the extra call,
+   provider/model, qualitative uncalibrated confidence, quote-check result, and only an
+   exact structural mismatch warning. Make a decision, explicitly save, reload/open it,
+   export it, and delete a disposable record.
 7. Repeat saved-review and optional-profile access with a second test user. Each account must list
    only its own records; a copied record UUID from the other user must return not found.
 8. Inspect Render logs for errors, but do not log or paste access tokens, review bodies,

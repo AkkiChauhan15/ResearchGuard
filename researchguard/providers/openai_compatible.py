@@ -15,7 +15,7 @@ from ..schemas import ModelRun
 from .base import ProviderStatus
 
 
-PROMPT_VERSION = "researchguard-2026-09-20-compatible-v1"
+PROMPT_VERSION = "researchguard-2026-09-25-compatible-v2"
 MAX_INPUT_BYTES = 120_000
 MAX_OUTPUT_BYTES = 64_000
 MAX_OUTPUT_TOKENS = {"extraction": 2_048, "assessment": 4_096}

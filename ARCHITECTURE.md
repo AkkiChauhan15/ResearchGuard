@@ -94,6 +94,17 @@ paragraphs. A PMCID, successful HTTP response, article element, or empty body el
 is insufficient. Exact passages remain unchanged and locations describe their actual
 abstract, XML paragraph, HTML block, or physical PDF page positions.
 
+Phase II adds a deterministic publication-notice result to each new source record.
+PubMed `CommentsCorrectionsList` is parsed from the EFetch XML already used to build a
+PubMed source. If no relevant PMID-level relationship is present and a DOI exists, the
+bounded fallback checks Crossref `updated-by` and `update-to` metadata. Direct PMC
+records first check their PMID when available. Manufacturer and synthetic sources are
+explicitly not applicable. Transport, parse, rate-limit or malformed-response failures
+become `check_failed`, never `clean`, and do not discard the successfully retrieved
+source. Each result carries check method, timestamp, outcome, details and notice links
+through canonical JSON/TXT exports and saved-review snapshots. This covers indexed
+notices only and is not an exhaustive publication-integrity service.
+
 `MIGRATION_PLAN.md` contains the code-backed inventory, existing API contract,
 migration risks, completed Phase B–H decisions, the Phase E provider decision, and account
 setup prerequisites. The user supplied phases sequentially, one phase at a time. Phase B checks verify the FastAPI HTTP layer and
@@ -238,6 +249,36 @@ under `supabase/migrations` is present in both local and linked hosted migration
 histories. Its policies passed a 16-check local pgTAP run and a real two-user local
 Auth/PostgREST/FastAPI check. Hosted Google-authenticated owner isolation remains a
 separate unverified gate.
+
+## Phase III — explicit multi-provider assessment comparison
+
+A second opinion is an authenticated, explicit mutation available only after the
+primary assessment has completed. The request names one different allowlisted provider;
+the backend evaluates that provider through the same credential, configured-model, and
+operator-confirmed free/no-billing gates used for direct provider selection. It sends
+the exact current source IDs already used by the primary assessment. There is no
+automatic call, fallback, page-load call, or provider-selected combined verdict.
+
+Primary and secondary outputs share one structured schema and pass independently through
+the existing source-ID, exact quotation, and location validator before becoming current
+review state. Each stored result records provider, returned model, primary flag,
+structural label, qualitative uncalibrated confidence, quote-check result, source IDs,
+timestamp, and complete assessment. Failed attempts remain visible with their requested
+provider/model and safe failure detail while leaving the primary result unchanged.
+Material claim/context edits and fresh retrieval invalidate every provider assessment
+and earlier attempt tied to the old evidence.
+
+The React comparison is deterministic: it compares only `label`, `confidence`, and
+`quote_check_passed`. Prose differences never trigger the warning, while each changed
+field is named directly. The confidence value is a model self-rating for comparison;
+it is not a calibrated probability, truth score, or scientific confidence interval.
+
+Migration `202609250001` creates an owner-scoped normalized projection of provider
+assessments from explicitly saved canonical reviews. A database trigger derives the
+rows from the owned `saved_reviews` record, and forced RLS plus separate owner policies
+cover SELECT, INSERT, UPDATE, and DELETE. It passed the disposable local stack and
+pgTAP suite on 2026-09-25. It is prepared but not applied to the hosted project, so
+hosted persistence and live second-provider model behavior remain unverified.
 
 ## Authenticated general chat extension — 2026-09-20
 

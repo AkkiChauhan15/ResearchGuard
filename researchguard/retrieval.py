@@ -1,37 +1,22 @@
 import hashlib
 import json
-import os
 import re
 import selectors
 import shutil
 import subprocess
 import tempfile
-import threading
 import time
 import xml.etree.ElementTree as ET
 from html.parser import HTMLParser
-from urllib.parse import urlencode, urlsplit
+from urllib.parse import urlsplit
 
+from .integrity import check_source_integrity, complete_pubmed_integrity, integrity_from_pubmed_article, not_applicable_result
+from .ncbi import ncbi
 from .schemas import Attempt, Decision, Passage, Source, uid
 from .transport import FetchError, fetch, validate_url
 
-BASE = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/'
 PRODUCT = 'https://www.enzo.com/product/cyto-id-autophagy-detection-kit/'
 MANUAL = 'https://www.enzo.com/wp-content/uploads/2023/01/ENZ-51031_insert.pdf'
-_ncbi_lock = threading.Lock()
-_last_request = 0.0
-
-
-def ncbi(endpoint, params):
-    global _last_request
-    params = {**params, 'tool': 'ResearchGuardAI'}
-    if os.getenv('NCBI_EMAIL'):
-        params['email'] = os.environ['NCBI_EMAIL']
-    # Keep below three requests/second even without a key, across this process.
-    with _ncbi_lock:
-        time.sleep(max(0, .36 - (time.monotonic() - _last_request)))
-        _last_request = time.monotonic()
-        return fetch(BASE + endpoint + '?' + urlencode(params))
 
 
 def text(node):
@@ -73,7 +58,9 @@ def pubmed_records(data, run, expected_pmid=None):
         date_node = article.find('./MedlineCitation/Article/Journal/JournalIssue/PubDate')
         date = ' '.join(text(n) for n in date_node) if date_node is not None else None
         authors = [' '.join(filter(None, [text(a.find('ForeName')), text(a.find('LastName')), text(a.find('CollectiveName'))])) for a in article.findall('./MedlineCitation/Article/AuthorList/Author')]
-        sources.append(Source(retrieval_run_id=run, url=f'https://pubmed.ncbi.nlm.nih.gov/{pmid}/', category='pubmed', title=text(article.find('./MedlineCitation/Article/ArticleTitle')) or 'Title unavailable', authors=authors, date=date, doi=identifiers.get('doi'), pmid=pmid, pmcid=identifiers.get('pmc'), access_level='abstract' if passages else 'metadata', content_sha256=digest(data), passages=passages, limitations=['Abstract only; full text and methods have not been reviewed.'] if passages else ['No accessible abstract; metadata alone cannot establish support.']))
+        source = Source(retrieval_run_id=run, url=f'https://pubmed.ncbi.nlm.nih.gov/{pmid}/', category='pubmed', title=text(article.find('./MedlineCitation/Article/ArticleTitle')) or 'Title unavailable', authors=authors, date=date, doi=identifiers.get('doi'), pmid=pmid, pmcid=identifiers.get('pmc'), access_level='abstract' if passages else 'metadata', content_sha256=digest(data), passages=passages, limitations=['Abstract only; full text and methods have not been reviewed.'] if passages else ['No accessible abstract; metadata alone cannot establish support.'])
+        source.integrity = complete_pubmed_integrity(source, integrity_from_pubmed_article(article))
+        sources.append(source)
     if expected_pmid is not None and not sources:
         raise FetchError(f'PubMed response did not contain requested PMID {expected_pmid}.', 'parse_failed')
     return sources
@@ -151,7 +138,7 @@ def product_record(data, run, url, headers):
         raise FetchError('No readable product text.', 'parse_failed')
     visible_version = next((line for line in lines if re.fullmatch(r'Last modified:\s+.+', line, re.IGNORECASE)), None)
     document_version = visible_version or (('HTTP Last-Modified: ' + headers['Last-Modified']) if headers.get('Last-Modified') else None)
-    return Source(retrieval_run_id=run, url=url, category='manufacturer', title=title, access_level='product document', document_version=document_version, content_sha256=digest(data), passages=passages[:160], limitations=['Product web page, not a complete manual review; extracted HTML blocks may include site navigation.', 'HTML text-block locations refer to this hashed response and may change when the official page changes.'])
+    return Source(retrieval_run_id=run, url=url, category='manufacturer', title=title, access_level='product document', document_version=document_version, content_sha256=digest(data), passages=passages[:160], limitations=['Product web page, not a complete manual review; extracted HTML blocks may include site navigation.', 'HTML text-block locations refer to this hashed response and may change when the official page changes.'], integrity=not_applicable_result())
 
 
 def pdf_text(data):
@@ -212,7 +199,8 @@ def manual_record(data, run, headers):
                   limitations=['Text extraction only; diagrams and tables require visual inspection of the original PDF.',
                                'Physical PDF pages count from the cover; printed page labels may differ.',
                                'Extraction is limited to 30 physical pages and 45,000 characters of complete pages; later material may be omitted.',
-                               'Product identity in a document does not establish which reagent the researcher actually used.'])
+                               'Product identity in a document does not establish which reagent the researcher actually used.'],
+                  integrity=not_applicable_result())
 
 
 def classify_url(url):
@@ -235,7 +223,9 @@ def retrieve_url(url, run):
         return pubmed_records(data, run, expected_pmid=identifier)
     if kind == 'pmc':
         data, _, _ = ncbi('efetch.fcgi', {'db':'pmc','id':identifier.removeprefix('PMC'),'retmode':'xml'})
-        return [pmc_record(data, run, identifier)]
+        source = pmc_record(data, run, identifier)
+        source.integrity = check_source_integrity(source)
+        return [source]
     if url == MANUAL:
         data, final_url, headers = fetch(url, allowed_types={'application/pdf'})
         if final_url != MANUAL:
@@ -284,6 +274,8 @@ def retrieve(review, claim_id, query):
         raise ValueError('Enter 1–500 characters of search terms.')
     claim = get_claim(review, claim_id)
     claim.assessment, claim.assessment_error, claim.decision = None, None, Decision()
+    claim.provider_assessments = []
+    claim.second_opinion_attempts = []
     # Previous attempts remain inspectable but are not silently merged with a new run.
     for attempt in review.attempts:
         if attempt.claim_id == claim_id:

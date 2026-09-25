@@ -1,7 +1,7 @@
 # Research Guard AI — Project context
 
-Version: 2.1
-Prepared: 2026-09-15; provider direction updated 2026-09-20
+Version: 2.2
+Prepared: 2026-09-15; multi-provider assessment direction updated 2026-09-25
 Purpose: Reference for the coding agent implementing the agreed phased build.
 
 ## Read this first
@@ -84,8 +84,8 @@ Successful user/assistant turns are automatically saved in a separate Supabase
 review schema. Users can list, reopen, continue, export and delete their own chats.
 Each assistant message retains its actual provider/model and fallback flag. Revision
 checks prevent stale history overwrites, and row-level security derives immutable
-ownership from `auth.uid()`. Migration `202609210001` is prepared but must not be
-described as applied until hosted migration history confirms it. PDF exports remain
+ownership from `auth.uid()`. Migration `202609210001` was later confirmed in hosted
+migration history on 2026-09-25. PDF exports remain
 clearly labeled as unverified model output, not scientific evidence.
 
 The 2026-09-21 follow-up-chat failure was traced to the backend PATCH payload including
@@ -93,6 +93,43 @@ immutable `schema_version`, which the authenticated role is intentionally not pe
 to update. The repository now sends only mutable columns on continuation. A real local
 Supabase Auth/PostgREST/RLS create-follow-up-delete journey passed after the fix; hosted
 behavior still requires a backend redeploy and browser confirmation.
+
+On 2026-09-22 the user authorized Phase I of the next staged change: split the React
+interface into dedicated application routes without changing backend review contracts,
+storage rules or schemas. Local code and browser checks now verify a marketing-only
+`/`, public `/about` and `/demo/cyto-id`, signed-in `/dashboard`, and review workspaces
+at `/review/new` and `/review/{id}`. Login restoration defaults to `/dashboard`; review
+and chat save rules remain unchanged. The hosted deployment has not been checked for
+these source changes. At completion of that routing work, Phase II and Phase III had
+not started and could not be inferred from Phase I alone.
+
+On 2026-09-22 the user authorized Phase II: deterministic retraction, correction and
+expression-of-concern checks attached to source provenance. PubMed notice relationships
+must be parsed from existing EFetch XML before any fallback; Crossref may be used only
+as a bounded DOI fallback. `check_failed` and `not_applicable` must stay distinct from
+`clean`, and the UI must state that PubMed/Crossref notice coverage is not exhaustive.
+This phase adds no model calls, database migration, billing or provider fallback.
+Local fixture, build and browser checks passed. A bounded live PubMed EFetch confirmed
+PMID `38510612` has `RetractionIn` notice PMID `38868598`; a bounded live Crossref lookup
+for DOI `10.1177/1758835920922055` returned publisher and Retraction Watch `updated-by`
+retraction assertions pointing to DOI `10.1177/17588359231172420`. Hosted behavior is
+unverified.
+
+On 2026-09-25 the user authorized Phase III: an explicit second-provider opinion after
+a completed primary evidence assessment. The second provider must pass the existing
+allowlist, credential, and operator-confirmed free/no-billing gates; it never runs
+automatically and never replaces the primary result. Both outputs use the same retrieved
+source IDs and the same deterministic source, quotation, and location validation. The
+UI compares only `label`, qualitative uncalibrated `confidence`, and
+`quote_check_passed`; prose differences alone do not produce a disagreement warning,
+and no model writes a combined verdict. Every attempt records the provider, model,
+time, outcome, and visible quota-impact note. Local fixture, HTTP, browser, export, and
+database policy checks passed. Migration `202609250001` is applied to the disposable
+local Supabase stack and passed pgTAP, but is not applied to the hosted project. A
+read-only migration-history query on 2026-09-25 confirmed that `202609210001` is now
+applied remotely. No live second-provider model call or hosted Phase III journey has
+been verified, no paid service or fallback was used, and optional Phase IV has not
+started.
 
 Preserve working Pydantic schemas, retrieval adapters, evidence validation, curated
 demo sources, review decisions, and exports. Adapt framework/provider boundaries
@@ -128,7 +165,7 @@ Inspect the repository before describing its state. Do not infer that the applic
 | Target deliverable | Working web application with evidence-linked reviews and exports. |
 | Framework and hosting | FastAPI backend plus a Vite React/TypeScript/Tailwind frontend. Vercel successfully deployed the SPA commit; its generated URL is currently SSO-protected. The user reports Render deployment, but its URL and health are unverified. |
 | Existing implementation | FastAPI/Uvicorn backend, React/TypeScript/Tailwind SPA, preserved legacy interface, process-local transient store, and reusable Pydantic/core modules. Verify against code and tests before claiming behavior. |
-| Authentication and saving | Supabase supports Google and enabled email/password account pages, with backend token verification and owner binding for transient live reviews. Phase G adds explicit saved-review CRUD and versioned RLS. The review/profile migrations are applied; local two-user saved-review RLS/token behavior passed. A new owner-only saved-chat migration is prepared but not yet applied or live-verified. Google OAuth, email delivery/recovery, hosted profile/chat RLS behavior and hosted authenticated two-user behavior remain unverified. Unsaved review drafts stay transient. |
+| Authentication and saving | Supabase supports Google and enabled email/password account pages, with backend token verification and owner binding for transient live reviews. Phase G adds explicit saved-review CRUD and versioned RLS. The review, profile, and saved-chat migrations are confirmed in hosted migration history; local two-user saved-review RLS/token behavior passed. The Phase III normalized multi-provider-assessment migration is applied and policy-tested only on the disposable local stack. Google OAuth, email delivery/recovery, hosted profile/chat/multi-provider RLS behavior and hosted authenticated two-user behavior remain unverified. Unsaved review drafts stay transient. |
 | API keys and account access | Gemini key/model metadata access was verified on 2026-09-19 without displaying the key, but generation remained blocked by HTTP 503. Non-Gemini provider keys are reported by the user as configured in the deployed chat environment but are absent from the local environment, so live structured generation through them remains unverified here. Never display secrets. |
 | Model choices | Groq `openai/gpt-oss-20b` is the default structured extraction/assessment provider. `openrouter/free`, approved NVIDIA NIM models, and Gemini remain explicitly selectable. There is no evidence-provider fallback. Each provider remains unavailable until its key and required free/no-billing gate are present. The legacy OpenAI API adapter remains disabled. |
 | Cost boundary | Free tiers only. No billing activation, purchases, paid services, upgrades, or paid fallback. |

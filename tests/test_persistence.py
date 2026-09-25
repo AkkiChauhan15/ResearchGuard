@@ -271,6 +271,37 @@ class MigrationContractTests(unittest.TestCase):
         self.assertIn("user one cannot forge chat owner_id", rls_test)
         self.assertIn("signed-out clients cannot read saved chats", rls_test)
 
+    def test_multi_provider_migration_has_owner_only_list_contract(self):
+        migration = (ROOT / "supabase/migrations/202609250001_multi_provider_assessments.sql").read_text()
+        normalized = " ".join(migration.lower().split())
+        self.assertIn("create table if not exists public.multi_provider_assessments", normalized)
+        for column in (
+            "provider text not null",
+            "model text not null",
+            "is_primary boolean not null",
+            "label text not null",
+            "confidence text not null",
+            "quote_check_passed boolean not null",
+            "created_at timestamptz not null",
+        ):
+            self.assertIn(column, normalized)
+        self.assertIn("alter table public.multi_provider_assessments enable row level security", normalized)
+        self.assertIn("alter table public.multi_provider_assessments force row level security", normalized)
+        for operation in ("select", "insert", "update", "delete"):
+            self.assertIn(f"on public.multi_provider_assessments for {operation} to authenticated", normalized)
+        self.assertGreaterEqual(normalized.count("(select auth.uid()) = owner_id"), 5)
+        self.assertIn("new.owner_id is distinct from old.owner_id", normalized)
+        self.assertIn("sync_saved_review_provider_assessments", normalized)
+        self.assertIn("jsonb_array_elements", normalized)
+
+        rls_test = (ROOT / "supabase/tests/004_multi_provider_assessments_rls.test.sql").read_text().lower()
+        self.assertIn("saved canonical list synchronizes two provider assessments", rls_test)
+        self.assertIn("user two cannot read user one provider assessments", rls_test)
+        self.assertIn("user two cannot update user one provider assessments", rls_test)
+        self.assertIn("user two cannot delete user one provider assessments", rls_test)
+        self.assertIn("user two cannot forge provider-assessment owner_id", rls_test)
+        self.assertIn("signed-out clients cannot read provider assessments", rls_test)
+
 
 if __name__ == "__main__":
     unittest.main()

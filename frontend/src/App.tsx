@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import AuthPages, { type AuthPageRoute } from './AuthPages'
-import { BrandLockup, WorkflowStrip } from './Brand'
+import { WorkflowStrip } from './Brand'
 import ChatPage from './ChatPage'
+import SiteHeader from './SiteHeader'
 import { api, downloadExport, downloadSavedExport } from './api'
+import { structuralDisagreementFields } from './assessmentComparison'
 import {
   clearAuthReturn,
   clearLocalSession,
@@ -23,7 +25,10 @@ import type {
   Decision,
   ExperimentalContext,
   IntendedUse,
+  ProviderAssessment,
+  ProviderId,
   Review,
+  SavedChatSummary,
   SavedReviewSummary,
   Source,
 } from './types'
@@ -117,6 +122,47 @@ function ListBlock({ title, items }: { title: string; items: string[] }) {
   )
 }
 
+function IntegrityBadge({ source }: { source: Source }) {
+  const result = source.integrity
+  if (!result) {
+    return <div className="mt-4 rounded-md border border-warm-ink/25 bg-warm/55 p-3 text-sm leading-5 text-warm-ink"><strong>Integrity check unavailable</strong> — this older record is not confirmed clean.</div>
+  }
+  const styles = {
+    clean: 'border-line bg-deep/55 text-muted',
+    correction: 'border-warm-ink/30 bg-warm/65 text-warm-ink',
+    retracted: 'border-danger/35 bg-danger-soft text-danger',
+    expression_of_concern: 'border-danger/35 bg-danger-soft text-danger',
+    not_applicable: 'border-line bg-canvas text-muted',
+    check_failed: 'border-warm-ink/30 bg-warm/55 text-warm-ink',
+  }[result.status]
+  const method = result.checked_via === 'pubmed' ? 'PubMed record' : result.checked_via === 'crossref' ? 'Crossref record' : 'record'
+  const labels = {
+    clean: `No retraction indicators found (${method} checked ${result.checked_at})`,
+    correction: 'Correction or clarification notice found',
+    retracted: 'Retraction notice found',
+    expression_of_concern: 'Expression of concern found',
+    not_applicable: 'Integrity check not applicable to this source type',
+    check_failed: 'Integrity check unavailable — not confirmed clean',
+  }[result.status]
+  return (
+    <div className={`mt-4 rounded-md border p-3 text-sm leading-5 ${styles}`}>
+      <p className="font-black">{labels}</p>
+      {result.status !== 'clean' && <p className="mt-1 text-xs leading-5">{result.detail}</p>}
+      {result.checks.length > 1 && <p className="mt-1 text-xs leading-5">Checks recorded: {result.checks.map((check) => `${check.method} ${check.outcome} at ${check.checked_at}`).join('; ')}.</p>}
+      {result.notices.length > 0 && (
+        <ul className="mt-2 space-y-2">
+          {result.notices.map((notice, index) => (
+            <li key={`${notice.relation}-${notice.identifier ?? index}`}>
+              <span>{notice.label}</span>
+              {notice.url && <a className="ml-2 font-black underline underline-offset-4" href={notice.url} target="_blank" rel="noreferrer">Open notice</a>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 function SourceCard({ source }: { source: Source }) {
   return (
     <article className="rounded-lg border border-line bg-panel p-4 shadow-[inset_0_1px_0_rgba(78,222,163,0.05)] sm:p-5">
@@ -138,6 +184,7 @@ function SourceCard({ source }: { source: Source }) {
       >
         Open original source <ExternalIcon />
       </a>
+      <IntegrityBadge source={source} />
       {source.limitations.length > 0 && (
         <div className="mt-4 rounded-lg bg-warm/65 p-3">
           <p className="text-xs font-black uppercase tracking-wider text-warm-ink">Access limitations</p>
@@ -164,17 +211,44 @@ function SourceCard({ source }: { source: Source }) {
   )
 }
 
-type RunReviewAction = (label: string, action: () => Promise<Review>, success: string) => Promise<void>
+type RunReviewAction = (label: string, action: () => Promise<Review>, success: string) => Promise<Review | null>
 
 interface ClaimCardProps {
   review: Review
   claim: Claim
   index: number
   busy: boolean
+  assessmentProviders: ApiConfig['assessment_providers']
   runReviewAction: RunReviewAction
 }
 
-function ClaimCard({ review, claim, index, busy, runReviewAction }: ClaimCardProps) {
+const providerNames: Record<ProviderId, string> = {
+  groq: 'Groq',
+  openrouter: 'OpenRouter Free',
+  nvidia: 'NVIDIA NIM',
+  gemini: 'Gemini',
+}
+
+function ProviderResultCard({ result, role }: { result: ProviderAssessment; role: 'Primary assessment' | 'Second opinion' }) {
+  return (
+    <article className="rounded-lg border border-line bg-panel p-4">
+      <p className="font-mono text-[0.66rem] font-black uppercase tracking-[0.16em] text-accent">{role}</p>
+      <p className="mt-2 break-words text-sm font-black text-ink">{providerNames[result.provider]} · {result.model}</p>
+      <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
+        <div><dt className="text-xs font-bold uppercase text-muted">Label</dt><dd className="mt-1 font-black text-ink">{result.label}</dd></div>
+        <div><dt className="text-xs font-bold uppercase text-muted">Model confidence</dt><dd className="mt-1 font-black text-ink">{result.confidence} <span className="font-normal text-muted">(uncalibrated)</span></dd></div>
+        <div><dt className="text-xs font-bold uppercase text-muted">Quote check</dt><dd className="mt-1 font-black text-ink">{result.quote_check_passed ? 'Passed' : 'Failed'}</dd></div>
+      </dl>
+      <details className="mt-4">
+        <summary className="min-h-10 py-2 text-sm font-black text-accent">Read this provider’s complete assessment</summary>
+        <p className="mt-2 text-sm leading-6 text-ink">{result.assessment.explanation}</p>
+        <p className="mt-3 text-xs leading-5 text-muted">Suggested wording: {result.assessment.suggested_wording}</p>
+      </details>
+    </article>
+  )
+}
+
+function ClaimCard({ review, claim, index, busy, assessmentProviders, runReviewAction }: ClaimCardProps) {
   const [editText, setEditText] = useState(claim.text)
   const [query, setQuery] = useState(
     [claim.text, review.original_input.context.organism_model, review.original_input.context.assay]
@@ -189,6 +263,12 @@ function ClaimCard({ review, claim, index, busy, runReviewAction }: ClaimCardPro
   const currentSources = review.sources.filter((source) => currentSourceIds.has(source.source_id))
   const hasLimitedAccess = attempts.some((attempt) => attempt.access_state !== 'ok')
   const noReadableSources = attempts.length > 0 && currentSources.every((source) => source.passages.length === 0)
+  const primaryProviderAssessment = claim.provider_assessments.find((item) => item.is_primary)
+  const secondProviderAssessments = claim.provider_assessments.filter((item) => !item.is_primary)
+  const usedProviders = new Set(claim.provider_assessments.map((item) => item.provider))
+  const secondProviderOptions = assessmentProviders.filter(
+    (item) => item.provider !== primaryProviderAssessment?.provider && !usedProviders.has(item.provider),
+  )
 
   const decision = (status: Decision['status']): Decision => ({
     status,
@@ -342,6 +422,75 @@ function ClaimCard({ review, claim, index, busy, runReviewAction }: ClaimCardPro
 
         {claim.assessment ? (
           <section className="space-y-6" aria-labelledby={`assessment-${claim.claim_id}`}>
+            {primaryProviderAssessment && (
+              <section className="rounded-xl border border-line bg-canvas p-4 sm:p-5" aria-labelledby={`provider-comparison-${claim.claim_id}`}>
+                <h4 id={`provider-comparison-${claim.claim_id}`} className="font-serif text-2xl text-ink">Provider comparison</h4>
+                <p className="mt-2 text-sm leading-6 text-muted">A second opinion is optional and makes one additional model call against the exact same retrieved evidence. Its qualitative confidence is an uncalibrated model self-rating, not a probability that the claim is true.</p>
+                {secondProviderAssessments.map((second) => {
+                  const differences = structuralDisagreementFields(primaryProviderAssessment, second)
+                  return (
+                    <div key={second.assessment_id} className="mt-5">
+                      {differences.length > 0 && (
+                        <p role="status" className="mb-3 rounded-md border border-warm-ink/30 bg-warm/65 p-3 text-sm font-black text-warm-ink">
+                          ⚠ Providers disagree on {differences.join(', ')}
+                        </p>
+                      )}
+                      <div className="grid gap-3 lg:grid-cols-2">
+                        <ProviderResultCard result={primaryProviderAssessment} role="Primary assessment" />
+                        <ProviderResultCard result={second} role="Second opinion" />
+                      </div>
+                    </div>
+                  )
+                })}
+                {secondProviderAssessments.length === 0 && (
+                  <ProviderResultCard result={primaryProviderAssessment} role="Primary assessment" />
+                )}
+                {review.mode === 'live' && secondProviderOptions.length > 0 && (
+                  <div className="mt-5">
+                    <p className="text-sm font-black text-ink">Optional additional call</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {secondProviderOptions.filter((item) => item.available).map((item) => (
+                        <button
+                          key={item.provider}
+                          type="button"
+                          disabled={busy}
+                          className={secondaryButton}
+                          onClick={() => runReviewAction(
+                            `Requesting a second opinion from ${providerNames[item.provider]}…`,
+                            () => api.secondOpinion(review.review_id, claim.claim_id, item.provider),
+                            `Second-opinion attempt with ${providerNames[item.provider]} finished. Inspect its recorded result or failure before deciding.`,
+                          )}
+                        >
+                          Get a second opinion from {providerNames[item.provider]}
+                        </button>
+                      ))}
+                    </div>
+                    {secondProviderOptions.every((item) => !item.available) && (
+                      <p className="mt-3 text-sm leading-6 text-muted">No different evidence provider currently passes the server’s configured free-access gate.</p>
+                    )}
+                    {secondProviderOptions.filter((item) => !item.available).map((item) => (
+                      <p key={item.provider} className="mt-2 text-xs leading-5 text-muted">{providerNames[item.provider]} unavailable: {item.detail}</p>
+                    ))}
+                  </div>
+                )}
+                {claim.second_opinion_attempts.length > 0 && (
+                  <div className="mt-5 space-y-2" aria-label="Second-opinion call history">
+                    {claim.second_opinion_attempts.map((attempt) => (
+                      <p
+                        key={`${attempt.provider}-${attempt.timestamp}`}
+                        role={attempt.outcome === 'failed' ? 'alert' : 'status'}
+                        className={cx(
+                          'rounded-md border p-3 text-xs leading-5',
+                          attempt.outcome === 'failed' ? 'border-danger/25 bg-danger-soft text-danger' : 'border-line bg-soft text-muted',
+                        )}
+                      >
+                        <strong>{providerNames[attempt.provider]} second-opinion call {attempt.outcome}</strong> · {attempt.requested_model} · {attempt.timestamp}<br />{attempt.detail}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
             <div>
               <span className="inline-flex rounded-full border border-accent/25 bg-accent/10 px-3 py-1.5 font-mono text-xs font-black uppercase tracking-wider text-accent">
                 {claim.assessment.status}
@@ -433,6 +582,7 @@ function ClaimCard({ review, claim, index, busy, runReviewAction }: ClaimCardPro
           <section aria-labelledby={`sources-${claim.claim_id}`}>
             <h4 id={`sources-${claim.claim_id}`} className="font-serif text-2xl text-ink">Current source records</h4>
             <p className="mt-2 text-sm leading-6 text-muted">Access level describes what was retrieved. It does not certify that a source supports the claim.</p>
+            <p className="mt-2 text-xs leading-5 text-muted">Publication-integrity checks cover notices indexed by PubMed or Crossref only. They are not exhaustive and do not establish that an unflagged paper is correct.</p>
             <div className="mt-4 space-y-3">{currentSources.map((source) => <SourceCard key={source.source_id} source={source} />)}</div>
           </section>
         )}
@@ -454,8 +604,199 @@ function EmptyReview() {
   )
 }
 
+function PageFooter() {
+  return (
+    <footer className="mt-10 border-t border-line bg-deep/80">
+      <div className="mx-auto flex max-w-[94rem] flex-wrap justify-between gap-3 px-4 py-6 text-xs leading-5 text-muted sm:px-7">
+        <span className="font-mono uppercase tracking-wider text-accent">Research Guard AI</span>
+        <span>Research support with researcher judgment at every step.</span>
+        <span className="font-mono">Temporary drafts · explicit private review saves</span>
+      </div>
+    </footer>
+  )
+}
+
+function HomePage({
+  onStart,
+  onDemo,
+}: {
+  onStart: () => void
+  onDemo: () => void
+}) {
+  return (
+    <main id="main-content" tabIndex={-1} className="mx-auto grid min-h-[calc(100vh-11rem)] max-w-[94rem] place-items-center px-4 py-12 sm:px-7">
+      <section className="relative w-full overflow-hidden rounded-lg border border-line bg-paper/75 px-6 py-14 shadow-card sm:px-10 sm:py-20 lg:px-16">
+        <div aria-hidden="true" className="absolute -right-24 -top-32 size-96 rounded-full bg-accent/8 blur-3xl" />
+        <div className="relative max-w-4xl">
+          <SectionLabel>Evidence before conclusion</SectionLabel>
+          <h1 className="mt-5 font-serif text-5xl leading-[0.98] tracking-tight text-ink sm:text-7xl lg:text-8xl">
+            Check the evidence.<br /><span className="italic text-accent">Keep the qualifications.</span>
+          </h1>
+          <p className="mt-7 max-w-2xl text-base leading-7 text-muted sm:text-xl sm:leading-8">Separate what was observed from what was inferred. Inspect source access and limitations, then record your own conclusion.</p>
+          <div className="mt-9 flex flex-wrap gap-3">
+            <button type="button" className={`${primaryButton} gap-2`} onClick={onStart}>Start a review <ArrowIcon /></button>
+            <button type="button" className={`${secondaryButton} gap-2`} onClick={onDemo}>Open the demo <ArrowIcon /></button>
+          </div>
+          <p className="mt-5 max-w-2xl text-xs leading-5 text-muted">The public demonstration is predefined and clearly labeled. Live reviews require sign-in and use only the explicitly configured provider.</p>
+        </div>
+      </section>
+    </main>
+  )
+}
+
+function AboutPage() {
+  const documents = [
+    ['API contract', 'docs/API.md'],
+    ['Evaluation protocol', 'docs/EVALUATION.md'],
+    ['Feature verification', 'docs/FEATURE_VERIFICATION.md'],
+  ] as const
+  return (
+    <main id="main-content" tabIndex={-1} className="mx-auto max-w-5xl px-4 py-10 sm:px-7 sm:py-14">
+      <SectionLabel>Purpose, boundaries and provenance</SectionLabel>
+      <h1 className="mt-4 font-serif text-5xl leading-tight text-ink sm:text-6xl">Research support you can inspect.</h1>
+      <p className="mt-5 max-w-3xl text-lg leading-8 text-muted">Research Guard connects a claim to retrieved passages, access limits, experimental context, model provenance and the researcher’s final decision. A paper’s existence or a matching passage does not by itself establish that a claim is supported.</p>
+      <div className="mt-10 grid gap-5 md:grid-cols-2">
+        <section className="rounded-lg border border-line bg-paper p-6 shadow-card">
+          <h2 className="font-serif text-3xl text-ink">What it does</h2>
+          <ul className="mt-4 space-y-3 text-sm leading-6 text-muted">
+            <li>• Separates observations from interpretations and keeps scientific qualifications visible.</li>
+            <li>• Preserves source IDs, URLs, access levels, exact passages, locations, hashes and timestamps.</li>
+            <li>• Records the requested and returned model while deterministic source and quotation checks remain authoritative.</li>
+            <li>• Lets researchers accept, edit or reject suggestions and export the canonical record.</li>
+          </ul>
+        </section>
+        <section className="rounded-lg border border-line bg-paper p-6 shadow-card">
+          <h2 className="font-serif text-3xl text-ink">What it does not establish</h2>
+          <ul className="mt-4 space-y-3 text-sm leading-6 text-muted">
+            <li>• It does not certify that a paper is correct or that evidence generalizes across organisms, assays or conditions.</li>
+            <li>• It does not provide clinical diagnosis, treatment advice, regulatory assurance or a comprehensive literature review.</li>
+            <li>• No accuracy, time-saving, adoption, clinical or regulatory claims have been measured.</li>
+            <li>• Human scientific review remains necessary.</li>
+            <li>• Publication-integrity checks cover PubMed/Crossref-indexed notices only and are not exhaustive.</li>
+          </ul>
+        </section>
+        <section className="rounded-lg border border-line bg-paper p-6 shadow-card">
+          <h2 className="font-serif text-3xl text-ink">Provider and privacy policy</h2>
+          <p className="mt-4 text-sm leading-6 text-muted">Provider selection is explicit. Evidence requests never silently switch providers or use a paid fallback. Unsaved review drafts remain temporary; saving a review is an explicit action. Configured model actions send the selected public or synthetic input and retrieved passages to the selected external provider. Provider keys remain server-side.</p>
+        </section>
+        <section className="rounded-lg border border-line bg-paper p-6 shadow-card">
+          <h2 className="font-serif text-3xl text-ink">Verification records</h2>
+          <p className="mt-4 text-sm leading-6 text-muted">Implementation, fixture, live and blocked states are recorded separately. These repository documents describe the actual contracts and known limits.</p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            {documents.map(([label, path]) => (
+              <a key={path} className={secondaryButton} href={`https://github.com/AkkiChauhan15/ResearchGuard/blob/main/${path}`} target="_blank" rel="noreferrer">{label} <ExternalIcon /></a>
+            ))}
+          </div>
+        </section>
+      </div>
+    </main>
+  )
+}
+
+interface SavedReviewsPanelProps {
+  reviews: SavedReviewSummary[]
+  loading: boolean
+  error: string | null
+  busy: boolean
+  configured: boolean
+  activeSaved: SavedReviewSummary | null
+  refresh: () => void
+  open: (review: SavedReviewSummary) => void
+  exportRecord: (review: SavedReviewSummary, format: 'json' | 'txt') => void
+  deleteRecord: (review: SavedReviewSummary) => void
+}
+
+function SavedReviewsPanel({ reviews, loading, error, busy, configured, activeSaved, refresh, open, exportRecord, deleteRecord }: SavedReviewsPanelProps) {
+  return (
+    <section className="rounded-lg border border-line bg-paper p-5 shadow-card sm:p-6" aria-labelledby="saved-reviews-title">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div><SectionLabel>Private records</SectionLabel><h2 id="saved-reviews-title" className="mt-2 font-serif text-3xl text-ink">Saved reviews</h2></div>
+        <button type="button" className={secondaryButton} disabled={busy || loading || !configured} onClick={refresh}>Refresh</button>
+      </div>
+      <p className="mt-3 text-sm leading-6 text-muted">Opening creates a temporary working copy. Changes are stored only when you choose Update saved copy.</p>
+      {loading && <p role="status" className="mt-4 text-sm text-muted">Loading saved reviews…</p>}
+      {error && <p role="alert" className="mt-4 text-sm font-bold text-danger">{error}</p>}
+      {!configured && <p role="status" className="mt-4 rounded-md border border-warm-ink/20 bg-warm/55 p-3 text-sm text-warm-ink">Saved-review storage is unavailable. Unsaved drafts remain temporary.</p>}
+      {!loading && !error && configured && reviews.length === 0 && <p className="mt-4 rounded-md border border-dashed border-line p-3 text-sm text-muted">No reviews have been explicitly saved.</p>}
+      <div className="mt-4 grid gap-3">
+        {reviews.map((saved) => (
+          <article key={saved.saved_id} className="rounded-md border border-line bg-panel p-4">
+            <p className="break-words text-sm font-black text-ink">{saved.title}</p>
+            <p className="mt-1 text-xs text-muted">{saved.mode} · revision {saved.revision} · schema {saved.schema_version}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button type="button" className={quietButton} disabled={busy || activeSaved?.saved_id === saved.saved_id} onClick={() => open(saved)}>Open</button>
+              <button type="button" className={quietButton} disabled={busy} onClick={() => exportRecord(saved, 'json')}>JSON</button>
+              <button type="button" className={quietButton} disabled={busy} onClick={() => exportRecord(saved, 'txt')}>TXT</button>
+              <button type="button" className={`${quietButton} text-danger`} disabled={busy} onClick={() => deleteRecord(saved)}>Delete saved copy</button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function DashboardPage({
+  session,
+  config,
+  configError,
+  savedReviewsPanel,
+  savedChats,
+  chatsLoading,
+  chatsError,
+  navigate,
+}: {
+  session: Session | null
+  config: ApiConfig | null
+  configError: boolean
+  savedReviewsPanel: ReactNode
+  savedChats: SavedChatSummary[]
+  chatsLoading: boolean
+  chatsError: string | null
+  navigate: (path: string) => void
+}) {
+  if (!session) {
+    return (
+      <main id="main-content" tabIndex={-1} className="mx-auto grid min-h-[32rem] max-w-5xl place-items-center px-4 py-10 text-center sm:px-7">
+        <section className="max-w-xl rounded-lg border border-line bg-paper p-8 shadow-card">
+          <h1 className="font-serif text-4xl text-ink">Sign in to open your dashboard</h1>
+          <p className="mt-4 text-sm leading-6 text-muted">Saved reviews and chats belong to the verified account. The curated demonstration remains public.</p>
+          <div className="mt-6 flex flex-wrap justify-center gap-3"><button className={primaryButton} onClick={() => navigate('/login?next=/dashboard')}>Sign in</button><button className={secondaryButton} onClick={() => navigate('/demo/cyto-id')}>Open demo</button></div>
+        </section>
+      </main>
+    )
+  }
+  return (
+    <main id="main-content" tabIndex={-1} className="mx-auto max-w-[94rem] px-4 py-9 sm:px-7 sm:py-12">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div><SectionLabel>Signed-in research hub</SectionLabel><h1 className="mt-3 font-serif text-5xl text-ink">Dashboard</h1><p className="mt-3 text-sm leading-6 text-muted">Start a review or reopen records saved under this account.</p></div>
+        <button type="button" className={`${primaryButton} gap-2`} onClick={() => navigate('/review/new')}>New review <ArrowIcon /></button>
+      </div>
+      <section aria-label="Service status" className="mt-7 grid gap-3 sm:grid-cols-3">
+        <div className="rounded-md border border-line bg-panel p-4"><p className="font-mono text-[0.62rem] uppercase text-muted">Evidence provider</p><p className="mt-1 text-sm font-black text-ink">{configError ? 'Status unavailable' : config?.model_configured ? `${config.model_provider} configured` : 'Unavailable'}</p></div>
+        <div className="rounded-md border border-line bg-panel p-4"><p className="font-mono text-[0.62rem] uppercase text-muted">Saved reviews</p><p className="mt-1 text-sm font-black text-ink">{config?.persistence_configured ? 'Connection configured' : 'Unavailable'}</p></div>
+        <div className="rounded-md border border-line bg-panel p-4"><p className="font-mono text-[0.62rem] uppercase text-muted">Saved chats</p><p className="mt-1 text-sm font-black text-ink">{config?.chat_persistence_configured ? 'Connection configured' : 'Unavailable'}</p></div>
+      </section>
+      <div className="mt-6 grid items-start gap-6 xl:grid-cols-2">
+        {savedReviewsPanel}
+        <section className="rounded-lg border border-line bg-paper p-5 shadow-card sm:p-6" aria-labelledby="saved-chats-title">
+          <div className="flex flex-wrap items-start justify-between gap-3"><div><SectionLabel>Unchecked assistant history</SectionLabel><h2 id="saved-chats-title" className="mt-2 font-serif text-3xl text-ink">Saved chats</h2></div><button className={secondaryButton} onClick={() => navigate('/chat')}>Open AI chat</button></div>
+          <p className="mt-3 text-sm leading-6 text-muted">Chat output is unverified model output and remains separate from evidence reviews.</p>
+          {chatsLoading && <p role="status" className="mt-4 text-sm text-muted">Loading saved chats…</p>}
+          {chatsError && <p role="alert" className="mt-4 text-sm font-bold text-danger">{chatsError}</p>}
+          {!chatsLoading && !chatsError && savedChats.length === 0 && <p className="mt-4 rounded-md border border-dashed border-line p-3 text-sm text-muted">No saved chats yet.</p>}
+          <div className="mt-4 grid gap-3">
+            {savedChats.map((chat) => <article key={chat.chat_id} className="rounded-md border border-line bg-panel p-4"><p className="break-words text-sm font-black text-ink">{chat.title}</p><p className="mt-1 text-xs text-muted">{chat.message_count} messages · {chat.last_provider} · {chat.last_model}</p></article>)}
+          </div>
+        </section>
+      </div>
+    </main>
+  )
+}
+
 function App() {
   const [location, setLocation] = useState(browserAddress)
+  const demoLoadPath = useRef<string | null>(null)
   const [review, setReview] = useState<Review | null>(null)
   const [config, setConfig] = useState<ApiConfig | null>(null)
   const [configError, setConfigError] = useState(false)
@@ -476,6 +817,10 @@ function App() {
   const [activeSaved, setActiveSaved] = useState<SavedReviewSummary | null>(null)
   const [savedLoading, setSavedLoading] = useState(false)
   const [savedError, setSavedError] = useState<string | null>(null)
+  const [savedChats, setSavedChats] = useState<SavedChatSummary[]>([])
+  const [chatsLoading, setChatsLoading] = useState(false)
+  const [chatsError, setChatsError] = useState<string | null>(null)
+  const pathname = new URL(location, window.location.origin).pathname
 
   useEffect(() => {
     const updateLocation = () => setLocation(browserAddress())
@@ -519,7 +864,7 @@ function App() {
             await api.authMe()
             if (active) {
               setAuthSession(session)
-              const destination = consumeAuthReturn('/')
+              const destination = consumeAuthReturn('/dashboard')
               if (window.location.pathname === '/' && destination !== '/') {
                 navigateBrowser(destination, true)
               }
@@ -584,6 +929,27 @@ function App() {
   }, [authSession, config?.persistence_configured])
 
   useEffect(() => {
+    if (!authSession || !config?.chat_persistence_configured) {
+      setSavedChats([])
+      return
+    }
+    let active = true
+    setChatsLoading(true)
+    setChatsError(null)
+    api.listSavedChats()
+      .then((result) => {
+        if (active) setSavedChats(result.items)
+      })
+      .catch((reason) => {
+        if (active) setChatsError(reason instanceof Error ? reason.message : 'Saved chats could not be listed.')
+      })
+      .finally(() => {
+        if (active) setChatsLoading(false)
+      })
+    return () => { active = false }
+  }, [authSession, config?.chat_persistence_configured])
+
+  useEffect(() => {
     if (activeSaved && review && activeSaved.review_id !== review.review_id) setActiveSaved(null)
   }, [activeSaved, review])
   // oxlint-enable react/set-state-in-effect
@@ -618,16 +984,19 @@ function App() {
   }, [review])
 
   const runReviewAction: RunReviewAction = async (label, action, success) => {
-    if (busy) return
+    if (busy) return null
     setBusyLabel(label)
     setError(null)
     setNotice(label)
     try {
-      setReview(await action())
+      const updated = await action()
+      setReview(updated)
       setNotice(success)
+      return updated
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'The request failed. No result was substituted.')
       setNotice('Request failed. Review the error before retrying.')
+      return null
     } finally {
       setBusyLabel(null)
     }
@@ -681,6 +1050,7 @@ function App() {
       setActiveSaved(saved)
       updateSavedList(saved)
       setNotice(`Saved revision ${saved.revision} opened. Changes remain temporary until you choose Update saved copy.`)
+      navigateBrowser(`/review/${saved.review.review_id}`)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'The saved review could not be opened.')
       setNotice('Open failed. The current local review was kept.')
@@ -723,7 +1093,7 @@ function App() {
 
   const submitReview = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    await runReviewAction(
+    const created = await runReviewAction(
       'Creating an editable live review…',
       () => api.createReview({
         text: answer,
@@ -733,6 +1103,7 @@ function App() {
       }),
       'Live review created. Initial claims are editable sentence segments, not AI conclusions.',
     )
+    if (created) navigateBrowser(`/review/${created.review_id}`)
   }
 
   const endSession = async () => {
@@ -745,6 +1116,7 @@ function App() {
       if (review?.mode === 'live' || activeSaved) setReview(null)
       setActiveSaved(null)
       setSavedReviews([])
+      setSavedChats([])
       setNotice('Signed out. The public demonstration remains available.')
     } catch (reason) {
       setAuthSession(null)
@@ -752,6 +1124,7 @@ function App() {
       if (review?.mode === 'live' || activeSaved) setReview(null)
       setActiveSaved(null)
       setSavedReviews([])
+      setSavedChats([])
       setAuthMessage(reason instanceof Error ? reason.message : 'The browser session was cleared.')
     } finally {
       setAuthBusy(false)
@@ -775,22 +1148,33 @@ function App() {
     }
   }
 
-  const exploreDemo = async () => {
-    if (busy) return
+  const loadDemo = useCallback(async () => {
     setBusyLabel('Opening the curated demonstration…')
     setError(null)
     try {
       setReview(await api.createDemo())
       setNotice('Demonstration loaded. Its assessment is predefined and clearly labeled.')
-      navigateBrowser('/', true)
     } catch (reason) {
-      setAuthMessage(reason instanceof Error ? reason.message : 'The public demonstration could not be opened.')
+      setError(reason instanceof Error ? reason.message : 'The public demonstration could not be opened.')
     } finally {
       setBusyLabel(null)
     }
+  }, [])
+
+  useEffect(() => {
+    if (pathname !== '/demo/cyto-id') {
+      demoLoadPath.current = null
+      return
+    }
+    if (demoLoadPath.current === pathname) return
+    demoLoadPath.current = pathname
+    void loadDemo()
+  }, [loadDemo, pathname])
+
+  const exploreDemo = async () => {
+    navigateBrowser('/demo/cyto-id')
   }
 
-  const pathname = new URL(location, window.location.origin).pathname
   const authRoute = authRoutes[pathname]
   if (authRoute) {
     return (
@@ -823,180 +1207,99 @@ function App() {
     )
   }
 
-  return (
-    <div className="min-h-screen">
-      <a href="#main-content" className="fixed -top-20 left-3 z-50 rounded-md bg-accent px-4 py-2 font-bold text-accent-ink transition-[top] focus:top-3">Skip to review</a>
-      <header className="sticky top-0 z-40 border-b border-line bg-canvas/90 shadow-[0_10px_34px_rgba(0,0,0,0.28)] backdrop-blur-xl">
-        <div className="mx-auto flex max-w-[94rem] flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-7">
-          <button type="button" className="min-w-0 rounded-md" onClick={() => navigateBrowser('/')} aria-label="Research Guard evidence review">
-            <BrandLockup subtitle="Evidence review workspace" />
-          </button>
-          <nav aria-label="Primary navigation" className="order-3 flex w-full items-center gap-1 overflow-x-auto rounded-md bg-deep p-1 md:order-none md:w-auto">
-            <button type="button" aria-current="page" className="min-h-10 shrink-0 rounded-sm bg-accent px-3.5 py-2 text-sm font-bold text-accent-ink">Evidence review</button>
-            <button type="button" className="min-h-10 shrink-0 rounded-sm px-3.5 py-2 text-sm font-bold text-muted transition hover:bg-panel hover:text-ink" onClick={() => navigateBrowser('/chat')}>
-              AI chat <span className="ml-1 font-mono text-[0.55rem] uppercase text-warm-ink">unchecked</span>
-            </button>
-            {authSession && <button type="button" className="min-h-10 shrink-0 rounded-sm px-3.5 py-2 text-sm font-bold text-muted transition hover:bg-panel hover:text-ink" onClick={() => document.getElementById('saved-reviews-title')?.scrollIntoView({ behavior: 'smooth' })}>Saved reviews <span className="ml-1 rounded-full bg-accent/15 px-1.5 text-xs text-accent">{savedReviews.length}</span></button>}
-          </nav>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="hidden text-right font-mono text-[0.62rem] leading-5 text-muted sm:block">
-              <p className="font-bold text-ink">{!authReady ? 'Checking sign-in…' : authSession ? 'Signed in' : 'Signed out'}</p>
-              {authSession?.user.email && <p className="max-w-48 truncate">{authSession.user.email}</p>}
-            </div>
-            {authSession ? (
-              <>
-                <button type="button" className={secondaryButton} onClick={() => navigateBrowser('/account')}>Account</button>
-                <button type="button" className={secondaryButton} disabled={authBusy} onClick={endSession}>Sign out</button>
-              </>
-            ) : (
-              <button type="button" className={primaryButton} disabled={!authReady || !authAvailable} onClick={() => navigateBrowser('/login')}>
-                Sign in
-              </button>
-            )}
-          </div>
-        </div>
-        <WorkflowStrip />
-      </header>
+  const savedReviewsPanel = (
+    <SavedReviewsPanel
+      reviews={savedReviews}
+      loading={savedLoading}
+      error={savedError}
+      busy={busy}
+      configured={Boolean(config?.persistence_configured)}
+      activeSaved={activeSaved}
+      refresh={() => void refreshSavedReviews()}
+      open={(saved) => void openSaved(saved)}
+      exportRecord={(saved, format) => void exportSaved(saved, format)}
+      deleteRecord={(saved) => void deleteSaved(saved)}
+    />
+  )
+  const liveMatch = pathname.match(/^\/review\/(review_[0-9a-f]+)$/)
+  const workspaceRoute = pathname === '/review/new' || pathname === '/demo/cyto-id' || Boolean(liveMatch)
+  const routeReview = pathname === '/demo/cyto-id'
+    ? review?.mode === 'demo' ? review : null
+    : liveMatch && review?.review_id === liveMatch[1] ? review : null
 
+  let content: ReactNode
+  let subtitle = 'Evidence-aware research support'
+  if (pathname === '/') {
+    content = <HomePage onStart={() => navigateBrowser(authSession ? '/review/new' : '/login?next=/review/new')} onDemo={() => navigateBrowser('/demo/cyto-id')} />
+    subtitle = 'Evidence-aware research support'
+  } else if (pathname === '/about') {
+    content = <AboutPage />
+    subtitle = 'Purpose and limitations'
+  } else if (pathname === '/dashboard' || pathname === '/reviews') {
+    content = (
+      <DashboardPage
+        session={authSession}
+        config={config}
+        configError={configError}
+        savedReviewsPanel={savedReviewsPanel}
+        savedChats={savedChats}
+        chatsLoading={chatsLoading}
+        chatsError={chatsError}
+        navigate={navigateBrowser}
+      />
+    )
+    subtitle = pathname === '/reviews' ? 'Saved research records' : 'Research dashboard'
+  } else if (workspaceRoute) {
+    subtitle = pathname === '/demo/cyto-id' ? 'Curated demonstration' : 'Evidence review workspace'
+    content = (
       <main id="main-content" tabIndex={-1} className="mx-auto max-w-[94rem] px-4 py-7 sm:px-7 sm:py-10">
-        <section className="relative mb-8 overflow-hidden rounded-lg border border-line bg-paper/75 px-5 py-8 shadow-card sm:px-8 sm:py-11 lg:px-12">
-          <div aria-hidden="true" className="absolute -right-24 -top-32 size-96 rounded-full bg-accent/8 blur-3xl" />
-          <div className="max-w-4xl">
-            <SectionLabel>Evidence before conclusion // review workspace</SectionLabel>
-            <h1 className="relative mt-4 font-serif text-5xl leading-[0.98] tracking-tight text-ink sm:text-7xl">
-              Check the evidence.<br /><span className="italic text-accent">Keep the qualifications.</span>
-            </h1>
-            <p className="relative mt-5 max-w-2xl text-base leading-7 text-muted sm:text-lg">Separate what was observed from what was inferred. Inspect source access and limitations, then record your own conclusion.</p>
-          </div>
-        </section>
-
         <div aria-live="polite" aria-atomic="true" className="mb-5 min-h-12">
-          {busyLabel ? (
-            <div role="status" className="flex items-center gap-3 rounded-xl border border-accent/20 bg-soft px-4 py-3 text-sm font-bold text-accent-dark"><Spinner />{busyLabel}</div>
-          ) : error ? (
-            <div role="alert" className="rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm font-bold text-danger">{error}</div>
-          ) : (
-            <p role="status" className="rounded-xl border border-line bg-paper/70 px-4 py-3 text-sm text-muted">{notice}</p>
-          )}
+          {busyLabel ? <div role="status" className="flex items-center gap-3 rounded-xl border border-accent/20 bg-soft px-4 py-3 text-sm font-bold text-accent-dark"><Spinner />{busyLabel}</div>
+            : error ? <div role="alert" className="rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm font-bold text-danger">{error}</div>
+              : <p role="status" className="rounded-xl border border-line bg-paper/70 px-4 py-3 text-sm text-muted">{notice}</p>}
         </div>
-
-        {authMessage && (
-          <div role="alert" className="mb-5 rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm font-bold text-danger">
-            {authMessage}
-          </div>
-        )}
-
-        {authReady && !authSession && (
-          <div className="mb-5 rounded-xl border border-line bg-paper/70 px-4 py-3 text-sm leading-6 text-muted">
-            <strong className="text-ink">You are signed out.</strong>{' '}
-            The curated demonstration is public. Sign in with Google to create live reviews or call the model service.
-            {!authAvailable && ' Supabase public configuration has not been added to both the frontend and backend yet.'}
-          </div>
-        )}
-
-        {(configError || (config && !config.model_configured)) && (
-          <div className="mb-5 rounded-xl border border-warm-ink/20 bg-warm/55 px-4 py-3 text-sm leading-6 text-warm-ink">
-            <strong>{configError ? 'Local service status unavailable.' : 'Live model service unavailable.'}</strong>{' '}
-            {configError ? 'The interface could not read backend configuration.' : config?.model_detail}
-            {' '}The curated demonstration and public-source retrieval remain available.
-          </div>
-        )}
-
-        {authSession && config && !config.persistence_configured && (
-          <div className="mb-5 rounded-xl border border-warm-ink/20 bg-warm/55 px-4 py-3 text-sm leading-6 text-warm-ink">
-            <strong>Saved-review service unavailable.</strong>{' '}
-            Configure the backend Supabase publishable key and apply the Phase G migration. Unsaved reviews remain temporary.
-          </div>
-        )}
-
+        {authMessage && <div role="alert" className="mb-5 rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm font-bold text-danger">{authMessage}</div>}
+        {pathname !== '/demo/cyto-id' && authReady && !authSession && <div className="mb-5 rounded-xl border border-line bg-paper/70 px-4 py-3 text-sm leading-6 text-muted"><strong className="text-ink">You are signed out.</strong> Sign in to create live reviews. The curated demonstration remains public.</div>}
+        {pathname !== '/demo/cyto-id' && (configError || (config && !config.model_configured)) && <div className="mb-5 rounded-xl border border-warm-ink/20 bg-warm/55 px-4 py-3 text-sm leading-6 text-warm-ink"><strong>{configError ? 'Local service status unavailable.' : 'Live model service unavailable.'}</strong> {configError ? 'The interface could not read backend configuration.' : config?.model_detail} Public-source retrieval remains available.</div>}
         <div className="grid items-start gap-6 lg:grid-cols-[22rem_minmax(0,1fr)] xl:grid-cols-[24rem_minmax(0,1fr)]">
           <aside className="rounded-lg border border-line bg-paper/85 p-5 shadow-card lg:sticky lg:top-32 sm:p-6">
-            <SectionLabel>01 / Define</SectionLabel>
-            <h2 className="mt-3 font-serif text-3xl text-ink">What needs checking?</h2>
-            <p className="mt-2 text-sm leading-6 text-muted">Use public or synthetic research text. Do not enter patient data or private laboratory information.</p>
-            <form className="mt-6" onSubmit={submitReview}>
-              <label htmlFor="answer" className="text-sm font-black text-ink">Answer or claim to review</label>
-              <textarea id="answer" required maxLength={12000} rows={7} className={inputClass} placeholder="Paste a research answer here…" value={answer} onChange={(event) => setAnswer(event.target.value)} />
-              <label htmlFor="intended-use" className="mt-4 block text-sm font-black text-ink">Intended use</label>
-              <select id="intended-use" className={inputClass} value={intendedUse} onChange={(event) => setIntendedUse(event.target.value as IntendedUse)}>
-                <option>topic understanding</option>
-                <option>assay interpretation</option>
-                <option>presentation preparation</option>
-                <option>experiment planning</option>
-              </select>
-
-              <button type="button" className={cx(quietButton, 'mt-3')} aria-expanded={showContext} onClick={() => setShowContext((value) => !value)}>
-                {showContext ? 'Hide' : 'Add'} experimental context <span aria-hidden="true">{showContext ? '−' : '+'}</span>
-              </button>
-              {showContext && (
-                <div className="mt-2 space-y-3 rounded-xl border border-line bg-canvas p-3">
-                  {([
-                    ['organism_model', 'Organism or model'],
-                    ['assay', 'Assay'],
-                    ['reagent', 'Reagent and catalog identifier'],
-                    ['conditions', 'Conditions'],
-                  ] as const).map(([key, label]) => (
-                    <label key={key} className="block text-xs font-black text-ink">{label}
-                      <input className={cx(inputClass, 'mt-1.5')} maxLength={key === 'conditions' ? 1500 : 500} value={context[key]} onChange={(event) => setContext((value) => ({ ...value, [key]: event.target.value }))} />
-                    </label>
-                  ))}
-                </div>
-              )}
-
-              <label htmlFor="source-urls" className="mt-4 block text-sm font-black text-ink">Public source URLs <span className="font-normal text-muted">optional; one per line</span></label>
-              <textarea id="source-urls" rows={3} className={inputClass} placeholder="https://pubmed.ncbi.nlm.nih.gov/…" value={sourceUrls} onChange={(event) => setSourceUrls(event.target.value)} />
-              <p className="mt-2 text-xs leading-5 text-muted">Up to three supported PubMed, PMC, or exact CYTO-ID manufacturer links.</p>
-              <button type="submit" disabled={busy || !answer.trim() || !authSession} className={cx(primaryButton, 'mt-5 w-full gap-2')}>Start live review <ArrowIcon /></button>
-              {!authSession && <p className="mt-2 text-xs leading-5 text-muted">Google sign-in is required for live requests. The demonstration below stays public.</p>}
-            </form>
-
-            <div className="my-6 flex items-center gap-3 text-xs font-bold uppercase tracking-widest text-muted"><span className="h-px flex-1 bg-line" />or<span className="h-px flex-1 bg-line" /></div>
-            <SectionLabel>Curated worked example</SectionLabel>
-            <h3 className="mt-3 text-lg font-black leading-snug text-ink">More fluorescent spots.<br />More cellular activity?</h3>
-            <p className="mt-2 text-sm leading-6 text-muted">Synthetic context with archived public extracts. It makes no live request.</p>
-            <button type="button" disabled={busy} className={cx(secondaryButton, 'mt-4 w-full gap-2')} onClick={() => runReviewAction('Opening the curated demonstration…', api.createDemo, 'Demonstration loaded. Its assessment is predefined and clearly labeled.')}>Open demonstration <ArrowIcon /></button>
-
-            {authSession && (
-              <section className="mt-6 border-t border-line pt-6" aria-labelledby="saved-reviews-title">
-                <SectionLabel>Private records</SectionLabel>
-                <h3 id="saved-reviews-title" className="mt-3 text-lg font-black text-ink">Your saved reviews</h3>
-                <p className="mt-2 text-sm leading-6 text-muted">Opening creates a temporary working copy. Changes are stored only when you choose Update saved copy.</p>
-                <button type="button" className={cx(quietButton, 'mt-2')} disabled={busy || savedLoading || !config?.persistence_configured} onClick={refreshSavedReviews}>Refresh saved reviews</button>
-                {savedLoading && <p role="status" className="mt-3 text-sm text-muted">Loading saved reviews…</p>}
-                {savedError && <p role="alert" className="mt-3 text-sm font-bold text-danger">{savedError}</p>}
-                {!savedLoading && !savedError && savedReviews.length === 0 && (
-                  <p className="mt-3 rounded-lg border border-dashed border-line p-3 text-sm text-muted">No reviews have been explicitly saved.</p>
-                )}
-                <div className="mt-3 space-y-3">
-                  {savedReviews.map((saved) => (
-                    <article key={saved.saved_id} className="rounded-md border border-line bg-panel p-3">
-                      <p className="break-words text-sm font-black text-ink">{saved.title}</p>
-                      <p className="mt-1 text-xs text-muted">{saved.mode} · revision {saved.revision} · schema {saved.schema_version}</p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <button type="button" className={quietButton} disabled={busy || activeSaved?.saved_id === saved.saved_id} onClick={() => openSaved(saved)}>Open</button>
-                        <button type="button" className={quietButton} disabled={busy} onClick={() => exportSaved(saved, 'json')}>JSON</button>
-                        <button type="button" className={quietButton} disabled={busy} onClick={() => exportSaved(saved, 'txt')}>TXT</button>
-                        <button type="button" className={cx(quietButton, 'text-danger')} disabled={busy} onClick={() => deleteSaved(saved)}>Delete saved copy</button>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </section>
+            {pathname === '/review/new' ? (
+              <>
+                <SectionLabel>01 / Define</SectionLabel>
+                <h1 className="mt-3 font-serif text-3xl text-ink">What needs checking?</h1>
+                <p className="mt-2 text-sm leading-6 text-muted">Use public or synthetic research text. Do not enter patient data or private laboratory information.</p>
+                <form className="mt-6" onSubmit={submitReview}>
+                  <label htmlFor="answer" className="text-sm font-black text-ink">Answer or claim to review</label>
+                  <textarea id="answer" required maxLength={12000} rows={7} className={inputClass} placeholder="Paste a research answer here…" value={answer} onChange={(event) => setAnswer(event.target.value)} />
+                  <label htmlFor="intended-use" className="mt-4 block text-sm font-black text-ink">Intended use</label>
+                  <select id="intended-use" className={inputClass} value={intendedUse} onChange={(event) => setIntendedUse(event.target.value as IntendedUse)}><option>topic understanding</option><option>assay interpretation</option><option>presentation preparation</option><option>experiment planning</option></select>
+                  <button type="button" className={`${quietButton} mt-3`} aria-expanded={showContext} onClick={() => setShowContext((value) => !value)}>{showContext ? 'Hide' : 'Add'} experimental context <span aria-hidden="true">{showContext ? '−' : '+'}</span></button>
+                  {showContext && <div className="mt-2 space-y-3 rounded-xl border border-line bg-canvas p-3">{([['organism_model', 'Organism or model'], ['assay', 'Assay'], ['reagent', 'Reagent and catalog identifier'], ['conditions', 'Conditions']] as const).map(([key, label]) => <label key={key} className="block text-xs font-black text-ink">{label}<input className={`${inputClass} mt-1.5`} maxLength={key === 'conditions' ? 1500 : 500} value={context[key]} onChange={(event) => setContext((value) => ({ ...value, [key]: event.target.value }))} /></label>)}</div>}
+                  <label htmlFor="source-urls" className="mt-4 block text-sm font-black text-ink">Public source URLs <span className="font-normal text-muted">optional; one per line</span></label>
+                  <textarea id="source-urls" rows={3} className={inputClass} placeholder="https://pubmed.ncbi.nlm.nih.gov/…" value={sourceUrls} onChange={(event) => setSourceUrls(event.target.value)} />
+                  <p className="mt-2 text-xs leading-5 text-muted">Up to three supported PubMed, PMC, or exact CYTO-ID manufacturer links.</p>
+                  <button type="submit" disabled={busy || !answer.trim() || !authSession} className={`${primaryButton} mt-5 w-full gap-2`}>Start live review <ArrowIcon /></button>
+                  {!authSession && <p className="mt-2 text-xs leading-5 text-muted">Sign-in is required for live requests.</p>}
+                </form>
+              </>
+            ) : pathname === '/demo/cyto-id' ? (
+              <><SectionLabel>Public worked example</SectionLabel><h1 className="mt-3 font-serif text-3xl text-ink">When more spots do not establish more activity</h1><p className="mt-3 text-sm leading-6 text-muted">Synthetic experimental context with archived public extracts. This route makes no model or live retrieval call.</p><button className={`${secondaryButton} mt-5 w-full`} onClick={() => navigateBrowser('/about')}>Read limitations</button></>
+            ) : (
+              <><SectionLabel>Active temporary review</SectionLabel><h1 className="mt-3 font-serif text-3xl text-ink">Review workspace</h1><p className="mt-3 text-sm leading-6 text-muted">This draft remains bound to the current browser session and verified account. Saving remains explicit.</p><div className="mt-5 grid gap-2"><button className={secondaryButton} onClick={() => navigateBrowser('/review/new')}>Start another review</button><button className={secondaryButton} onClick={() => navigateBrowser('/dashboard')}>Open dashboard</button></div></>
             )}
           </aside>
-
           <section aria-busy={busy} className="min-w-0">
-            {!review ? <EmptyReview /> : (
+            {!routeReview ? <EmptyReview /> : (
               <div className="space-y-5">
-                <header className={cx('rounded-lg border p-5 shadow-card sm:p-7', review.mode === 'demo' ? 'border-warm-ink/20 bg-warm/60' : 'border-line bg-paper')}>
+                <header className={cx('rounded-lg border p-5 shadow-card sm:p-7', routeReview.mode === 'demo' ? 'border-warm-ink/20 bg-warm/60' : 'border-line bg-paper')}>
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                      <span className={cx('inline-flex rounded-full px-3 py-1.5 font-mono text-xs font-black uppercase tracking-wider', review.mode === 'demo' ? 'bg-warm-ink text-deep' : 'bg-accent text-accent-ink')}>
-                        {review.mode === 'demo' ? 'Demonstration — not a live verification' : 'Live review'}
+                      <span className={cx('inline-flex rounded-full px-3 py-1.5 font-mono text-xs font-black uppercase tracking-wider', routeReview.mode === 'demo' ? 'bg-warm-ink text-deep' : 'bg-accent text-accent-ink')}>
+                        {routeReview.mode === 'demo' ? 'Demonstration — not a live verification' : 'Live review'}
                       </span>
-                      <h2 className="mt-4 font-serif text-3xl text-ink sm:text-4xl">{review.claims.length} claim{review.claims.length === 1 ? '' : 's'} to inspect</h2>
-                      <p className="mt-2 text-sm leading-6 text-muted">{review.extraction_method}</p>
-                      <p className="mt-2 text-xs font-bold text-muted">{activeEvidenceCount} current source record{activeEvidenceCount === 1 ? '' : 's'} · {review.mode === 'demo' ? 'curated result' : 'retrieved material only'}</p>
+                      <h2 className="mt-4 font-serif text-3xl text-ink sm:text-4xl">{routeReview.claims.length} claim{routeReview.claims.length === 1 ? '' : 's'} to inspect</h2>
+                      <p className="mt-2 text-sm leading-6 text-muted">{routeReview.extraction_method}</p>
+                      <p className="mt-2 text-xs font-bold text-muted">{activeEvidenceCount} current source record{activeEvidenceCount === 1 ? '' : 's'} · {routeReview.mode === 'demo' ? 'curated result' : 'retrieved material only'}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {authSession && config?.persistence_configured && (
@@ -1008,14 +1311,14 @@ function App() {
                       <button type="button" disabled={busy} className={secondaryButton} onClick={() => runExport('txt')}>Export readable TXT</button>
                     </div>
                   </div>
-                  {review.mode === 'demo' && <p className="mt-4 rounded-md bg-panel/65 p-3 text-sm font-bold leading-6 text-warm-ink">This predefined demonstration uses synthetic experimental context and archived public extracts. It is never substituted for a failed live review.</p>}
-                  {review.missing_fields.length > 0 && <p className="mt-4 text-sm text-muted"><strong className="text-ink">Context not supplied:</strong> {review.missing_fields.join(', ')}</p>}
-                  {review.mode === 'live' && (
-                    <button type="button" disabled={busy} className={cx(secondaryButton, 'mt-4')} onClick={() => runReviewAction('Extracting claims with the configured model…', () => api.extract(review.review_id), 'Claims extracted. Review and edit each one before retrieval.')}>Extract claims with AI</button>
+                  {routeReview.mode === 'demo' && <p className="mt-4 rounded-md bg-panel/65 p-3 text-sm font-bold leading-6 text-warm-ink">This predefined demonstration uses synthetic experimental context and archived public extracts. It is never substituted for a failed live review.</p>}
+                  {routeReview.missing_fields.length > 0 && <p className="mt-4 text-sm text-muted"><strong className="text-ink">Context not supplied:</strong> {routeReview.missing_fields.join(', ')}</p>}
+                  {routeReview.mode === 'live' && (
+                    <button type="button" disabled={busy} className={`${secondaryButton} mt-4`} onClick={() => runReviewAction('Extracting claims with the configured model…', () => api.extract(routeReview.review_id), 'Claims extracted. Review and edit each one before retrieval.')}>Extract claims with AI</button>
                   )}
                 </header>
 
-                {review.claims.map((claim, index) => (
+                {routeReview.claims.map((claim, index) => (
                   <ClaimCard
                     key={[
                       claim.claim_id,
@@ -1025,12 +1328,13 @@ function App() {
                       claim.decision.status,
                       claim.decision.final_wording,
                       claim.decision.notes,
-                      ...Object.values(review.original_input.context),
+                      ...Object.values(routeReview.original_input.context),
                     ].join('|')}
-                    review={review}
+                    review={routeReview}
                     claim={claim}
                     index={index}
                     busy={busy}
+                    assessmentProviders={config?.assessment_providers ?? []}
                     runReviewAction={runReviewAction}
                   />
                 ))}
@@ -1044,7 +1348,7 @@ function App() {
                     </div>
                     <details>
                       <summary className="min-h-10 py-2 font-black text-accent">Validation and provenance</summary>
-                      <pre className="mt-3 max-h-80 max-w-full overflow-auto whitespace-pre-wrap break-words rounded-xl bg-canvas p-4 text-xs text-ink">{JSON.stringify({ model_runs: review.model_runs, validation: review.validation_results, notices: review.notices }, null, 2)}</pre>
+                      <pre className="mt-3 max-h-80 max-w-full overflow-auto whitespace-pre-wrap break-words rounded-xl bg-canvas p-4 text-xs text-ink">{JSON.stringify({ model_runs: routeReview.model_runs, validation: routeReview.validation_results, notices: routeReview.notices }, null, 2)}</pre>
                     </details>
                   </div>
                 </footer>
@@ -1053,13 +1357,18 @@ function App() {
           </section>
         </div>
       </main>
-      <footer className="mt-10 border-t border-line bg-deep/80">
-        <div className="mx-auto flex max-w-[94rem] flex-wrap justify-between gap-3 px-4 py-6 text-xs leading-5 text-muted sm:px-7">
-          <span className="font-mono uppercase tracking-wider text-accent">Research Guard AI</span>
-          <span>Research support with researcher judgment at every step.</span>
-          <span className="font-mono">Temporary drafts · explicit private saves only</span>
-        </div>
-      </footer>
+    )
+  } else {
+    content = <main id="main-content" tabIndex={-1} className="mx-auto grid min-h-[32rem] max-w-4xl place-items-center px-4 py-10 text-center"><section><h1 className="font-serif text-5xl text-ink">Page not found</h1><p className="mt-3 text-muted">The requested Research Guard page does not exist.</p><button className={`${primaryButton} mt-6`} onClick={() => navigateBrowser('/')}>Return home</button></section></main>
+  }
+
+  return (
+    <div className="min-h-screen">
+      <a href="#main-content" className="fixed -top-20 left-3 z-50 rounded-md bg-accent px-4 py-2 font-bold text-accent-ink transition-[top] focus:top-3">Skip to content</a>
+      <SiteHeader session={authSession} authReady={authReady} authAvailable={authAvailable} authBusy={authBusy} currentPath={pathname} subtitle={subtitle} navigate={navigateBrowser} onSignOut={endSession} />
+      {workspaceRoute && <WorkflowStrip />}
+      {content}
+      <PageFooter />
     </div>
   )
 }

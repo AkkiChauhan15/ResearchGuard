@@ -24,6 +24,7 @@ def check_source(source, run: str) -> None:
     assert source.retrieval_run_id == run
     datetime.fromisoformat(source.retrieved_at)
     assert re.fullmatch(r"[0-9a-f]{64}", source.content_sha256)
+    assert source.integrity is not None
     for passage in source.passages:
         # PDF page extracts intentionally preserve layout whitespace.
         assert passage.text.strip()

@@ -16,9 +16,9 @@
   --color-warm-ink: #ffbd68;
   --color-danger: #ffb4ab;
   --color-danger-soft: #3a1818;
-  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-serif: Newsreader, Georgia, Cambria, "Times New Roman", serif;
-  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-serif: Georgia, Cambria, "Times New Roman", serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   --shadow-card: 0 24px 64px rgba(0, 0, 0, 0.26), inset 0 1px 0 rgba(78, 222, 163, 0.06);
 }
 

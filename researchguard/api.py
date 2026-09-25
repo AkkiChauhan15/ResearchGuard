@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import Field, field_validator, model_validator
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from .assessment import assess, extract
+from .assessment import assess, assess_second_opinion, extract
 from .chat import ChatProviderError, ChatRateLimiter, ChatService, ProviderMessage
 from .chat_persistence import (
     SavedChatMessage,
@@ -32,7 +32,7 @@ from .auth import (
     SupabaseTokenVerifier,
     bearer_token,
 )
-from .providers import provider_status
+from .providers import PROVIDER_IDS, provider_status, provider_status_for
 from .persistence import (
     PersistenceConflict,
     PersistenceNotFound,
@@ -44,7 +44,7 @@ from .demo import demo_review
 from .export import export_review, validate_review
 from .retrieval import classify_url, retrieve
 from .reviews import create_review, decide, edit_claim, edit_context
-from .schemas import Context, Decision, Review, ReviewInput, Strict
+from .schemas import Context, Decision, ProviderId, Review, ReviewInput, Strict
 from .settings import Settings
 from .store import ReviewEntry, ReviewStore
 
@@ -71,6 +71,10 @@ class RetrievalRequest(Strict):
 
 class DecisionRequest(Strict):
     decision: Decision
+
+
+class SecondOpinionRequest(Strict):
+    provider: ProviderId
 
 
 class SaveReviewRequest(Strict):
@@ -401,6 +405,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @application.get("/update-password", include_in_schema=False)
     @application.get("/account", include_in_schema=False)
     @application.get("/chat", include_in_schema=False)
+    @application.get("/about", include_in_schema=False)
+    @application.get("/dashboard", include_in_schema=False)
+    @application.get("/reviews", include_in_schema=False)
+    @application.get("/review/new", include_in_schema=False)
+    @application.get("/review/{review_id}", include_in_schema=False)
+    @application.get("/demo/cyto-id", include_in_schema=False)
     async def primary_frontend():
         content, media_type = primary_index
         return Response(content=content, media_type=media_type)
@@ -429,6 +439,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @application.get("/api/config")
     async def config():
         status = provider_status()
+        assessment_providers = [provider_status_for(provider) for provider in PROVIDER_IDS]
         return {
             "model_configured": status.available,
             "model_state": status.state,
@@ -436,6 +447,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "extraction_model": status.extraction_model,
             "assessment_model": status.assessment_model,
             "model_detail": status.detail,
+            "assessment_providers": [
+                {
+                    "provider": item.provider,
+                    "state": item.state,
+                    "detail": item.detail,
+                    "assessment_model": item.assessment_model,
+                    "available": item.available,
+                }
+                for item in assessment_providers
+            ],
             "retention_seconds": settings.session_ttl_seconds,
             "mode": "local preview",
             "auth_configured": settings.supabase_url is not None,
@@ -703,6 +724,38 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         session_id = session(session_id)
         owner_id = await review_owner(session_id, review_id, authorization)
         return await mutate(session_id, review_id, operation, owner_id=owner_id, offload=True, timeout=settings.assessment_timeout_seconds)
+
+    @application.post("/api/reviews/{review_id}/claims/{claim_id}/second-opinions", response_model=Review)
+    async def second_opinion_claim(
+        review_id: ReviewId,
+        claim_id: ClaimId,
+        payload: SecondOpinionRequest,
+        session_id: SessionId,
+        authorization: Authorization = None,
+    ):
+        def operation(review: Review) -> None:
+            claim = next((item for item in review.claims if item.claim_id == claim_id), None)
+            if claim is None:
+                raise ValueError("Unknown claim.")
+            if len(claim.second_opinion_attempts) >= 8:
+                raise ValueError("Second-opinion attempt limit reached for this claim.")
+            attempted = len(review.model_runs) + sum(
+                item.outcome == "failed" for item in claim.second_opinion_attempts
+            )
+            if attempted >= 30:
+                raise ValueError("Model call limit reached for this review.")
+            assess_second_opinion(review, claim_id, payload.provider)
+
+        session_id = session(session_id)
+        owner_id = await review_owner(session_id, review_id, authorization)
+        return await mutate(
+            session_id,
+            review_id,
+            operation,
+            owner_id=owner_id,
+            offload=True,
+            timeout=settings.assessment_timeout_seconds,
+        )
 
     @application.put("/api/reviews/{review_id}/claims/{claim_id}/decision", response_model=Review)
     async def record_decision(review_id: ReviewId, claim_id: ClaimId, payload: DecisionRequest, session_id: SessionId, authorization: Authorization = None):

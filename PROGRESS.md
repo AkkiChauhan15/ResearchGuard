@@ -1614,3 +1614,420 @@ Status: **FIXED AND VERIFIED AGAINST LOCAL SUPABASE; HOSTED REDEPLOY PENDING.**
   reopen an existing saved chat and send a follow-up with each enabled provider; the
   common persistence PATCH should now succeed. Hosted behavior is not claimed until
   that redeploy and browser check complete.
+
+## 2026-09-22 — Phase I: dedicated application routes
+
+Status: **PASS LOCALLY. PHASE II AND PHASE III NOT STARTED.**
+
+### Changes made
+
+- Split the React interface into dedicated client routes while retaining the existing
+  history-based router: marketing-only `/`, disclosures at `/about`, a signed-in hub at
+  `/dashboard` (with `/reviews` as the same saved-record view), the input at
+  `/review/new`, active workspaces at `/review/{review_id}`, the public demonstration at
+  `/demo/cyto-id`, and the existing `/chat` and account routes.
+- Added a shared responsive header. Signed-in navigation is Home, Dashboard, New review,
+  AI chat with its `unchecked` badge, and About, followed by Account and Sign out.
+  Signed-out navigation is Home, About and Demo with Sign in. Authentication restoration
+  and ordinary sign-in now default to `/dashboard`; explicit safe `next` paths remain
+  authoritative.
+- Restricted `WorkflowStrip` rendering to new-review, active-review and demonstration
+  workspaces. The home page contains only the marketing hero and the Start review/Open
+  demo actions. The chat page no longer renders review workflow chrome.
+- Reused the canonical review, saved-review and saved-chat services. No API review
+  schema, database schema, migration, storage bound, expiry, ownership rule, save policy,
+  evidence behavior, model adapter or export contract changed. Review saves remain
+  explicit; successful chat turns retain their separately authorized autosave policy.
+- Added FastAPI SPA fallbacks and Vercel rewrites for every new route. Extended the HTTP
+  and browser smoke checks and updated README, API documentation, feature verification
+  and project context. The hosted deployment was not changed or checked.
+
+### Checks actually executed
+
+Required backend suite:
+
+```text
+$ .venv/bin/python -m unittest discover -s tests -v
+----------------------------------------------------------------------
+Ran 92 tests in 2.139s
+
+OK
+```
+
+The suite includes the extended static-route contract for `/about`, `/dashboard`,
+`/reviews`, `/review/new`, `/review/{id}`, `/demo/cyto-id` and `/chat`, plus all existing
+auth, session isolation, persistence, invalidation, retrieval, provenance and export
+tests.
+
+Required frontend checks:
+
+```text
+$ npm run typecheck --prefix frontend
+> tsc -b --pretty false
+
+$ npm run lint --prefix frontend
+> oxlint
+
+$ npm run build --prefix frontend
+vite v8.3.0 building client environment for production...
+✓ 67 modules transformed.
+dist/index.html                   1.04 kB │ gzip:   0.53 kB
+dist/assets/index-CFuUqaEU.css   40.35 kB │ gzip:   7.57 kB
+dist/assets/index-CNVPfeZs.js   529.94 kB │ gzip: 146.91 kB
+✓ built in 193ms
+```
+
+Vite retained its existing non-failing advisory that one minified chunk exceeds 500 kB.
+Additional checks:
+
+```text
+$ npm run test:auth --prefix frontend
+# tests 1
+# pass 1
+# fail 0
+
+$ node --check scripts/browser_react_smoke.cjs
+[no output; exit 0]
+
+$ git diff --check
+[no output; exit 0]
+
+$ PLAYWRIGHT_PATH=... node scripts/browser_react_smoke.cjs
+React browser smoke passed: routed home/about/dashboard/chat/new-review/demo surfaces, workflow-only step strip, login/signup/recovery UI, mismatch validation, logged-out public demo, evidence/access, edited decision/export, failed API state, safe mobile layout; no page errors.
+```
+
+The passing browser run used the documented local Vite address
+`http://127.0.0.1:5173` with FastAPI at `http://127.0.0.1:8000`. It created and exported
+the predefined demo only; it did not perform OAuth or an external model call.
+
+### Blockers and unverified assumptions
+
+- No Phase I source change has been committed, pushed or redeployed in this run. The
+  hosted Vercel/Render route behavior remains unverified, as do the previously recorded
+  Phase H external-integration items.
+- A separate exploratory smoke against the FastAPI-served production build reached the
+  end of the functional journey, then failed its no-console-error assertion because the
+  existing production CSP blocks the existing Google Fonts stylesheet. The documented
+  Vite smoke passed with no page errors, and system font fallbacks render the FastAPI
+  page. This pre-existing CSP/font mismatch was not changed in the routing-only phase.
+- A refreshed unsaved `/review/{id}` cannot restore its temporary draft because page
+  reload intentionally creates a new browser draft-session capability. Saved reviews
+  remain reopenable from the authenticated dashboard after their configured persistence
+  path succeeds.
+
+### Manual action required
+
+- None for local Phase I use. To publish these routes, commit and redeploy both the
+  frontend and backend, then verify direct loads of every route on the stable hosted
+  domain. Keep the current Supabase redirect allowlist pointed only at trusted app URLs;
+  no migration or new environment variable is required for Phase I.
+
+### Phase result
+
+**PASS** for local Phase I acceptance: the first-time home view has no review workflow,
+authentication defaults to the dashboard, all dedicated paths render, and the workflow
+strip is confined to review/demo workspaces. Stop after Phase I.
+
+## 2026-09-22 — Phase II: publication integrity cross-check
+
+Status: **PASS LOCALLY; HOSTED REDEPLOYMENT UNVERIFIED. PHASE III NOT STARTED.**
+
+### Changes made
+
+- Added `researchguard/integrity.py` with the required deterministic states: `clean`,
+  `retracted`, `correction`, `expression_of_concern`, `not_applicable` and
+  `check_failed`. Each result records every check method, timestamp, outcome, details,
+  bounded notice metadata and safe notice links.
+- PubMed sources parse `CommentsCorrectionsList` from the EFetch XML already used to
+  construct the source. `RetractionIn`, `ExpressionOfConcernIn` and correction/erratum
+  relationships map deterministically; unrelated comment links do not create a flag.
+- Moved NCBI access into one shared process throttle so direct PMC sources can check
+  their PMID without bypassing the existing below-three-requests/second limit. When a
+  PubMed record has no relevant notice and the source has a valid DOI, a bounded
+  Crossref fallback checks both `updated-by` and `update-to`. It uses one concurrent
+  request and at most four requests/second, below Crossref's current public
+  single-record limit. `CROSSREF_MAILTO` uses the polite pool when configured and
+  otherwise reuses `NCBI_EMAIL` when present.
+- Crossref, PubMed, parse, timeout or rate-limit failure attaches `check_failed` to the
+  successfully retrieved source instead of discarding it or marking it clean.
+  Manufacturer/synthetic records are explicitly `not_applicable`. Older saved records
+  may omit the new optional field and render unavailable/not confirmed clean.
+- Added neutral, amber and red integrity panels to React source cards and a compact
+  legacy-interface status. The review workspace and About page explain that this check
+  covers PubMed/Crossref-indexed notices only, is not exhaustive, and does not establish
+  that an unflagged paper is correct.
+- Integrity provenance round-trips through canonical JSON and readable TXT exports,
+  which also preserves it in explicitly saved review snapshots. No API route, database
+  table, migration, review save rule, model call, provider fallback or billing setting
+  was added.
+- Added a reproducible bounded live verifier and updated README, API, deployment,
+  architecture, feature-verification and context records. Official NCBI and Crossref
+  documentation was checked before implementation.
+
+### Checks actually executed
+
+Required backend suite:
+
+```text
+$ .venv/bin/python -m unittest discover -s tests -v
+----------------------------------------------------------------------
+Ran 101 tests in 1.962s
+
+OK
+```
+
+The nine new fixture tests cover all six states, the documented retracted PMID,
+PubMed-to-Crossref fallback provenance, malformed Crossref content, `check_failed`
+remaining distinct from `clean`, and JSON/TXT export round-tripping. All existing
+retrieval, unsafe-URL, redirect, content-limit, validation, session, RLS and export tests
+remain green.
+
+Required frontend checks:
+
+```text
+$ npm run typecheck --prefix frontend
+> tsc -b --pretty false
+
+$ npm run lint --prefix frontend
+> oxlint
+
+$ npm run build --prefix frontend
+vite v8.3.0 building client environment for production...
+✓ 67 modules transformed.
+dist/index.html                   1.04 kB │ gzip:   0.53 kB
+dist/assets/index-C7WfX_UN.css   40.89 kB │ gzip:   7.62 kB
+dist/assets/index-DvptT8UZ.js   532.20 kB │ gzip: 147.51 kB
+✓ built in 212ms
+```
+
+Vite retained its existing non-failing advisory that one minified chunk exceeds 500 kB.
+The updated browser journey rendered the explicit archived-source failure and
+manufacturer not-applicable panels:
+
+```text
+$ PLAYWRIGHT_PATH=... node scripts/browser_react_smoke.cjs
+React browser smoke passed: routed home/about/dashboard/chat/new-review/demo surfaces, workflow-only step strip, login/signup/recovery UI, mismatch validation, logged-out public demo, evidence/access, edited decision/export, failed API state, safe mobile layout; no page errors.
+```
+
+Python compileall, legacy/browser JavaScript syntax checks and `git diff --check` also
+exited 0.
+
+Bounded external verification, after the sandboxed attempt reported `Public source DNS
+lookup failed`, passed with network access explicitly allowed:
+
+```text
+$ .venv/bin/python -m scripts.verify_integrity_live
+{
+  "pubmed": {
+    "source_pmid": "38510612",
+    "source_url": "https://pubmed.ncbi.nlm.nih.gov/38510612/",
+    "source_hash": "e265048d7321213b074a09bba3b4cc5b741f43a2928f01e04bd0edcb0316a6d5",
+    "integrity_status": "retracted",
+    "checked_via": "pubmed",
+    "checked_at": "2026-09-22T17:17:34.955131+00:00",
+    "notice_relations": ["RetractionIn"],
+    "notice_identifiers": ["PMID 38868598"],
+    "notice_urls": ["https://pubmed.ncbi.nlm.nih.gov/38868598/"]
+  },
+  "crossref": {
+    "source_doi": "10.1177/1758835920922055",
+    "integrity_status": "retracted",
+    "checked_via": "crossref",
+    "checked_at": "2026-09-22T17:17:36.168805+00:00",
+    "notice_relations": ["updated-by", "updated-by"],
+    "notice_identifiers": [
+      "DOI 10.1177/17588359231172420",
+      "DOI 10.1177/17588359231172420"
+    ],
+    "notice_sources": ["crossref:retraction-watch", "crossref:publisher"]
+  },
+  "passages_printed": false,
+  "model_calls": 0
+}
+```
+
+The live verifier output recorded PubMed source SHA-256
+`e265048d7321213b074a09bba3b4cc5b741f43a2928f01e04bd0edcb0316a6d5` and UTC check
+timestamps. It printed no article passages, API credentials or model output.
+
+### Blockers and unverified assumptions
+
+- PubMed/Crossref metadata can be incomplete, delayed or internally duplicated. The
+  live Crossref record returned the same notice from two named sources; both assertions
+  are retained rather than silently collapsed. No absence-of-notice state is presented
+  as proof that a paper is valid.
+- The archived demonstration paper predates this feature, so its card honestly reports
+  `check_failed`/not confirmed clean rather than attaching a new live result to an old
+  archived retrieval. Its manufacturer source reports `not_applicable`.
+- Hosted Render/Vercel behavior is unverified until the source changes are redeployed.
+  Existing Phase H OAuth, email, two-user hosted and live-model blockers are unchanged.
+
+### Manual action required
+
+1. Set `CROSSREF_MAILTO` to a monitored contact email in Render, or keep a valid
+   `NCBI_EMAIL` for reuse. This is identification for Crossref's polite pool, not a
+   credential. Do not add it to a `VITE_` variable.
+2. Redeploy Render and Vercel. Retrieve one public PubMed source and one PMC/DOI source,
+   verify their integrity panels and exports, and confirm failed Crossref access renders
+   unavailable/not confirmed clean. No Supabase migration or billing change is needed.
+
+### Phase result
+
+**PASS** for local Phase II acceptance. PubMed and Crossref notice paths are live
+verified with bounded public requests; fixtures cover every required state and failure
+semantics; the browser and canonical exports preserve the results. Stop after Phase II.
+
+## 2026-09-25 — Phase III: explicit multi-provider assessment comparison
+
+Status: **PASS LOCALLY; LIVE PROVIDER CALL AND HOSTED MIGRATION/JOURNEY UNVERIFIED.**
+
+### Changes made
+
+- Added an authenticated, explicit second-opinion route for completed primary
+  assessments. The user selects one different provider from the existing Groq,
+  OpenRouter-free, NVIDIA, or retained Gemini allowlist. The provider must pass the
+  existing credential, configured-model, and operator-confirmed free/no-billing gates.
+  It never runs automatically, never falls back, and never replaces the primary result.
+- Both primary and second-provider results now use one structured assessment schema and
+  independently pass the existing source-ID, exact quotation, and source-location
+  validator. The second request uses the primary assessment's exact source IDs. Invalid
+  secondary output is rejected while the primary assessment remains intact.
+- Added canonical provider-assessment and attempt provenance: actual provider/model,
+  primary flag, structural label, qualitative uncalibrated confidence, quote-check
+  result, source IDs, timestamp, outcome, and safe failure detail. A visible attempt is
+  recorded for unavailable, quota, malformed-output, and validation failures so the
+  additional call or blocked preflight is not hidden. Claim/context edits and fresh
+  retrieval clear every result tied to stale evidence.
+- Added a side-by-side React comparison with provider/model tags, label, qualitative
+  confidence, and quote-check result. The warning is computed in TypeScript from only
+  `label`, `confidence`, and `quote_check_passed`; wording differences alone do not
+  trigger it. No model writes a disagreement summary or combined verdict. The UI states
+  that the action makes one extra provider call and may consume free quota.
+- Added `supabase/migrations/202609250001_multi_provider_assessments.sql`. The normalized
+  table is derived from explicitly saved canonical reviews, forces RLS, and has separate
+  authenticated-owner SELECT, INSERT, UPDATE, and DELETE policies. Database triggers
+  derive and preserve ownership; the client cannot assign another owner.
+- Canonical JSON/TXT exports validate and preserve each provider result plus attempt
+  history. `docs/EVALUATION.md` now excludes second opinions from `--run-model` batches.
+  README, architecture, API, persistence, deployment, feature-status, and context records
+  describe the actual contract and prepared-versus-applied state.
+- Removed the frontend's remote Google Fonts request after the final browser rerun found
+  it could abort independently of the application. The design now uses deterministic
+  system font stacks and the no-page-error browser gate passes without an external font
+  dependency.
+
+### Checks actually executed
+
+Required backend suite on the final Phase III backend implementation:
+
+```text
+$ .venv/bin/python -m unittest discover -s tests -v
+----------------------------------------------------------------------
+Ran 108 tests in 3.285s
+
+OK
+```
+
+This includes five focused mocked-provider tests for matching structured fields despite
+different wording, changed label/confidence, fabricated quotation rejection through the
+same validator, visible quota failure that preserves the primary, unavailable provider
+handling, and same-provider rejection. HTTP tests
+also cover the authenticated second-opinion route and signed-out denial. Existing
+retrieval, integrity, unsafe-URL, invalidation, persistence, export, and authentication
+tests remain green.
+
+Required frontend checks were rerun after removing the external font dependency:
+
+```text
+$ npm run typecheck --prefix frontend
+> tsc -b --pretty false
+
+$ npm run lint --prefix frontend
+> oxlint
+
+$ npm run build --prefix frontend
+vite v8.3.0 building client environment for production...
+✓ 68 modules transformed.
+dist/index.html                   0.64 kB │ gzip:   0.38 kB
+dist/assets/index-DiBZftIC.css   40.95 kB │ gzip:   7.61 kB
+dist/assets/index-IvaIyw6M.js   537.04 kB │ gzip: 148.60 kB
+✓ built in 330ms
+```
+
+Vite retained its existing non-failing advisory for a minified chunk over 500 kB.
+
+The dedicated structural comparison test passed:
+
+```text
+$ npm run test:comparison --prefix frontend
+1..1
+# tests 1
+# pass 1
+# fail 0
+```
+
+The final actual React/FastAPI browser run passed after fresh local services started:
+
+```text
+$ PLAYWRIGHT_PATH=... node scripts/browser_react_smoke.cjs
+React browser smoke passed: routed home/about/dashboard/chat/new-review/demo surfaces,
+workflow-only step strip, login/signup/recovery UI, mismatch validation, logged-out
+public demo, evidence/access, structural provider comparison, edited decision/export,
+failed API state, safe mobile layout; no page errors.
+```
+
+Python compileall, JavaScript syntax checks, auth frontend tests, and `git diff --check`
+also exited 0 during the Phase III verification run.
+
+The versioned database migration was applied only to the disposable local Supabase
+stack. The complete local policy suite passed:
+
+```text
+$ supabase migration up --local
+Applying migration 202609250001_multi_provider_assessments.sql...
+
+$ supabase test db
+Files=4, Tests=57, Result: PASS
+```
+
+A read-only linked migration query showed `202609190001`, `202609190002`, and
+`202609210001` in both local and remote history. It showed `202609250001` locally and no
+remote entry. No hosted migration was pushed in this phase.
+
+### Blockers and unverified assumptions
+
+- No live second-provider request was made. Fixture tests establish provider selection,
+  validation, failure, provenance, and UI behavior; they do not establish current Groq,
+  OpenRouter, NVIDIA, or Gemini access, free quota, output quality, or agreement rates.
+- Qualitative `low|medium|high` confidence is an uncalibrated model self-rating used only
+  for structural comparison. It is not a probability, truth score, or scientific
+  confidence interval.
+- Migration `202609250001` is not applied to hosted Supabase. Hosted RLS syncing, saved
+  comparison reload/export, and the complete browser journey remain unverified until it
+  is pushed, the services are redeployed, and two authenticated users test isolation.
+- Existing Phase H Google OAuth, email delivery/recovery, hosted two-user isolation,
+  public Vercel reachability, Render health, and live model-generation blockers remain
+  outside this phase and unchanged.
+
+### Manual action required
+
+1. Review the migration, run `supabase migration list`, then `supabase db push`, and run
+   `supabase migration list` again. Confirm only `202609250001` changes from local-only
+   to present remotely. Do not create the table manually or add a service-role key.
+2. On Render, configure at least two desired evidence providers using server-only keys,
+   allowlisted model IDs, and a `*_FREE_TIER_CONFIRMED=true` value only after verifying
+   that exact account has free access with no billing. Put no provider key in Vercel or
+   any `VITE_` variable.
+3. Redeploy backend and frontend. With public/synthetic input and a signed-in disposable
+   user, complete a primary assessment, request one second opinion, inspect the recorded
+   provider/model and exact structural warning, explicitly save/reload/export it, and
+   verify a second user cannot access the record. Stop if free quota is unavailable;
+   do not enable billing or another-provider fallback.
+
+### Phase result
+
+**PASS** for local Phase III acceptance. The explicit second-provider path, equal
+deterministic validation, structural comparison, visible quota provenance, exports, and
+owner-scoped migration all pass controlled local checks. Live external provider behavior
+and hosted migration/deployment remain explicitly unverified. Optional Phase IV was not
+started. Stop after Phase III.

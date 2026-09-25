@@ -18,8 +18,27 @@ def validate_review(review):
             raise ValueError('Original claim span is not present in input.')
         if claim.assessment:
             validate_assessment(claim.assessment, claim_sources(review, claim.claim_id))
+            if claim.provider_assessments:
+                primary = [item for item in claim.provider_assessments if item.is_primary]
+                if len(primary) != 1 or primary[0].assessment != claim.assessment:
+                    raise ValueError('Provider assessments must contain exactly one primary matching the canonical assessment.')
+                providers = [item.provider for item in claim.provider_assessments]
+                if len(providers) != len(set(providers)):
+                    raise ValueError('A provider can appear only once for the current claim and evidence.')
+                current_sources = {source.source_id: source for source in claim_sources(review, claim.claim_id)}
+                for item in claim.provider_assessments:
+                    if not item.quote_check_passed:
+                        raise ValueError('Provider assessment failed deterministic quotation validation.')
+                    if not item.source_ids or not set(item.source_ids) <= set(current_sources):
+                        raise ValueError('Provider assessment references stale or unknown evidence.')
+                    validate_assessment(
+                        item.assessment,
+                        [current_sources[source_id] for source_id in item.source_ids],
+                    )
         elif claim.decision.status != 'pending':
             raise ValueError('A decision cannot approve an absent assessment.')
+        elif claim.provider_assessments:
+            raise ValueError('Provider assessments cannot exist without a canonical primary assessment.')
     return review
 
 
@@ -40,6 +59,19 @@ def export_review(review, fmt):
             for e in a.evidence:
                 s = next(s for s in review.sources if s.source_id == e.source_id)
                 lines.extend([f'{e.relationship}: {s.title} ({s.url}), {e.location}', 'Exact quotation: '+e.passage])
+            for provider_assessment in c.provider_assessments:
+                role = 'primary' if provider_assessment.is_primary else 'second opinion'
+                lines.append(
+                    f'Provider assessment ({role}): {provider_assessment.provider} / '
+                    f'{provider_assessment.model}; label={provider_assessment.label}; '
+                    f'confidence={provider_assessment.confidence} (uncalibrated); '
+                    f'quote_check_passed={str(provider_assessment.quote_check_passed).lower()}'
+                )
+            for attempt in c.second_opinion_attempts:
+                lines.append(
+                    f'Second-opinion attempt: {attempt.provider} / {attempt.requested_model}; '
+                    f'{attempt.outcome}; {attempt.timestamp}; {attempt.detail}'
+                )
         else:
             lines.append('Assessment unavailable: '+(c.assessment_error or 'Not assessed.'))
         lines.extend(['Final wording: '+c.decision.final_wording, 'Researcher notes: '+c.decision.notes, ''])

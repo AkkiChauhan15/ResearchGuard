@@ -6,6 +6,11 @@
     { "source": "/forgot-password", "destination": "/index.html" },
     { "source": "/update-password", "destination": "/index.html" },
     { "source": "/account", "destination": "/index.html" },
-    { "source": "/chat", "destination": "/index.html" }
+    { "source": "/chat", "destination": "/index.html" },
+    { "source": "/about", "destination": "/index.html" },
+    { "source": "/dashboard", "destination": "/index.html" },
+    { "source": "/reviews", "destination": "/index.html" },
+    { "source": "/review/:path*", "destination": "/index.html" },
+    { "source": "/demo/cyto-id", "destination": "/index.html" }
   ]
 }

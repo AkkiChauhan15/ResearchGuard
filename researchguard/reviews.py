@@ -36,6 +36,8 @@ def edit_claim(review, claim_id, text):
     claim.inferences = []
     claim.assessment = None
     claim.assessment_error = None
+    claim.provider_assessments = []
+    claim.second_opinion_attempts = []
     claim.decision = Decision()
     # Retain retrieval history, but detach its evidence from this revised claim.
     for attempt in review.attempts:
@@ -56,6 +58,8 @@ def edit_context(review: Review, context: Context) -> None:
     for claim in review.claims:
         claim.assessment = None
         claim.assessment_error = None
+        claim.provider_assessments = []
+        claim.second_opinion_attempts = []
         claim.decision = Decision()
         claim.missing_context = [item for item in claim.missing_context if item != question]
         if needs_reagent:

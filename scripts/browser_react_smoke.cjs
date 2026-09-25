@@ -39,21 +39,34 @@ const screenshotDir = process.env.SCREENSHOT_DIR || 'test-results';
 
     await page.goto(frontendUrl, { waitUntil: 'networkidle' });
     await page.getByRole('heading', { name: 'Check the evidence. Keep the qualifications.' }).waitFor();
-    await page.getByText('You are signed out.', { exact: false }).waitFor();
+    assert.equal(await page.getByLabel('Review workflow').count(), 0);
+    assert.equal(await page.getByLabel('Answer or claim to review').count(), 0);
     const signInButton = page.getByRole('button', { name: 'Sign in', exact: true });
     await signInButton.waitFor();
-    assert.equal(await page.getByText('A claim is a starting point.', { exact: true }).count(), 1);
 
     await page.keyboard.press('Tab');
-    assert.equal(await page.evaluate(() => document.activeElement?.textContent), 'Skip to review');
+    assert.equal(await page.evaluate(() => document.activeElement?.textContent), 'Skip to content');
     await page.keyboard.press('Enter');
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'main-content');
-    await page.getByLabel('Answer or claim to review').focus();
-    await page.keyboard.press('Tab');
-    assert.equal(await page.evaluate(() => document.activeElement?.id), 'intended-use');
 
     await fs.mkdir(screenshotDir, { recursive: true });
-    await page.screenshot({ path: `${screenshotDir}/react-empty-desktop.png`, fullPage: true });
+    await page.screenshot({ path: `${screenshotDir}/react-home-desktop.png`, fullPage: true });
+
+    await page.getByRole('button', { name: 'About', exact: true }).click();
+    await page.getByRole('heading', { name: 'Research support you can inspect.' }).waitFor();
+    assert.equal(new URL(page.url()).pathname, '/about');
+    assert.equal(await page.getByLabel('Review workflow').count(), 0);
+    await page.getByRole('button', { name: 'Home', exact: true }).click();
+
+    await page.goto(new URL('/dashboard', frontendUrl).toString(), { waitUntil: 'networkidle' });
+    await page.getByRole('heading', { name: 'Sign in to open your dashboard' }).waitFor();
+    await page.waitForLoadState('networkidle');
+    assert.equal(await page.getByLabel('Review workflow').count(), 0);
+    await page.goto(new URL('/chat', frontendUrl).toString(), { waitUntil: 'networkidle' });
+    await page.getByRole('heading', { name: 'Research assistant chat' }).waitFor();
+    await page.waitForLoadState('networkidle');
+    assert.equal(await page.getByLabel('Review workflow').count(), 0);
+    await page.getByRole('button', { name: 'Home', exact: true }).click();
 
     if (!(await signInButton.isDisabled())) {
       await signInButton.click();
@@ -84,16 +97,20 @@ const screenshotDir = process.env.SCREENSHOT_DIR || 'test-results';
 
       await page.getByRole('button', { name: 'Explore the demo without signing in' }).click();
     } else {
-      await page.getByRole('button', { name: 'Open demonstration' }).click();
+      await page.getByRole('button', { name: 'Demo', exact: true }).click();
     }
 
     await page.getByText('Demonstration — not a live verification', { exact: true }).waitFor();
+    assert.equal(new URL(page.url()).pathname, '/demo/cyto-id');
+    assert.equal(await page.getByLabel('Review workflow').count(), 1);
     await page.getByRole('heading', { name: 'What the retrieved material shows' }).waitFor();
     await page.getByText('Partial result or access limitation', { exact: true }).waitFor();
     assert.ok(await page.getByText('abstract access', { exact: true }).count());
     assert.ok(await page.getByText('product document access', { exact: true }).count());
     assert.ok(await page.getByText('Next verification question', { exact: true }).count());
     assert.ok(await page.getByText('Access limitations', { exact: true }).count());
+    assert.ok(await page.getByText('Integrity check unavailable — not confirmed clean', { exact: true }).count());
+    assert.ok(await page.getByText('Integrity check not applicable to this source type', { exact: true }).count());
 
     await page.getByLabel('Your final wording').fill('Synthetic review: puncta count alone does not resolve autophagic flux.');
     await page.getByLabel('Researcher notes').fill('Checked that the accessible paper material is abstract only.');
@@ -125,6 +142,52 @@ const screenshotDir = process.env.SCREENSHOT_DIR || 'test-results';
     );
     await page.screenshot({ path: `${screenshotDir}/react-demo-desktop.png`, fullPage: true });
 
+    const comparisonFixture = structuredClone(exported);
+    const primaryAssessment = {
+      assessment_id: 'assessment_browser_primary',
+      provider: 'groq',
+      model: 'fixture-primary',
+      is_primary: true,
+      label: 'insufficient',
+      confidence: 'medium',
+      quote_check_passed: true,
+      source_ids: comparisonFixture.sources.map((source) => source.source_id),
+      created_at: '2026-09-25T00:00:00+00:00',
+      assessment: structuredClone(comparisonFixture.claims[0].assessment),
+    };
+    const secondAssessment = structuredClone(primaryAssessment);
+    secondAssessment.assessment_id = 'assessment_browser_second';
+    secondAssessment.provider = 'openrouter';
+    secondAssessment.model = 'fixture-second';
+    secondAssessment.is_primary = false;
+    secondAssessment.assessment.explanation = 'Different fixture wording with the same structured comparison fields.';
+    comparisonFixture.claims[0].provider_assessments = [primaryAssessment, secondAssessment];
+    comparisonFixture.claims[0].second_opinion_attempts = [];
+    await page.route('**/api/reviews/demo', (route) => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(comparisonFixture),
+    }));
+    await page.getByRole('button', { name: 'Home', exact: true }).click();
+    await page.getByRole('button', { name: 'Open the demo' }).click();
+    await page.getByRole('heading', { name: 'Provider comparison' }).waitFor();
+    assert.equal(await page.getByText('⚠ Providers disagree on', { exact: false }).count(), 0);
+
+    comparisonFixture.claims[0].provider_assessments[1].label = 'uncertain';
+    comparisonFixture.claims[0].provider_assessments[1].confidence = 'low';
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.getByText('⚠ Providers disagree on label, confidence', { exact: true }).waitFor();
+    await page.unroute('**/api/reviews/demo');
+
+    await page.evaluate(() => {
+      window.history.pushState({}, '', '/review/new');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await page.getByRole('heading', { name: 'What needs checking?' }).waitFor();
+    assert.equal(await page.getByLabel('Review workflow').count(), 1);
+    await page.getByLabel('Answer or claim to review').focus();
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'intended-use');
     await page.getByLabel('Answer or claim to review').fill('A synthetic observation proves that cellular activity increased.');
     assert.equal(await page.getByRole('button', { name: 'Start live review' }).isDisabled(), true);
 
@@ -136,7 +199,8 @@ const screenshotDir = process.env.SCREENSHOT_DIR || 'test-results';
 
     expectingApiFailure = true;
     await page.route('**/api/reviews/demo', (route) => route.abort('failed'));
-    await page.getByRole('button', { name: 'Open demonstration' }).click();
+    await page.getByRole('button', { name: 'Home', exact: true }).click();
+    await page.getByRole('button', { name: 'Open the demo' }).click();
     await page.getByRole('alert').waitFor();
     await page.getByText('The backend service is unavailable.', { exact: false }).waitFor();
     assert.equal(await page.getByText('Demonstration — not a live verification', { exact: true }).count(), 1);
@@ -145,7 +209,7 @@ const screenshotDir = process.env.SCREENSHOT_DIR || 'test-results';
     expectingApiFailure = false;
 
     assert.deepEqual(errors, []);
-    console.log('React browser smoke passed: login/signup/recovery UI, mismatch validation, logged-out public demo, evidence/access, edited decision/export, failed API state, safe mobile layout; no page errors.');
+    console.log('React browser smoke passed: routed home/about/dashboard/chat/new-review/demo surfaces, workflow-only step strip, login/signup/recovery UI, mismatch validation, logged-out public demo, evidence/access, structural provider comparison, edited decision/export, failed API state, safe mobile layout; no page errors.');
   } finally {
     await browser.close();
   }

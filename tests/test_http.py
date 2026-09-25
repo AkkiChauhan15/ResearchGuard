@@ -8,6 +8,7 @@ from uuid import uuid4
 import httpx
 
 from researchguard.api import create_app
+from researchguard.assessment import AssessmentWithConfidence
 from researchguard.auth import AuthenticatedUser
 from researchguard.demo import demo_review
 from researchguard.persistence import (
@@ -16,7 +17,8 @@ from researchguard.persistence import (
     SavedReviewRecord,
     SavedReviewSummary,
 )
-from researchguard.schemas import Attempt, ModelRun
+from researchguard.providers.base import ProviderStatus
+from researchguard.schemas import Attempt, ModelRun, ProviderAssessment
 from researchguard.settings import Settings
 from researchguard.store import ReviewStore
 
@@ -62,17 +64,30 @@ def seed_assessment(review):
     claim = review.claims[0]
     claim.assessment = demo_review().claims[0].assessment.model_copy(deep=True)
     claim.assessment_error = None
-    review.model_runs.append(
-        ModelRun(
-            task="assessment",
-            claim_id=claim.claim_id,
-            source_ids=[item.source_id for item in review.sources],
-            requested_model="fixture-model",
-            returned_model="fixture-model-version",
-            prompt_version="fixture-phase-g",
-            validation=["Fixture structured output and evidence links validated."],
-        )
+    source_ids = [item.source_id for item in review.sources]
+    run = ModelRun(
+        provider="groq",
+        task="assessment",
+        claim_id=claim.claim_id,
+        source_ids=source_ids,
+        requested_model="fixture-model",
+        returned_model="fixture-model-version",
+        prompt_version="fixture-phase-g",
+        validation=["Fixture structured output and evidence links validated."],
     )
+    review.model_runs.append(run)
+    claim.provider_assessments = [
+        ProviderAssessment(
+            provider="groq",
+            model=run.returned_model,
+            is_primary=True,
+            label="insufficient",
+            confidence="medium",
+            quote_check_passed=True,
+            source_ids=source_ids,
+            assessment=claim.assessment.model_copy(deep=True),
+        )
+    ]
 
 
 class FakeSavedReviews:
@@ -210,7 +225,11 @@ class HTTPTests(unittest.IsolatedAsyncioTestCase):
         root = await self.client.get("/")
         self.assertEqual(root.status_code, 200)
         self.assertIn("script-src 'self'", root.headers["content-security-policy"])
-        for frontend_path in ("/login", "/signup", "/forgot-password", "/update-password", "/account"):
+        for frontend_path in (
+            "/login", "/signup", "/forgot-password", "/update-password", "/account",
+            "/chat", "/about", "/dashboard", "/reviews", "/review/new",
+            "/review/review_0123abcdef", "/demo/cyto-id",
+        ):
             route = await self.client.get(frontend_path)
             self.assertEqual(route.status_code, 200, frontend_path)
             self.assertEqual(route.content, root.content)
@@ -546,6 +565,8 @@ class HTTPTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(edited.status_code, 200, edited.text)
         self.assertIsNone(edited.json()["claims"][0]["assessment"])
+        self.assertEqual(edited.json()["claims"][0]["provider_assessments"], [])
+        self.assertEqual(edited.json()["claims"][0]["second_opinion_attempts"], [])
         self.assertEqual(edited.json()["claims"][0]["decision"]["status"], "pending")
         self.assertFalse(any(item["claim_id"] == claim_id for item in edited.json()["attempts"]))
 
@@ -568,8 +589,67 @@ class HTTPTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(context_edit.status_code, 200, context_edit.text)
         self.assertIsNone(context_edit.json()["claims"][0]["assessment"])
+        self.assertEqual(context_edit.json()["claims"][0]["provider_assessments"], [])
         self.assertEqual(context_edit.json()["claims"][0]["decision"]["status"], "pending")
         self.assertFalse(any(item["claim_id"] == claim_id for item in context_edit.json()["attempts"]))
+
+    async def test_second_opinion_route_is_explicit_authenticated_and_preserves_primary(self):
+        review = await self.create_live()
+        review_id = review["review_id"]
+        claim_id = review["claims"][0]["claim_id"]
+        with patch("researchguard.api.retrieve", side_effect=lambda current, _claim, _query: seed_accessible_sources(current)):
+            await self.client.post(
+                f"/api/reviews/{review_id}/claims/{claim_id}/retrievals",
+                headers=self.headers(), json={"query": "fixture evidence"},
+            )
+        with patch("researchguard.api.assess", side_effect=lambda current, _claim: seed_assessment(current)):
+            primary_response = await self.client.post(
+                f"/api/reviews/{review_id}/claims/{claim_id}/assessment",
+                headers=self.headers(),
+            )
+        primary = primary_response.json()["claims"][0]["assessment"]
+        output = AssessmentWithConfidence(**primary, confidence="medium")
+        run = ModelRun(
+            provider="openrouter",
+            task="assessment",
+            requested_model="openrouter/free",
+            returned_model="fixture-openrouter-free",
+            prompt_version="phase-three-http-fixture",
+            validation=["Fixture structured output validated."],
+        )
+        status = ProviderStatus(
+            provider="openrouter",
+            state="configured",
+            detail="Fixture free provider configured.",
+            assessment_model="openrouter/free",
+        )
+        with (
+            patch("researchguard.assessment.provider_status_for", return_value=status),
+            patch("researchguard.assessment.call_model", return_value=(output, run)),
+        ):
+            second = await self.client.post(
+                f"/api/reviews/{review_id}/claims/{claim_id}/second-opinions",
+                headers=self.headers(), json={"provider": "openrouter"},
+            )
+        self.assertEqual(second.status_code, 200, second.text)
+        claim = second.json()["claims"][0]
+        self.assertEqual(claim["assessment"], primary)
+        self.assertEqual(len(claim["provider_assessments"]), 2)
+        self.assertEqual(claim["provider_assessments"][1]["provider"], "openrouter")
+        self.assertEqual(claim["second_opinion_attempts"][-1]["outcome"], "succeeded")
+        self.assertEqual(second.json()["model_runs"][-1]["task"], "second_opinion_assessment")
+
+        same_provider = await self.client.post(
+            f"/api/reviews/{review_id}/claims/{claim_id}/second-opinions",
+            headers=self.headers(), json={"provider": "groq"},
+        )
+        self.assertEqual(same_provider.status_code, 400)
+        self.assertIn("different configured provider", same_provider.json()["error"])
+        signed_out = await self.client.post(
+            f"/api/reviews/{review_id}/claims/{claim_id}/second-opinions",
+            headers=self.headers(authenticated=False), json={"provider": "gemini"},
+        )
+        self.assertEqual(signed_out.status_code, 401)
 
     async def test_session_isolation_blocks_reads_and_mutations(self):
         review = await self.create_live()

@@ -16,6 +16,7 @@ import type {
   SavedChatList,
   SavedChatRecord,
   SavedChatSummary,
+  ProviderId,
 } from './types'
 
 const sessionId = crypto.randomUUID()
@@ -148,6 +149,11 @@ export const api = {
     }),
   assess: (reviewId: string, claimId: string) =>
     request<Review>(`/api/reviews/${reviewId}/claims/${claimId}/assessment`, { method: 'POST' }),
+  secondOpinion: (reviewId: string, claimId: string, provider: ProviderId) =>
+    request<Review>(`/api/reviews/${reviewId}/claims/${claimId}/second-opinions`, {
+      method: 'POST',
+      body: JSON.stringify({ provider }),
+    }, 'required'),
   decide: (reviewId: string, claimId: string, decision: Decision) =>
     request<Review>(`/api/reviews/${reviewId}/claims/${claimId}/decision`, {
       method: 'PUT',

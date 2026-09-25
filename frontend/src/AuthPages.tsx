@@ -205,7 +205,7 @@ function AccountProfile({ session, onSignOut, navigate }: { session: Session; on
       <h2 className="mt-3 font-serif text-4xl text-ink">Account details</h2>
       <p className="mt-2 break-all text-sm leading-6 text-muted">Signed in as <strong className="text-ink">{session.user.email ?? 'verified user'}</strong></p>
       <div className="mt-5 flex flex-wrap gap-3">
-        <button type="button" className={secondaryButton} onClick={() => navigate('/')}>Continue to workspace</button>
+        <button type="button" className={secondaryButton} onClick={() => navigate('/dashboard')}>Continue to dashboard</button>
         <button type="button" className={secondaryButton} disabled={busy} onClick={onSignOut}>Sign out</button>
       </div>
       <div className="my-7 h-px bg-line" />
@@ -271,7 +271,7 @@ export default function AuthPages({
   useEffect(() => {
     if (!authReady || !session) return
     if (route === 'login' || route === 'forgot-password') {
-      navigate(requestedInternalPath(window.location.search), true)
+      navigate(requestedInternalPath(window.location.search, '/dashboard'), true)
     } else if (route === 'signup') {
       navigate('/account', true)
     }
@@ -287,7 +287,7 @@ export default function AuthPages({
     resetMessages()
     setBusy(true)
     try {
-      await signInWithGoogle(route === 'signup' ? '/account' : requestedInternalPath(window.location.search))
+      await signInWithGoogle(route === 'signup' ? '/account' : requestedInternalPath(window.location.search, '/dashboard'))
     } catch (reason) {
       setFormError(reason instanceof Error ? reason.message : 'Google sign-in could not start.')
       setBusy(false)
@@ -300,7 +300,7 @@ export default function AuthPages({
     setBusy(true)
     try {
       const signedIn = await signInWithEmail(email, password)
-      await onAuthenticated(signedIn, requestedInternalPath(window.location.search))
+      await onAuthenticated(signedIn, requestedInternalPath(window.location.search, '/dashboard'))
     } catch (reason) {
       setFormError(reason instanceof Error ? reason.message : 'Sign-in failed.')
       setBusy(false)
@@ -407,7 +407,7 @@ export default function AuthPages({
             <button type="submit" className={primaryButton} disabled={busy}>{busy ? 'Updating…' : 'Update password'}</button>
           </form>
         )}
-        <button className={`${textLink} mt-4`} onClick={() => navigate(session && passwordRecoveryReady ? '/' : '/forgot-password')}>{session && passwordRecoveryReady ? 'Continue to workspace' : 'Request another recovery email'}</button>
+        <button className={`${textLink} mt-4`} onClick={() => navigate(session && passwordRecoveryReady ? '/dashboard' : '/forgot-password')}>{session && passwordRecoveryReady ? 'Continue to dashboard' : 'Request another recovery email'}</button>
       </>
     )
   } else {

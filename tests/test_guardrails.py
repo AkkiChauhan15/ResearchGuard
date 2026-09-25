@@ -78,6 +78,8 @@ class EvidenceTests(unittest.TestCase):
         decide(self.review,self.claim.claim_id,Decision(status='accepted'))
         edit_claim(self.review,self.claim.claim_id,'An edited claim.')
         self.assertIsNone(self.claim.assessment)
+        self.assertEqual(self.claim.provider_assessments, [])
+        self.assertEqual(self.claim.second_opinion_attempts, [])
         self.assertEqual(self.claim.decision.status,'pending')
         self.assertTrue(all(a.claim_id != self.claim.claim_id for a in self.review.attempts))
         export_review(self.review,'json')
@@ -158,11 +160,13 @@ class RuntimeTests(unittest.TestCase):
     def test_assessment_records_sources_access_and_validation(self,client_class):
         r=self.live()
         expected=demo_review().claims[0].assessment
+        payload={**expected.model_dump(),'confidence':'medium'}
         client_class.return_value.models.generate_content.return_value=SimpleNamespace(
             candidates=[SimpleNamespace(finish_reason=types.FinishReason.STOP)],
-            text=expected.model_dump_json(),model_version='gemini-fixture')
+            text=json.dumps(payload),model_version='gemini-fixture')
         assess(r,r.claims[0].claim_id)
         self.assertIsNotNone(r.claims[0].assessment)
+        self.assertEqual(r.claims[0].provider_assessments[0].confidence,'medium')
         run=r.model_runs[-1]
         self.assertEqual(run.source_ids,[s.source_id for s in r.sources])
         self.assertTrue(all(s.access_level in {'abstract','product document'} for s in r.sources))
@@ -178,7 +182,7 @@ class RuntimeTests(unittest.TestCase):
             (('passage','A fabricated quotation.'),'quotation'),
         ]:
             r=self.live()
-            data=demo_review().claims[0].assessment.model_dump()
+            data={**demo_review().claims[0].assessment.model_dump(),'confidence':'medium'}
             data['evidence'][0][change[0]]=change[1]
             client_class.return_value.models.generate_content.return_value=SimpleNamespace(
                 candidates=[SimpleNamespace(finish_reason=types.FinishReason.STOP)],

@@ -15,7 +15,7 @@ from .base import ProviderStatus
 
 
 PROVIDER_NAME = "gemini"
-PROMPT_VERSION = "researchguard-2026-09-18-gemini-v1"
+PROMPT_VERSION = "researchguard-2026-09-25-gemini-v2"
 DEFAULT_MODEL = "gemini-3.8-flash"
 # Verified against the official pricing table on 2026-09-18. Keep this narrow
 # and recheck current pricing before adding a model identifier.

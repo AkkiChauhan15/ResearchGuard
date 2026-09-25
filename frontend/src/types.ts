@@ -11,6 +11,8 @@ export type EvidenceStatus =
   | 'Contradicted by retrieved evidence'
   | 'Insufficient evidence found'
 
+export type ProviderId = 'groq' | 'openrouter' | 'gemini' | 'nvidia'
+
 export type AccessState =
   | 'ok'
   | 'no_results'
@@ -38,6 +40,37 @@ export interface Passage {
   location: string
 }
 
+export type IntegrityStatus =
+  | 'clean'
+  | 'retracted'
+  | 'correction'
+  | 'expression_of_concern'
+  | 'not_applicable'
+  | 'check_failed'
+
+export interface IntegrityNotice {
+  kind: 'retraction' | 'correction' | 'expression_of_concern'
+  relation: string
+  label: string
+  url: string | null
+  identifier: string | null
+  source: string
+}
+
+export interface IntegrityResult {
+  status: IntegrityStatus
+  checked_at: string
+  checked_via: 'pubmed' | 'crossref' | 'not_applicable' | 'unavailable'
+  detail: string
+  notices: IntegrityNotice[]
+  checks: Array<{
+    method: 'pubmed' | 'crossref' | 'not_applicable' | 'unavailable'
+    checked_at: string
+    outcome: 'no_indicators' | 'notice_found' | 'not_applicable' | 'failed'
+    detail: string
+  }>
+}
+
 export interface Source {
   source_id: string
   retrieval_run_id: string
@@ -55,6 +88,7 @@ export interface Source {
   content_sha256: string
   passages: Passage[]
   limitations: string[]
+  integrity: IntegrityResult | null
 }
 
 export interface Attempt {
@@ -85,6 +119,27 @@ export interface Assessment {
   next_verification_step: string
 }
 
+export interface ProviderAssessment {
+  assessment_id: string
+  provider: ProviderId
+  model: string
+  is_primary: boolean
+  label: 'supports' | 'contradicts' | 'uncertain' | 'insufficient'
+  confidence: 'low' | 'medium' | 'high'
+  quote_check_passed: boolean
+  source_ids: string[]
+  created_at: string
+  assessment: Assessment
+}
+
+export interface SecondOpinionAttempt {
+  provider: ProviderId
+  requested_model: string
+  outcome: 'succeeded' | 'failed'
+  timestamp: string
+  detail: string
+}
+
 export interface Decision {
   status: 'pending' | 'accepted' | 'edited' | 'rejected'
   final_wording: string
@@ -101,6 +156,8 @@ export interface Claim {
   missing_context: string[]
   assessment: Assessment | null
   assessment_error: string | null
+  provider_assessments: ProviderAssessment[]
+  second_opinion_attempts: SecondOpinionAttempt[]
   decision: Decision
 }
 
@@ -144,6 +201,13 @@ export interface ApiConfig {
   extraction_model: string | null
   assessment_model: string | null
   model_detail: string
+  assessment_providers: Array<{
+    provider: ProviderId
+    state: string
+    detail: string
+    assessment_model: string | null
+    available: boolean
+  }>
   retention_seconds: number
   mode: string
   auth_configured: boolean
@@ -180,7 +244,7 @@ export interface SavedReviewList {
   items: SavedReviewSummary[]
 }
 
-export type ChatProviderId = 'groq' | 'openrouter' | 'gemini' | 'nvidia'
+export type ChatProviderId = ProviderId
 
 export interface ChatModelOption {
   id: string

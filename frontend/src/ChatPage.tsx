@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { api, downloadSavedChatPdf } from './api'
-import { BrandLockup, WorkflowStrip } from './Brand'
+import SiteHeader from './SiteHeader'
 import type {
   ChatMessageInput,
   ChatProviderId,
@@ -247,28 +247,15 @@ export default function ChatPage({ session, authReady, authAvailable, navigate, 
   return (
     <div className="min-h-screen">
       <a href="#chat-main" className="fixed -top-20 left-3 z-50 rounded-md bg-accent px-4 py-2 font-bold text-accent-ink transition-[top] focus:top-3">Skip to chat</a>
-      <header className="sticky top-0 z-40 border-b border-line bg-canvas/90 shadow-[0_10px_34px_rgba(0,0,0,0.28)] backdrop-blur-xl">
-        <div className="mx-auto flex max-w-[94rem] flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-7">
-          <button type="button" className="min-w-0 rounded-md" onClick={() => navigate('/')} aria-label="Research Guard evidence review">
-            <BrandLockup subtitle="General AI assistant" />
-          </button>
-          <nav aria-label="Primary navigation" className="order-3 flex w-full items-center gap-1 overflow-x-auto rounded-md bg-deep p-1 md:order-none md:w-auto">
-            <button type="button" className="min-h-10 shrink-0 rounded-sm px-3.5 py-2 text-sm font-bold text-muted transition hover:bg-panel hover:text-ink" onClick={() => navigate('/')}>Evidence review</button>
-            <button type="button" aria-current="page" className="min-h-10 shrink-0 rounded-sm bg-accent px-3.5 py-2 text-sm font-bold text-accent-ink">AI chat <span className="ml-1 font-mono text-[0.55rem] uppercase">unchecked</span></button>
-          </nav>
-          <nav aria-label="Account actions" className="flex flex-wrap items-center gap-2">
-            {session ? (
-              <>
-                <button type="button" className={secondaryButton} onClick={() => navigate('/account')}>Account</button>
-                <button type="button" className={secondaryButton} onClick={() => void onSignOut()}>Sign out</button>
-              </>
-            ) : (
-              <button type="button" className={primaryButton} disabled={!authReady || !authAvailable} onClick={() => navigate('/login?next=/chat')}>Sign in</button>
-            )}
-          </nav>
-        </div>
-        <WorkflowStrip active={3} />
-      </header>
+      <SiteHeader
+        session={session}
+        authReady={authReady}
+        authAvailable={authAvailable}
+        currentPath="/chat"
+        subtitle="General AI assistant"
+        navigate={navigate}
+        onSignOut={onSignOut}
+      />
 
       <main id="chat-main" tabIndex={-1} className="mx-auto max-w-[94rem] px-4 py-7 sm:px-7 sm:py-10">
         <div className="mb-6 grid gap-5 border-b border-line pb-7 lg:grid-cols-[1fr_auto] lg:items-end">

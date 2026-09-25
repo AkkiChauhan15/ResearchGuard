@@ -9,6 +9,7 @@
     "typecheck": "tsc -b --pretty false",
     "lint": "oxlint",
     "test:auth": "node --experimental-strip-types --test tests/auth-utils.test.mjs",
+    "test:comparison": "node --experimental-strip-types --test tests/assessment-comparison.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
