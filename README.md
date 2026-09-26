@@ -28,6 +28,13 @@
 > model call was made, and none of these Phase I–III source changes has been confirmed on
 > the hosted deployment.
 
+> **Phase IV interface status (2026-09-26):** local browser checks verify the
+> scroll-aware sticky header, shared active-nav underline, CSS button feedback,
+> unresolved-state pulse, animated workflow progress, one-time Home/About reveals, and
+> reduced-motion fallbacks. Motion 13.4.3 is loaded through a separate lazy feature
+> chunk. This phase changes no backend route, schema, migration, provider, or billing
+> configuration. The hosted frontend has not been checked for these changes.
+
 A local research-review application for making claim-to-evidence relationships,
 experimental context, and limitations inspectable. Start with the clearly labeled
 CYTO-ID demonstration, or create a live review and retrieve public sources.
@@ -65,6 +72,9 @@ reply remains labeled as unverified model output and separate from evidence revi
   paginated PDF with an explicit `not evidence-checked` warning.
 - **Security boundaries:** verified JWTs, owner-only database policies, exact CORS/host
   allowlists, protected URL retrieval, bounded concurrency and stale-update detection.
+- **Accessible interface motion:** navigation and workflow changes use short, subtle
+  transitions; marketing sections reveal once; `prefers-reduced-motion` produces the
+  same layout without the added motion.
 
 This remains a local-first application with a reported free-tier deployment. The former
 OpenAI API adapter is disabled. Groq, OpenRouter-free and NVIDIA structured adapters

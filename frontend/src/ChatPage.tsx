@@ -31,9 +31,9 @@ interface DisplayMessage extends ChatMessageInput {
 const fieldClass =
   'w-full rounded-md border border-line bg-deep/80 px-3.5 py-3 text-sm text-ink shadow-sm transition placeholder:text-muted/60 hover:border-accent/50 focus:border-accent focus:shadow-[inset_0_0_10px_rgba(78,222,163,0.08)]'
 const primaryButton =
-  'inline-flex min-h-11 items-center justify-center rounded-md bg-accent px-4 py-2.5 text-sm font-black text-accent-ink shadow-[0_0_18px_rgba(78,222,163,0.14)] transition hover:bg-accent-dark hover:shadow-[0_0_24px_rgba(78,222,163,0.24)] disabled:hover:bg-accent'
+  'control-motion inline-flex min-h-11 items-center justify-center rounded-md bg-accent px-4 py-2.5 text-sm font-black text-accent-ink shadow-[0_0_18px_rgba(78,222,163,0.14)] hover:bg-accent-dark hover:shadow-[0_0_24px_rgba(78,222,163,0.24)] disabled:hover:bg-accent'
 const secondaryButton =
-  'inline-flex min-h-11 items-center justify-center rounded-md border border-accent/25 bg-accent/5 px-4 py-2.5 text-sm font-black text-accent transition hover:border-accent/60 hover:bg-accent/10'
+  'control-motion inline-flex min-h-11 items-center justify-center rounded-md border border-accent/25 bg-accent/5 px-4 py-2.5 text-sm font-black text-accent hover:border-accent/60 hover:bg-accent/10'
 
 function Spinner() {
   return <span aria-hidden="true" className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent" />
@@ -260,7 +260,7 @@ export default function ChatPage({ session, authReady, authAvailable, navigate, 
       <main id="chat-main" tabIndex={-1} className="mx-auto max-w-[94rem] px-4 py-7 sm:px-7 sm:py-10">
         <div className="mb-6 grid gap-5 border-b border-line pb-7 lg:grid-cols-[1fr_auto] lg:items-end">
           <div className="max-w-3xl">
-          <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.18em] text-warm-ink">Unchecked general model inference</p>
+          <p className="status-pulse font-mono text-[0.68rem] font-black uppercase tracking-[0.18em] text-warm-ink">Unchecked general model inference</p>
           <h1 className="mt-3 font-serif text-4xl leading-tight text-ink sm:text-5xl">Research assistant chat</h1>
           <p className="mt-3 text-sm leading-6 text-muted sm:text-base">Ask general research questions using a configured AI provider. Successful conversations are saved to your private account and can be exported as PDF. Replies are model output and are not evidence-checked.</p>
           </div>

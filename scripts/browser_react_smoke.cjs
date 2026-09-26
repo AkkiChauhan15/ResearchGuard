@@ -41,6 +41,11 @@ const screenshotDir = process.env.SCREENSHOT_DIR || 'test-results';
     await page.getByRole('heading', { name: 'Check the evidence. Keep the qualifications.' }).waitFor();
     assert.equal(await page.getByLabel('Review workflow').count(), 0);
     assert.equal(await page.getByLabel('Answer or claim to review').count(), 0);
+    const siteHeader = page.locator('header[data-scrolled]').first();
+    assert.equal(await siteHeader.evaluate((element) => getComputedStyle(element).position), 'sticky');
+    assert.equal(await siteHeader.getAttribute('data-scrolled'), 'false');
+    assert.equal(await page.getByTestId('nav-underline').count(), 1);
+    const homeUnderline = await page.getByTestId('nav-underline').boundingBox();
     const signInButton = page.getByRole('button', { name: 'Sign in', exact: true });
     await signInButton.waitFor();
 
@@ -56,6 +61,25 @@ const screenshotDir = process.env.SCREENSHOT_DIR || 'test-results';
     await page.getByRole('heading', { name: 'Research support you can inspect.' }).waitFor();
     assert.equal(new URL(page.url()).pathname, '/about');
     assert.equal(await page.getByLabel('Review workflow').count(), 0);
+    await page.evaluate(() => window.scrollTo({ top: 48, behavior: 'instant' }));
+    await page.waitForFunction(() => document.querySelector('header[data-scrolled]')?.getAttribute('data-scrolled') === 'true');
+    assert.notEqual(await siteHeader.evaluate((element) => getComputedStyle(element).backgroundColor), 'rgba(7, 22, 22, 0)');
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+    await page.waitForFunction(() => document.querySelector('header[data-scrolled]')?.getAttribute('data-scrolled') === 'false');
+    assert.equal(await page.getByTestId('nav-underline').count(), 1);
+    const aboutUnderline = await page.getByTestId('nav-underline').boundingBox();
+    assert.ok(homeUnderline && aboutUnderline && homeUnderline.x !== aboutUnderline.x);
+    const revealSections = page.locator('[data-motion-reveal="once"]');
+    assert.equal(await revealSections.count(), 5);
+    const lastReveal = revealSections.last();
+    await lastReveal.scrollIntoViewIfNeeded();
+    await page.waitForFunction(() => {
+      const items = document.querySelectorAll('[data-motion-reveal="once"]');
+      const element = items.item(items.length - 1);
+      return element && getComputedStyle(element).opacity === '1';
+    });
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+    assert.equal(await lastReveal.evaluate((element) => getComputedStyle(element).opacity), '1');
     await page.getByRole('button', { name: 'Home', exact: true }).click();
 
     await page.goto(new URL('/dashboard', frontendUrl).toString(), { waitUntil: 'networkidle' });
@@ -103,6 +127,8 @@ const screenshotDir = process.env.SCREENSHOT_DIR || 'test-results';
     await page.getByText('Demonstration — not a live verification', { exact: true }).waitFor();
     assert.equal(new URL(page.url()).pathname, '/demo/cyto-id');
     assert.equal(await page.getByLabel('Review workflow').count(), 1);
+    assert.equal(await page.getByLabel('Review workflow').evaluate((element) => getComputedStyle(element).position), 'static');
+    assert.match(await page.getByLabel('Review workflow').locator('[aria-current="step"]').textContent(), /Verify/);
     await page.getByRole('heading', { name: 'What the retrieved material shows' }).waitFor();
     await page.getByText('Partial result or access limitation', { exact: true }).waitFor();
     assert.ok(await page.getByText('abstract access', { exact: true }).count());
@@ -116,6 +142,7 @@ const screenshotDir = process.env.SCREENSHOT_DIR || 'test-results';
     await page.getByLabel('Researcher notes').fill('Checked that the accessible paper material is abstract only.');
     await page.getByRole('button', { name: 'Save edited wording' }).click();
     await page.getByText('Researcher decision: edited', { exact: true }).waitFor();
+    assert.match(await page.getByLabel('Review workflow').locator('[aria-current="step"]').textContent(), /Record/);
 
     const downloadPromise = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Export JSON' }).click();
@@ -208,8 +235,20 @@ const screenshotDir = process.env.SCREENSHOT_DIR || 'test-results';
     await page.unroute('**/api/reviews/demo');
     expectingApiFailure = false;
 
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto(frontendUrl, { waitUntil: 'networkidle' });
+    const reducedReveal = page.locator('[data-motion-reveal="once"]').first();
+    await reducedReveal.waitFor();
+    assert.equal(await reducedReveal.evaluate((element) => getComputedStyle(element).opacity), '1');
+    assert.equal(await reducedReveal.evaluate((element) => getComputedStyle(element).transform), 'none');
+    assert.equal(await page.getByRole('button', { name: 'Start a review' }).evaluate((element) => getComputedStyle(element).transform), 'none');
+    await page.goto(new URL('/chat', frontendUrl).toString(), { waitUntil: 'networkidle' });
+    const uncheckedState = page.getByText('Unchecked general model inference', { exact: true });
+    await uncheckedState.waitFor();
+    assert.equal(await uncheckedState.evaluate((element) => getComputedStyle(element).animationName), 'none');
+
     assert.deepEqual(errors, []);
-    console.log('React browser smoke passed: routed home/about/dashboard/chat/new-review/demo surfaces, workflow-only step strip, login/signup/recovery UI, mismatch validation, logged-out public demo, evidence/access, structural provider comparison, edited decision/export, failed API state, safe mobile layout; no page errors.');
+    console.log('React browser smoke passed: sticky scroll-aware header, shared nav underline, one-time Home/About reveals, animated workflow progress, reduced-motion fallback, routed app/auth surfaces, logged-out public demo, evidence/access, structural provider comparison, edited decision/export, failed API state, safe mobile layout; no page errors.');
   } finally {
     await browser.close();
   }

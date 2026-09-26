@@ -1,11 +1,12 @@
 # Feature verification status
 
-Status as of 2026-09-25. “Fixture” means controlled local inputs or mocked provider
+Status as of 2026-09-26. “Fixture” means controlled local inputs or mocked provider
 responses. It is not a live external integration result.
 
 | Feature | Status | Evidence |
 | --- | --- | --- |
 | Dedicated application routes (Phase I) | Verified locally | FastAPI direct-route HTTP tests plus Vite/FastAPI headless Chrome journey across Home, About, Dashboard, Chat, New Review and Demo; typecheck/lint/build pass |
+| Accessible interface motion (Phase IV) | Browser-verified locally; hosted unverified | Headless Chrome confirms sticky scroll state, one shared nav underline, one-time Home/About reveals, Verify-to-Record workflow state, non-sticky workflow strip, reduced-motion instant layout, and no page errors |
 | Public curated demonstration | Live-verified locally | Actual React/FastAPI browser run, screenshots and canonical export |
 | Claim editing, invalidation and decisions | Verified locally | Unit/HTTP tests and public browser decision flow |
 | JSON/TXT canonical exports | Verified locally | Unit/HTTP tests plus actual JSON browser download |

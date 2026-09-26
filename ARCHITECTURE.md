@@ -280,6 +280,29 @@ cover SELECT, INSERT, UPDATE, and DELETE. It passed the disposable local stack a
 pgTAP suite on 2026-09-25. It is prepared but not applied to the hosted project, so
 hosted persistence and live second-provider model behavior remain unverified.
 
+## Phase IV — accessible interface motion
+
+Phase IV is confined to the React presentation layer. Motion for React 13.4.3 provides
+the shared navigation underline, scroll-state header transition, workflow circle and
+checkmark transitions, and one-time Home/About reveals. The application uses
+`LazyMotion` with a separately loaded `domMax` feature chunk because the active-nav
+indicator requires shared layout animation. Simple button hover/press feedback and
+unresolved-state pulses remain CSS rather than JavaScript animation.
+
+The sticky application header changes from transparent to a translucent blurred surface
+after 24 pixels of document scroll. The review workflow strip remains a normal-flow
+element below it and is still absent from Home, About, Dashboard, Chat, and Auth pages.
+Its active state is derived from canonical review progress: Define before creation,
+Risk before retrieval, Assist after retrieval, Verify after assessment, and Record once
+all current claim decisions are no longer pending.
+
+Accessibility is enforced at two layers. `MotionConfig reducedMotion="user"` disables
+transform/layout motion, while `useReducedMotion` makes reveal, header, workflow, and
+checkmark state changes immediate. The CSS media query removes control transforms and
+pulsing status animation. Home/About reveals set `viewport.once`; Dashboard and review
+content do not use scroll reveal. This phase adds no backend contract, database schema,
+route, model call, or persistence behavior.
+
 ## Authenticated general chat extension — 2026-09-20
 
 The user separately authorized a general AI chat page after the phased evidence-review

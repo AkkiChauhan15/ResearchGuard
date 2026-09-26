@@ -41,11 +41,11 @@ interface AuthPagesProps {
 const fieldClass =
   'mt-2 w-full rounded-md border border-line bg-deep/80 px-3.5 py-3 text-base text-ink shadow-sm transition placeholder:text-muted/60 hover:border-accent/50 focus:border-accent focus:shadow-[inset_0_0_10px_rgba(78,222,163,0.08)]'
 const primaryButton =
-  'inline-flex min-h-12 w-full items-center justify-center rounded-md bg-accent px-4 py-3 text-sm font-black text-accent-ink shadow-[0_0_20px_rgba(78,222,163,0.16)] transition hover:bg-accent-dark hover:shadow-[0_0_26px_rgba(78,222,163,0.25)] disabled:hover:bg-accent'
+  'control-motion inline-flex min-h-12 w-full items-center justify-center rounded-md bg-accent px-4 py-3 text-sm font-black text-accent-ink shadow-[0_0_20px_rgba(78,222,163,0.16)] hover:bg-accent-dark hover:shadow-[0_0_26px_rgba(78,222,163,0.25)] disabled:hover:bg-accent'
 const secondaryButton =
-  'inline-flex min-h-11 items-center justify-center rounded-md border border-accent/25 bg-accent/5 px-4 py-2.5 text-sm font-black text-accent transition hover:border-accent/60 hover:bg-accent/10'
+  'control-motion inline-flex min-h-11 items-center justify-center rounded-md border border-accent/25 bg-accent/5 px-4 py-2.5 text-sm font-black text-accent hover:border-accent/60 hover:bg-accent/10'
 const textLink =
-  'inline-flex min-h-10 items-center rounded-md px-1 py-2 text-sm font-black text-accent underline decoration-accent/30 underline-offset-4'
+  'control-motion inline-flex min-h-10 items-center rounded-md px-1 py-2 text-sm font-black text-accent underline decoration-accent/30 underline-offset-4'
 
 function GoogleIcon() {
   return (
@@ -122,10 +122,10 @@ function AuthShell({ children, navigate }: { children: ReactNode; navigate: Navi
   return (
     <div className="min-h-screen bg-canvas px-3 py-3 sm:px-6 sm:py-6">
       <a href="#account-content" className="fixed -top-20 left-3 z-50 rounded-md bg-accent px-4 py-2 font-bold text-accent-ink transition-[top] focus:top-3">Skip to account access</a>
-      <div className="mx-auto min-h-[calc(100vh-1.5rem)] max-w-7xl overflow-hidden rounded-lg border border-line bg-paper/75 shadow-[0_28px_90px_rgba(0,0,0,0.38)] sm:min-h-[calc(100vh-3rem)]">
-      <header className="border-b border-line bg-deep/45">
+      <div className="mx-auto min-h-[calc(100vh-1.5rem)] max-w-7xl overflow-clip rounded-lg border border-line bg-paper/75 shadow-[0_28px_90px_rgba(0,0,0,0.38)] sm:min-h-[calc(100vh-3rem)]">
+      <header className="sticky top-0 z-40 border-b border-accent/15 bg-deep/90 backdrop-blur-xl">
         <div className="mx-auto flex items-center justify-between gap-4 px-4 py-4 sm:px-8">
-          <button type="button" className="min-w-0 rounded-md text-left" onClick={() => navigate('/')} aria-label="Research Guard workspace">
+          <button type="button" className="control-motion min-w-0 rounded-md text-left" onClick={() => navigate('/')} aria-label="Research Guard workspace">
             <BrandLockup subtitle="Secure research access" />
           </button>
           <button type="button" className={secondaryButton} onClick={() => navigate('/')}>Research workspace</button>

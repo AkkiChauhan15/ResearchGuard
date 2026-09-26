@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js'
 import AuthPages, { type AuthPageRoute } from './AuthPages'
 import { WorkflowStrip } from './Brand'
 import ChatPage from './ChatPage'
+import { RevealItem, RevealSection } from './Motion'
 import SiteHeader from './SiteHeader'
 import { api, downloadExport, downloadSavedExport } from './api'
 import { structuralDisagreementFields } from './assessmentComparison'
@@ -36,11 +37,11 @@ import type {
 const inputClass =
   'mt-2 w-full rounded-md border border-line bg-deep/80 px-3.5 py-3 text-sm text-ink shadow-sm transition placeholder:text-muted/65 hover:border-accent/50 focus:border-accent focus:shadow-[inset_0_0_10px_rgba(78,222,163,0.08)]'
 const primaryButton =
-  'inline-flex min-h-11 items-center justify-center rounded-md bg-accent px-4 py-2.5 text-sm font-extrabold text-accent-ink shadow-[0_0_18px_rgba(78,222,163,0.14)] transition hover:bg-accent-dark hover:shadow-[0_0_24px_rgba(78,222,163,0.24)] disabled:hover:bg-accent'
+  'control-motion inline-flex min-h-11 items-center justify-center rounded-md bg-accent px-4 py-2.5 text-sm font-extrabold text-accent-ink shadow-[0_0_18px_rgba(78,222,163,0.14)] hover:bg-accent-dark hover:shadow-[0_0_24px_rgba(78,222,163,0.24)] disabled:hover:bg-accent'
 const secondaryButton =
-  'inline-flex min-h-11 items-center justify-center rounded-md border border-accent/25 bg-accent/5 px-4 py-2.5 text-sm font-bold text-accent transition hover:border-accent/60 hover:bg-accent/10'
+  'control-motion inline-flex min-h-11 items-center justify-center rounded-md border border-accent/25 bg-accent/5 px-4 py-2.5 text-sm font-bold text-accent hover:border-accent/60 hover:bg-accent/10'
 const quietButton =
-  'inline-flex min-h-10 items-center justify-center rounded-md px-3 py-2 text-sm font-bold text-accent underline decoration-accent/30 underline-offset-4 transition hover:bg-soft'
+  'control-motion inline-flex min-h-10 items-center justify-center rounded-md px-3 py-2 text-sm font-bold text-accent underline decoration-accent/30 underline-offset-4 hover:bg-soft'
 
 const emptyContext: ExperimentalContext = {
   organism_model: '',
@@ -125,7 +126,7 @@ function ListBlock({ title, items }: { title: string; items: string[] }) {
 function IntegrityBadge({ source }: { source: Source }) {
   const result = source.integrity
   if (!result) {
-    return <div className="mt-4 rounded-md border border-warm-ink/25 bg-warm/55 p-3 text-sm leading-5 text-warm-ink"><strong>Integrity check unavailable</strong> — this older record is not confirmed clean.</div>
+    return <div className="status-pulse mt-4 rounded-md border border-warm-ink/25 bg-warm/55 p-3 text-sm leading-5 text-warm-ink"><strong>Integrity check unavailable</strong> — this older record is not confirmed clean.</div>
   }
   const styles = {
     clean: 'border-line bg-deep/55 text-muted',
@@ -145,7 +146,7 @@ function IntegrityBadge({ source }: { source: Source }) {
     check_failed: 'Integrity check unavailable — not confirmed clean',
   }[result.status]
   return (
-    <div className={`mt-4 rounded-md border p-3 text-sm leading-5 ${styles}`}>
+    <div className={cx('mt-4 rounded-md border p-3 text-sm leading-5', styles, result.status === 'check_failed' && 'status-pulse')}>
       <p className="font-black">{labels}</p>
       {result.status !== 'clean' && <p className="mt-1 text-xs leading-5">{result.detail}</p>}
       {result.checks.length > 1 && <p className="mt-1 text-xs leading-5">Checks recorded: {result.checks.map((check) => `${check.method} ${check.outcome} at ${check.checked_at}`).join('; ')}.</p>}
@@ -625,21 +626,23 @@ function HomePage({
 }) {
   return (
     <main id="main-content" tabIndex={-1} className="mx-auto grid min-h-[calc(100vh-11rem)] max-w-[94rem] place-items-center px-4 py-12 sm:px-7">
-      <section className="relative w-full overflow-hidden rounded-lg border border-line bg-paper/75 px-6 py-14 shadow-card sm:px-10 sm:py-20 lg:px-16">
+      <RevealSection className="relative w-full overflow-hidden rounded-lg border border-line bg-paper/75 px-6 py-14 shadow-card sm:px-10 sm:py-20 lg:px-16" labelledBy="home-title">
         <div aria-hidden="true" className="absolute -right-24 -top-32 size-96 rounded-full bg-accent/8 blur-3xl" />
         <div className="relative max-w-4xl">
-          <SectionLabel>Evidence before conclusion</SectionLabel>
-          <h1 className="mt-5 font-serif text-5xl leading-[0.98] tracking-tight text-ink sm:text-7xl lg:text-8xl">
-            Check the evidence.<br /><span className="italic text-accent">Keep the qualifications.</span>
-          </h1>
-          <p className="mt-7 max-w-2xl text-base leading-7 text-muted sm:text-xl sm:leading-8">Separate what was observed from what was inferred. Inspect source access and limitations, then record your own conclusion.</p>
-          <div className="mt-9 flex flex-wrap gap-3">
+          <RevealItem><SectionLabel>Evidence before conclusion</SectionLabel></RevealItem>
+          <RevealItem>
+            <h1 id="home-title" className="mt-5 font-serif text-5xl leading-[0.98] tracking-tight text-ink sm:text-7xl lg:text-8xl">
+              Check the evidence.<br /><span className="italic text-accent">Keep the qualifications.</span>
+            </h1>
+          </RevealItem>
+          <RevealItem><p className="mt-7 max-w-2xl text-base leading-7 text-muted sm:text-xl sm:leading-8">Separate what was observed from what was inferred. Inspect source access and limitations, then record your own conclusion.</p></RevealItem>
+          <RevealItem className="mt-9 flex flex-wrap gap-3">
             <button type="button" className={`${primaryButton} gap-2`} onClick={onStart}>Start a review <ArrowIcon /></button>
             <button type="button" className={`${secondaryButton} gap-2`} onClick={onDemo}>Open the demo <ArrowIcon /></button>
-          </div>
-          <p className="mt-5 max-w-2xl text-xs leading-5 text-muted">The public demonstration is predefined and clearly labeled. Live reviews require sign-in and use only the explicitly configured provider.</p>
+          </RevealItem>
+          <RevealItem><p className="mt-5 max-w-2xl text-xs leading-5 text-muted">The public demonstration is predefined and clearly labeled. Live reviews require sign-in and use only the explicitly configured provider.</p></RevealItem>
         </div>
-      </section>
+      </RevealSection>
     </main>
   )
 }
@@ -652,45 +655,56 @@ function AboutPage() {
   ] as const
   return (
     <main id="main-content" tabIndex={-1} className="mx-auto max-w-5xl px-4 py-10 sm:px-7 sm:py-14">
-      <SectionLabel>Purpose, boundaries and provenance</SectionLabel>
-      <h1 className="mt-4 font-serif text-5xl leading-tight text-ink sm:text-6xl">Research support you can inspect.</h1>
-      <p className="mt-5 max-w-3xl text-lg leading-8 text-muted">Research Guard connects a claim to retrieved passages, access limits, experimental context, model provenance and the researcher’s final decision. A paper’s existence or a matching passage does not by itself establish that a claim is supported.</p>
+      <RevealSection labelledBy="about-title">
+        <RevealItem><SectionLabel>Purpose, boundaries and provenance</SectionLabel></RevealItem>
+        <RevealItem><h1 id="about-title" className="mt-4 font-serif text-5xl leading-tight text-ink sm:text-6xl">Research support you can inspect.</h1></RevealItem>
+        <RevealItem><p className="mt-5 max-w-3xl text-lg leading-8 text-muted">Research Guard connects a claim to retrieved passages, access limits, experimental context, model provenance and the researcher’s final decision. A paper’s existence or a matching passage does not by itself establish that a claim is supported.</p></RevealItem>
+      </RevealSection>
       <div className="mt-10 grid gap-5 md:grid-cols-2">
-        <section className="rounded-lg border border-line bg-paper p-6 shadow-card">
-          <h2 className="font-serif text-3xl text-ink">What it does</h2>
-          <ul className="mt-4 space-y-3 text-sm leading-6 text-muted">
+        <RevealSection className="rounded-lg border border-line bg-paper p-6 shadow-card" labelledBy="about-does">
+          <RevealItem><h2 id="about-does" className="font-serif text-3xl text-ink">What it does</h2></RevealItem>
+          <RevealItem><ul className="mt-4 space-y-3 text-sm leading-6 text-muted">
             <li>• Separates observations from interpretations and keeps scientific qualifications visible.</li>
             <li>• Preserves source IDs, URLs, access levels, exact passages, locations, hashes and timestamps.</li>
             <li>• Records the requested and returned model while deterministic source and quotation checks remain authoritative.</li>
             <li>• Lets researchers accept, edit or reject suggestions and export the canonical record.</li>
-          </ul>
-        </section>
-        <section className="rounded-lg border border-line bg-paper p-6 shadow-card">
-          <h2 className="font-serif text-3xl text-ink">What it does not establish</h2>
-          <ul className="mt-4 space-y-3 text-sm leading-6 text-muted">
+          </ul></RevealItem>
+        </RevealSection>
+        <RevealSection className="rounded-lg border border-line bg-paper p-6 shadow-card" labelledBy="about-does-not">
+          <RevealItem><h2 id="about-does-not" className="font-serif text-3xl text-ink">What it does not establish</h2></RevealItem>
+          <RevealItem><ul className="mt-4 space-y-3 text-sm leading-6 text-muted">
             <li>• It does not certify that a paper is correct or that evidence generalizes across organisms, assays or conditions.</li>
             <li>• It does not provide clinical diagnosis, treatment advice, regulatory assurance or a comprehensive literature review.</li>
             <li>• No accuracy, time-saving, adoption, clinical or regulatory claims have been measured.</li>
             <li>• Human scientific review remains necessary.</li>
             <li>• Publication-integrity checks cover PubMed/Crossref-indexed notices only and are not exhaustive.</li>
-          </ul>
-        </section>
-        <section className="rounded-lg border border-line bg-paper p-6 shadow-card">
-          <h2 className="font-serif text-3xl text-ink">Provider and privacy policy</h2>
-          <p className="mt-4 text-sm leading-6 text-muted">Provider selection is explicit. Evidence requests never silently switch providers or use a paid fallback. Unsaved review drafts remain temporary; saving a review is an explicit action. Configured model actions send the selected public or synthetic input and retrieved passages to the selected external provider. Provider keys remain server-side.</p>
-        </section>
-        <section className="rounded-lg border border-line bg-paper p-6 shadow-card">
-          <h2 className="font-serif text-3xl text-ink">Verification records</h2>
-          <p className="mt-4 text-sm leading-6 text-muted">Implementation, fixture, live and blocked states are recorded separately. These repository documents describe the actual contracts and known limits.</p>
-          <div className="mt-4 flex flex-wrap gap-3">
+          </ul></RevealItem>
+        </RevealSection>
+        <RevealSection className="rounded-lg border border-line bg-paper p-6 shadow-card" labelledBy="about-provider-policy">
+          <RevealItem><h2 id="about-provider-policy" className="font-serif text-3xl text-ink">Provider and privacy policy</h2></RevealItem>
+          <RevealItem><p className="mt-4 text-sm leading-6 text-muted">Provider selection is explicit. Evidence requests never silently switch providers or use a paid fallback. Unsaved review drafts remain temporary; saving a review is an explicit action. Configured model actions send the selected public or synthetic input and retrieved passages to the selected external provider. Provider keys remain server-side.</p></RevealItem>
+        </RevealSection>
+        <RevealSection className="rounded-lg border border-line bg-paper p-6 shadow-card" labelledBy="about-verification-records">
+          <RevealItem><h2 id="about-verification-records" className="font-serif text-3xl text-ink">Verification records</h2></RevealItem>
+          <RevealItem><p className="mt-4 text-sm leading-6 text-muted">Implementation, fixture, live and blocked states are recorded separately. These repository documents describe the actual contracts and known limits.</p></RevealItem>
+          <RevealItem className="mt-4 flex flex-wrap gap-3">
             {documents.map(([label, path]) => (
               <a key={path} className={secondaryButton} href={`https://github.com/AkkiChauhan15/ResearchGuard/blob/main/${path}`} target="_blank" rel="noreferrer">{label} <ExternalIcon /></a>
             ))}
-          </div>
-        </section>
+          </RevealItem>
+        </RevealSection>
       </div>
     </main>
   )
+}
+
+function workflowStep(pathname: string, review: Review | null): number {
+  if (pathname === '/review/new' || !review) return 1
+  if (review.claims.length > 0 && review.claims.every((claim) => claim.decision.status !== 'pending')) return 5
+  if (review.claims.some((claim) => claim.assessment !== null)) return 4
+  const currentClaimIds = new Set(review.claims.map((claim) => claim.claim_id))
+  if (review.attempts.some((attempt) => currentClaimIds.has(attempt.claim_id))) return 3
+  return 2
 }
 
 interface SavedReviewsPanelProps {
@@ -1226,6 +1240,7 @@ function App() {
   const routeReview = pathname === '/demo/cyto-id'
     ? review?.mode === 'demo' ? review : null
     : liveMatch && review?.review_id === liveMatch[1] ? review : null
+  const activeWorkflowStep = workflowStep(pathname, routeReview)
 
   let content: ReactNode
   let subtitle = 'Evidence-aware research support'
@@ -1366,7 +1381,7 @@ function App() {
     <div className="min-h-screen">
       <a href="#main-content" className="fixed -top-20 left-3 z-50 rounded-md bg-accent px-4 py-2 font-bold text-accent-ink transition-[top] focus:top-3">Skip to content</a>
       <SiteHeader session={authSession} authReady={authReady} authAvailable={authAvailable} authBusy={authBusy} currentPath={pathname} subtitle={subtitle} navigate={navigateBrowser} onSignOut={endSession} />
-      {workspaceRoute && <WorkflowStrip />}
+      {workspaceRoute && <WorkflowStrip active={activeWorkflowStep} />}
       {content}
       <PageFooter />
     </div>

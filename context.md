@@ -1,7 +1,7 @@
 # Research Guard AI — Project context
 
-Version: 2.2
-Prepared: 2026-09-15; multi-provider assessment direction updated 2026-09-25
+Version: 2.3
+Prepared: 2026-09-15; interface motion direction updated 2026-09-26
 Purpose: Reference for the coding agent implementing the agreed phased build.
 
 ## Read this first
@@ -130,6 +130,19 @@ read-only migration-history query on 2026-09-25 confirmed that `202609210001` is
 applied remotely. No live second-provider model call or hosted Phase III journey has
 been verified, no paid service or fallback was used, and optional Phase IV has not
 started.
+
+On 2026-09-26 the user authorized Phase IV as frontend-only visual polish. The maintained
+Motion for React package (`motion` 13.4.3, formerly Framer Motion) supplies the shared
+navigation underline, workflow-state transitions, scroll-aware header, and one-time
+Home/About reveals. Simple button hover/press feedback and unresolved-state pulses use
+CSS. A root reduced-motion policy, component-level instant variants, and CSS media query
+remove the added motion when `prefers-reduced-motion: reduce` is active. Marketing
+reveals use `viewport.once`; they are not used on dashboard or review workspaces. The
+workflow strip still renders only on new-review, active-review, and demo routes and is
+not sticky. Motion features are loaded as a separate `domMax` chunk. Local type, lint,
+production build, and actual browser checks passed. No backend, API, review schema,
+database migration, provider call, billing change, or Phase V linter was added. Hosted
+Phase IV behavior remains unverified until the frontend is redeployed and inspected.
 
 Preserve working Pydantic schemas, retrieval adapters, evidence validation, curated
 demo sources, review decisions, and exports. Adapt framework/provider boundaries

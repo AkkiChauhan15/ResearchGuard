@@ -74,6 +74,34 @@ button:disabled {
   opacity: 0.58;
 }
 
+button:not(:disabled),
+.control-motion:not([aria-disabled="true"]) {
+  transition-property: transform, background-color, border-color, color, box-shadow, opacity;
+  transition-duration: 180ms;
+  transition-timing-function: ease-out;
+}
+
+@media (hover: hover) {
+  button:not(:disabled):hover,
+  .control-motion:not([aria-disabled="true"]):hover {
+    transform: scale(1.025);
+  }
+}
+
+button:not(:disabled):active,
+.control-motion:not([aria-disabled="true"]):active {
+  transform: scale(0.98);
+}
+
+@keyframes unresolved-status-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.58; }
+}
+
+.status-pulse {
+  animation: unresolved-status-pulse 2s ease-in-out infinite;
+}
+
 summary {
   cursor: pointer;
 }
@@ -118,5 +146,14 @@ textarea {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  button,
+  .control-motion {
+    transform: none !important;
+  }
+
+  .status-pulse {
+    animation: none !important;
   }
 }

@@ -1,3 +1,6 @@
+import { AnimatePresence, useReducedMotion } from 'motion/react'
+import * as m from 'motion/react-m'
+
 interface BrandMarkProps {
   className?: string
 }
@@ -42,15 +45,39 @@ export function BrandLockup({ subtitle }: { subtitle: string }) {
 }
 
 export function WorkflowStrip({ active = 1 }: { active?: number }) {
+  const reduceMotion = useReducedMotion()
   return (
     <div aria-label="Review workflow" className="overflow-x-auto border-b border-line bg-deep/85 px-4 sm:px-7">
       <ol className="mx-auto flex min-w-max max-w-[94rem] items-center gap-5 py-2.5 font-mono text-[0.64rem] font-semibold uppercase tracking-[0.08em] text-muted sm:gap-8">
         {['Define', 'Risk', 'Assist', 'Verify', 'Record'].map((step, index) => {
           const number = index + 1
           const current = number === active
+          const complete = number < active
           return (
-            <li key={step} className={current ? 'text-ink' : undefined} aria-current={current ? 'step' : undefined}>
-              <span className={`mr-2 inline-grid size-5 place-items-center rounded-full ${current ? 'bg-accent text-deep' : 'bg-panel text-muted'}`}>{number}</span>
+            <li key={step} className={current ? 'text-ink' : complete ? 'text-accent' : undefined} aria-current={current ? 'step' : undefined}>
+              <m.span
+                className="mr-2 inline-grid size-5 place-items-center rounded-full"
+                initial={false}
+                animate={{
+                  scale: current ? 1.12 : 1,
+                  backgroundColor: current ? '#4edea3' : complete ? 'rgba(78, 222, 163, 0.14)' : '#132322',
+                  color: current ? '#031111' : complete ? '#4edea3' : '#a0b3af',
+                }}
+                transition={{ duration: reduceMotion ? 0 : 0.2, ease: 'easeOut' }}
+              >
+                <AnimatePresence mode="wait" initial={false}>
+                  <m.span
+                    key={complete ? 'complete' : 'number'}
+                    aria-hidden={complete ? 'true' : undefined}
+                    initial={reduceMotion ? false : { opacity: 0, scale: 0.55 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={reduceMotion ? undefined : { opacity: 0, scale: 0.55 }}
+                    transition={{ duration: reduceMotion ? 0 : 0.16, ease: 'easeOut' }}
+                  >
+                    {complete ? '✓' : number}
+                  </m.span>
+                </AnimatePresence>
+              </m.span>
               {step}{number < 5 && <span aria-hidden="true" className="ml-5 text-line sm:ml-8">›</span>}
             </li>
           )

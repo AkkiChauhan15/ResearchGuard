@@ -2031,3 +2031,162 @@ deterministic validation, structural comparison, visible quota provenance, expor
 owner-scoped migration all pass controlled local checks. Live external provider behavior
 and hosted migration/deployment remain explicitly unverified. Optional Phase IV was not
 started. Stop after Phase III.
+
+## 2026-09-26 — Phase IV: sticky header and accessible micro-interactions
+
+Status: **PASS LOCALLY; HOSTED FRONTEND UNVERIFIED. PHASE V NOT STARTED.**
+
+### Changes made
+
+- Added the maintained Motion for React package at exact version `13.4.3`, following the
+  current official guidance that the former Framer Motion package is now installed as
+  `motion` and imported from `motion/react`. The application uses `LazyMotion` and a
+  separately loaded `domMax` feature chunk because shared `layoutId` transitions require
+  layout-animation support. No paid Motion+ package or service was added.
+- Changed the Phase I application header to remain sticky while beginning transparent.
+  After 24 pixels of document scroll it transitions to a translucent canvas background,
+  low-opacity mint border, blur, and shadow. A passive scroll listener is throttled with
+  `requestAnimationFrame`. The Account/Auth shell header is also sticky and legible.
+- Replaced the static active-navigation block with one shared `layoutId="nav-underline"`
+  element. It moves between the current Home/About/Demo or authenticated navigation
+  items while keeping `aria-current="page"` authoritative.
+- Added one shared CSS interaction rule for buttons and button-like links: 180 ms
+  ease-out transitions, 1.025 hover scale, and 0.98 pressed scale. Existing color and
+  focus-visible styles remain intact. Unchecked AI chat and unresolved/check-failed
+  integrity states receive the slow pulse only while their unverified state is rendered.
+- The normal-flow review strip now derives its current step from canonical review state:
+  Define before creation, Risk before retrieval, Assist after retrieval, Verify after an
+  assessment, and Record after all current claims have a researcher decision. Motion
+  animates the active circle state and the completed-step checkmark. The strip remains
+  outside the sticky header and only appears on review/new/demo workspaces.
+- Added staggered `whileInView` reveals to Home and About only. Every reveal uses
+  `viewport={{ once: true }}`; Dashboard, Chat, Auth, and review workspace content do not
+  receive scroll reveals.
+- Added two reduced-motion layers. `MotionConfig reducedMotion="user"` disables shared
+  layout/transform motion, and `useReducedMotion` makes header, reveal, workflow, and
+  checkmark state changes immediate. The existing CSS media query now also removes
+  button transforms and status pulses. Layout and information remain identical.
+- Extended the actual browser smoke to check sticky position and scroll state, the
+  single moving underline, one-time reveals, the non-sticky workflow strip, progression
+  from Verify to Record, reduced-motion opacity/transform/pulse behavior, and all prior
+  routing, auth, evidence, comparison, export, error, keyboard, and mobile checks.
+- Updated README, architecture, context, and feature-verification records. Phase IV adds
+  no backend route, schema, migration, provider/model request, environment variable,
+  billing requirement, persistence behavior, or public deployment.
+
+### Checks actually executed
+
+Current Motion package and installation audit:
+
+```text
+$ npm install --prefix frontend --save-exact motion@13.4.3
+added 4 packages, and audited 63 packages in 3s
+found 0 vulnerabilities
+
+$ npm ls motion --prefix frontend --depth=0
+researchguard-frontend@0.0.0 /home/akshat/ResearchGuardAI/frontend
+└── motion@13.4.3
+```
+
+Required backend regression suite:
+
+```text
+$ .venv/bin/python -m unittest discover -s tests -v
+----------------------------------------------------------------------
+Ran 108 tests in 3.256s
+
+OK
+```
+
+Required frontend checks:
+
+```text
+$ npm run typecheck --prefix frontend
+> tsc -b --pretty false
+
+$ npm run lint --prefix frontend
+> oxlint
+
+$ npm run build --prefix frontend
+vite v8.3.0 building client environment for production...
+✓ 479 modules transformed.
+dist/index.html                           0.64 kB │ gzip:   0.38 kB
+dist/assets/index-B7mnnc97.css           41.59 kB │ gzip:   7.80 kB
+dist/assets/motionFeatures-C2p8QK4f.js   85.80 kB │ gzip:  28.21 kB
+dist/assets/index-DBwkhY9J.js           587.33 kB │ gzip: 166.44 kB
+✓ built in 469ms
+```
+
+Vite retains its existing non-failing warning that the main minified application chunk
+is over 500 kB. Motion features are split into their own asynchronously loaded chunk.
+
+Existing focused frontend tests remained green:
+
+```text
+$ npm run test:auth --prefix frontend
+# tests 1
+# pass 1
+# fail 0
+
+$ npm run test:comparison --prefix frontend
+# tests 1
+# pass 1
+# fail 0
+```
+
+Actual Vite/FastAPI browser verification:
+
+```text
+$ PLAYWRIGHT_PATH=... node scripts/browser_react_smoke.cjs
+React browser smoke passed: sticky scroll-aware header, shared nav underline, one-time
+Home/About reveals, animated workflow progress, reduced-motion fallback, routed app/auth
+surfaces, logged-out public demo, evidence/access, structural provider comparison,
+edited decision/export, failed API state, safe mobile layout; no page errors.
+```
+
+The run used Chrome at 1440×1000 and 390×844. It confirmed that the About reveal remains
+visible after leaving the viewport, `prefers-reduced-motion: reduce` renders reveal
+content immediately with no transform, controls have no reduced-motion transform, and
+the unresolved chat state has no pulse animation. Generated Home, Demo, Signup, and
+mobile screenshots were visually inspected; no overflow or unreadable layout was found.
+`node --check scripts/browser_react_smoke.cjs` and `git diff --check` also exited 0.
+
+Official Motion documentation checked on 2026-09-26:
+
+- [Installation and Vite support](https://motion.dev/docs/react-installation)
+- [Reduced-motion configuration](https://motion.dev/docs/react-motion-config)
+- [Accessible `useReducedMotion`](https://motion.dev/docs/react-use-reduced-motion)
+- [Bundle reduction with `LazyMotion`](https://motion.dev/docs/react-reduce-bundle-size)
+- [Shared `layoutId` transitions](https://motion.dev/docs/react-layout-animations)
+
+### Blockers and unverified assumptions
+
+- Phase IV behavior has not been redeployed or inspected on the hosted Vercel domain.
+  A local production build and actual local Chrome journey do not establish that the
+  hosted deployment contains these source changes or is publicly reachable.
+- The browser checks cover the two documented viewport sizes and the operating-system
+  reduced-motion setting. They are not a complete WCAG audit or cross-browser/device
+  matrix.
+- The additional lazy Motion chunk is measured by the production build above. Network
+  loading behavior on Vercel remains unverified.
+- Existing Phase H OAuth, email, hosted two-user, Render, live-provider, and Vercel SSO
+  blockers remain outside Phase IV and unchanged.
+
+### Manual action required
+
+1. Commit and redeploy the frontend to Vercel. No Render environment variable, Supabase
+   setting, database migration, or new secret is required for Phase IV.
+2. On the stable hosted domain, verify Home and About once with ordinary motion and once
+   with the operating system/browser reduced-motion preference enabled. Confirm the
+   header stays visible, the active underline changes routes, reveals do not repeat, and
+   the review workflow strip scrolls normally below the header.
+3. Check the deployed Network panel for the separate `motionFeatures-*.js` chunk and
+   confirm it loads successfully. Record a blocked hosted check if Vercel SSO still
+   prevents public access; do not add a paid hosting service.
+
+### Phase result
+
+**PASS** for local Phase IV acceptance. The requested visual feedback is present,
+bounded to the intended pages and states, and disabled for reduced motion while the
+existing routes and scientific-review behavior remain green. Hosted behavior remains
+unverified. Phase V was not started. Stop after Phase IV.
