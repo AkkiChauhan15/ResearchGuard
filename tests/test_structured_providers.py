@@ -65,7 +65,13 @@ class CompatibleStructuredProviderTests(unittest.TestCase):
                 body = request.kwargs["json"]
                 self.assertIn(schema_field, body)
                 self.assertEqual(body["temperature"], 0)
-                self.assertEqual(body["max_tokens"], 2048)
+                if provider_id == "groq":
+                    self.assertEqual(body["max_completion_tokens"], 2048)
+                    self.assertEqual(body["reasoning_effort"], "low")
+                    self.assertEqual(body["reasoning_format"], "hidden")
+                    self.assertNotIn("max_tokens", body)
+                else:
+                    self.assertEqual(body["max_tokens"], 2048)
                 self.assertFalse(body["stream"])
                 if provider_id == "openrouter":
                     self.assertEqual(body["provider"], {"require_parameters": True})
@@ -123,6 +129,21 @@ class CompatibleStructuredProviderTests(unittest.TestCase):
                 )
             self.assertNotIn("must not leak", str(raised.exception))
             self.assertNotIn("groq-fixture-secret", str(raised.exception))
+
+    def test_provider_rejection_categories_are_actionable_and_safe(self):
+        provider = CompatibleStructuredProvider("groq")
+        expected = {
+            413: "bounded request as too large",
+            422: "could not complete the structured request",
+            424: "failed dependency",
+            498: "free-tier capacity",
+            499: "cancelled the request",
+        }
+        for status, message in expected.items():
+            with self.subTest(status=status):
+                detail = provider._api_error(status)
+                self.assertIn(message, detail)
+                self.assertIn("fallback", detail)
 
     def test_provider_default_is_non_gemini_and_openai_remains_disabled(self):
         with patch.dict(os.environ, {}, clear=True):

@@ -2190,3 +2190,163 @@ Official Motion documentation checked on 2026-09-26:
 bounded to the intended pages and states, and disabled for reduced motion while the
 existing routes and scientific-review behavior remain green. Hosted behavior remains
 unverified. Phase V was not started. Stop after Phase IV.
+
+## 2026-09-26 — Corrective maintenance: hosted Groq assessment rejection
+
+Status: **PASS LOCALLY; HOSTED GROQ GENERATION REQUIRES BACKEND REDEPLOY AND RETEST.**
+This is a repair to the existing evidence-provider boundary, not Phase V.
+
+### Failure analysis and changes made
+
+- The screenshot proves retrieval succeeded and Groq rejected the assessment request.
+  Its old generic message was used for provider statuses outside the specifically mapped
+  400, 401/403, 404, 408/504, 429 and 5xx cases, so the screenshot alone cannot recover
+  the exact HTTP status. It must not be relabeled as a definite 413 or 422 after the fact.
+- The exact public source shown in the screenshot, PMC12525765, was fetched again. It
+  produced 53 full-text passages, 38,042 passage characters and a 43,056-byte serialized
+  assessment payload. Groq's current official Free Plan table lists an 8,000 TPM limit
+  for `openai/gpt-oss-20b`; the old local 120,000-byte input and 4,096-token assessment
+  output bounds did not fit that deployment constraint reliably. This is a verified
+  code-side risk consistent with the request rejection, although the original provider
+  status remains unavailable.
+- Assessments now retain every passage in the canonical review but build a separate
+  model input capped at 12,000 serialized bytes and 16 passages. The deterministic
+  selector gives each readable source an opportunity, ranks exact excerpts by claim and
+  context term overlap, and explicitly tells the model and saved review that selection
+  is a retrieval aid rather than evidence of support. The limitation also appears in
+  the assessment limitations and model-run validation after a successful call.
+- Exact quote and location validation now runs against a temporary Source view containing
+  only the passages supplied to that model call. A quotation from an omitted part of the
+  canonical full text is rejected even if it is a real sentence in the complete source.
+  Full canonical source provenance, hashes, access labels, timestamps and passages remain
+  unchanged for display, save and export.
+- Compatible-provider input is capped at 20,000 bytes and assessment output at 2,048
+  tokens. Groq now uses the current `max_completion_tokens` field plus supported low
+  reasoning effort and hidden reasoning with strict JSON Schema. No tools, provider
+  switch, paid fallback or demonstration substitution was added.
+- Provider responses 413, 422, 424, 498 and 499 now produce distinct safe messages for
+  request size, structured completion, dependency, temporary free-tier capacity and
+  cancellation. Raw provider bodies and credentials remain excluded.
+- The retained Gemini boundary received the same 20,000-byte input and 2,048-token
+  assessment limits. A newly exposed `httpx` transport failure is now converted to a
+  safe unavailable message instead of escaping as a traceback. The live verifier now
+  requests the actual `AssessmentWithConfidence` schema, resolving its prior instruction
+  and schema mismatch.
+- README, context, architecture, API and feature-verification records now describe the
+  bounded model view separately from the complete canonical review.
+
+### Checks actually executed
+
+Official Groq documentation checked on 2026-09-26:
+
+- `openai/gpt-oss-20b` supports strict JSON Schema output and a 131,072-token context.
+- Its official Free Plan table currently lists 8,000 TPM, 30 RPM and 1,000 requests/day.
+- The API reference marks `max_tokens` deprecated in favor of
+  `max_completion_tokens`, supports low reasoning effort for GPT-OSS, and requires a
+  non-raw reasoning mode with JSON output.
+- The error reference defines 413 as an oversized body, 422 as an unprocessable request,
+  and 498 as temporary Flex capacity exhaustion.
+
+The exact public PMC source was fetched through the real adapter after the repair:
+
+```text
+source_access full text
+canonical_passages 53
+model_passages 8
+canonical_passage_chars 38042
+model_passage_chars 9388
+bounded_payload_bytes 11581
+canonical_unchanged True
+limitation_disclosed True
+all_excerpts_exact True
+```
+
+The final backend suite passed:
+
+```text
+$ .venv/bin/python -m unittest discover -s tests -v
+----------------------------------------------------------------------
+Ran 112 tests in 3.309s
+
+OK
+```
+
+The new tests cover the 53-passage shape, canonical-source preservation, selection of a
+relevant late passage, rejection of a quote from omitted model input, current Groq
+parameters, safe rejection categories, and safe Gemini transport errors. Existing HTTP,
+auth, session isolation, persistence, retrieval, integrity, invalidation and export tests
+remain green.
+
+Frontend regression checks passed even though this repair changes no React code:
+
+```text
+$ npm run typecheck --prefix frontend
+> tsc -b --pretty false
+
+$ npm run lint --prefix frontend
+> oxlint
+
+$ npm run build --prefix frontend
+vite v8.3.0 building client environment for production...
+✓ 479 modules transformed.
+✓ built in 445ms
+```
+
+The existing non-failing Vite warning for a main chunk over 500 kB remains. Python
+compileall and `git diff --check` also exited 0.
+
+One bounded live public/synthetic check used the locally configured Free Tier gate and
+completed without exposing a key:
+
+```text
+$ .venv/bin/python -m scripts.verify_review_provider_live
+status: passed
+provider: gemini
+requested/returned extraction model: gemini-3.8-flash
+requested/returned assessment model: gemini-3.8-flash
+model tasks completed: 2
+```
+
+The extraction passed exact original-span validation. The assessment passed structured
+schema, source-ID, exact quotation/location and evidence-relationship checks. This live
+check verifies the retained local Gemini adapter only; it does not verify Groq or the
+hosted signed-in route.
+
+### Blockers and unverified assumptions
+
+- No Groq key is present in the local environment, while the screenshot indicates it is
+  configured only on the hosted backend. Therefore no post-fix live Groq request was
+  possible locally, and Groq output quality/success remains unverified.
+- The old generic error intentionally did not retain the raw provider body or exact
+  status. The oversized free-tier request is a concrete defect and likely contributor,
+  but the precise original Groq rejection cannot be proven from the screenshot.
+- The hosted Render process is still running the earlier commit until the source is
+  pushed and the backend redeploy completes. Local passing checks do not repair that
+  running service by themselves.
+- The tested repair is committed locally, but `git push origin main` failed because this
+  workspace has no GitHub HTTPS credentials (`could not read Username`). The remote
+  branch and automatic Render deployment therefore remain unchanged.
+- A 12,000-byte payload is a conservative English-text bound, not an exact tokenizer
+  guarantee. A provider can still return 429 when account quotas are already consumed;
+  the app will report that state and will not enable billing or switch providers.
+
+### Manual action required
+
+1. From a terminal authenticated to GitHub, run `git push origin main`; then allow the
+   existing Render service to redeploy the new commit. No new environment variable,
+   Supabase migration, Vercel variable, billing setting or provider fallback is required.
+2. Confirm the existing Render values still use `LLM_PROVIDER=groq`,
+   `GROQ_ASSESSMENT_MODEL=openai/gpt-oss-20b`, a server-only `GROQ_API_KEY`, and
+   `GROQ_FREE_TIER_CONFIRMED=true` only for an account verified to have free/no-billing
+   access.
+3. Repeat the same signed-in PMC12525765 assessment. If it still fails, record the new
+   specific message (request too large, structured request, quota, capacity, auth or
+   model unavailable) and the corresponding Render timestamp; do not paste any key or
+   review body and do not enable billing.
+
+### Result
+
+**PASS LOCALLY.** The verified oversized-payload defect, ambiguous error mapping,
+model-input quote boundary, Gemini transport crash and verifier schema mismatch are
+repaired. The exact hosted Groq journey is **UNVERIFIED** until Render runs this revision
+and the same signed-in assessment succeeds.

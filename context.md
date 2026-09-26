@@ -1,6 +1,6 @@
 # Research Guard AI — Project context
 
-Version: 2.3
+Version: 2.4
 Prepared: 2026-09-15; interface motion direction updated 2026-09-26
 Purpose: Reference for the coding agent implementing the agreed phased build.
 
@@ -28,8 +28,10 @@ saved-review REST access is denied. A local Supabase stack additionally passed r
 two-user JWT/PostgREST/RLS checks, but the Google OAuth browser round trip and hosted
 authenticated two-user journey remain blocked. The locally configured Gemini key and
 `gemini-3.8-flash` metadata access were verified on 2026-09-19. The adapter's Gemini 3.8
-JSON Schema incompatibility was repaired, but bounded live generation attempts returned
-HTTP 503 high demand before producing output. Do not claim those
+JSON Schema incompatibility was repaired; earlier bounded generation attempts returned
+HTTP 503, and a later public/synthetic extraction plus assessment completed on 2026-09-26
+with structured and deterministic validation. This verifies the local Gemini adapter,
+not the hosted Groq assessment shown in the later failure. Do not claim other
 external browser/model integrations work until their checks pass. Deployment-compatible
 configuration and instructions are prepared. The frontend deployment is now verified
 from public GitHub metadata, while public reachability and the hosted browser journey
@@ -143,6 +145,19 @@ not sticky. Motion features are loaded as a separate `domMax` chunk. Local type,
 production build, and actual browser checks passed. No backend, API, review schema,
 database migration, provider call, billing change, or Phase V linter was added. Hosted
 Phase IV behavior remains unverified until the frontend is redeployed and inspected.
+
+On 2026-09-26 a hosted live review retrieved a 53-passage PMC full-text record but the
+selected Groq assessment returned a request rejection. Reproduction with that public
+record measured a 43,056-byte model payload, while Groq's current Free Plan lists an
+8,000-token-per-minute limit for `openai/gpt-oss-20b`. The evidence boundary now keeps
+the complete source in the canonical review while sending a disclosed, deterministic
+set of exact claim/context-ranked excerpts capped at 12,000 serialized payload bytes.
+Quotation/location validation is restricted to the passages actually supplied to the
+model. Groq requests use current `max_completion_tokens`, low reasoning effort, hidden
+reasoning, and a 2,048-token output cap; 413, 422, dependency, capacity and cancellation
+responses have explicit safe messages. These changes are fixture and public-source
+payload verified locally. A successful Groq generation and the hosted repair remain
+unverified until the backend is redeployed and the signed-in journey is repeated.
 
 Preserve working Pydantic schemas, retrieval adapters, evidence validation, curated
 demo sources, review decisions, and exports. Adapt framework/provider boundaries

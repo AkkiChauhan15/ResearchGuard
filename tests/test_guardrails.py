@@ -5,8 +5,17 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 from google.genai import errors, types
+import httpx
 from pydantic import ValidationError
-from researchguard.assessment import assess, call_model, extract, validate_assessment
+from researchguard.assessment import (
+    ASSESSMENT_PAYLOAD_MAX_BYTES,
+    _assessment_input_sources,
+    _assessment_payload,
+    assess,
+    call_model,
+    extract,
+    validate_assessment,
+)
 from researchguard.demo import demo_review
 from researchguard.export import export_review
 from researchguard.retrieval import OMISSION_PREFIX, classify_url, manual_record, pdf_text, pmc_record, product_record, pubmed_records, retrieve, search_pubmed, MANUAL, PRODUCT
@@ -70,6 +79,98 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(r.mode,'live')
         self.assertIsNone(r.claims[0].assessment)
         self.assertFalse(r.sources)
+
+    def test_long_full_text_is_bounded_without_changing_canonical_source(self):
+        review = create_review(ReviewInput(
+            text='Carvacrol reduced metabolic activity in breast cancer cells.',
+            intended_use='topic understanding',
+        ))
+        filler = 'Background material about an unrelated measurement. ' * 24
+        relevant = (
+            'The breast cancer cell experiment reported reduced metabolic activity '
+            'after carvacrol exposure. ' + filler
+        )
+        source = Source(
+            source_id='source_large_fixture',
+            retrieval_run_id='retrieval_large_fixture',
+            url='https://pmc.ncbi.nlm.nih.gov/articles/PMC12525765/',
+            category='pmc',
+            title='Large public full-text fixture',
+            pmcid='PMC12525765',
+            access_level='full text',
+            content_sha256='0' * 64,
+            passages=[
+                Passage(
+                    text=relevant if index == 52 else filler,
+                    location=f'XML body paragraph {index + 1}',
+                )
+                for index in range(53)
+            ],
+        )
+        original = source.model_dump_json()
+        payload = _assessment_payload(review, review.claims[0], [source])
+        packed = _assessment_input_sources([source], payload)
+
+        encoded = json.dumps(
+            {'task': 'assessment', 'data': payload},
+            ensure_ascii=False,
+            separators=(',', ':'),
+        ).encode()
+        self.assertLessEqual(len(encoded), ASSESSMENT_PAYLOAD_MAX_BYTES)
+        self.assertLess(len(payload['sources'][0]['passages']), len(source.passages))
+        self.assertTrue(payload['input_limitations'])
+        self.assertIn(
+            'XML body paragraph 53',
+            [passage['location'] for passage in payload['sources'][0]['passages']],
+        )
+        self.assertEqual(source.model_dump_json(), original)
+        for passage in packed[0].passages:
+            canonical = next(item for item in source.passages if item.location == passage.location)
+            self.assertIn(passage.text, canonical.text)
+
+    def test_assessment_validation_rejects_quote_from_omitted_full_text(self):
+        review = create_review(ReviewInput(
+            text='Target evidence was observed.',
+            intended_use='topic understanding',
+        ))
+        source = Source(
+            source_id='source_omission_fixture',
+            retrieval_run_id='retrieval_omission_fixture',
+            url='https://pmc.ncbi.nlm.nih.gov/articles/PMC1/',
+            category='pmc',
+            title='Bounded validation fixture',
+            pmcid='PMC1',
+            access_level='full text',
+            content_sha256='1' * 64,
+            passages=[
+                Passage(text='Target evidence was observed in the supplied excerpt.', location='Paragraph 1'),
+                *[
+                    Passage(text=('Unrelated filler text. ' * 90) + str(index), location=f'Paragraph {index}')
+                    for index in range(2, 30)
+                ],
+                Passage(text='A memorized sentence outside the model input.', location='Paragraph 99'),
+            ],
+        )
+        payload = _assessment_payload(review, review.claims[0], [source])
+        packed = _assessment_input_sources([source], payload)
+        omitted = source.passages[8]
+        self.assertNotIn(omitted.location, [item.location for item in packed[0].passages])
+        assessment = Assessment(
+            status='Partially supported',
+            evidence=[{
+                'source_id': source.source_id,
+                'passage': omitted.text,
+                'location': omitted.location,
+                'relationship': 'support',
+            }],
+            explanation='Fixture.',
+            context_mismatches=[],
+            limitations=[],
+            suggested_wording='Fixture.',
+            next_verification_step='Inspect the source.',
+        )
+        with self.assertRaisesRegex(ValueError, 'quotation or location'):
+            validate_assessment(assessment, packed)
     def test_demo_rejects_live_operations(self):
         for operation in [lambda:retrieve(self.review,self.claim.claim_id,'flux'),lambda:assess(self.review,self.claim.claim_id),lambda:extract(self.review),lambda:edit_claim(self.review,self.claim.claim_id,'A different claim')]:
             with self.assertRaises(ValueError):operation()
@@ -146,7 +247,7 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(config.response_mime_type,'application/json')
         self.assertIsNone(config.response_schema)
         self.assertEqual(config.response_json_schema,Assessment.model_json_schema())
-        self.assertEqual(config.max_output_tokens,4096)
+        self.assertEqual(config.max_output_tokens,2048)
         self.assertIsNone(config.tools)
         self.assertIsNone(config.cached_content)
         self.assertTrue(config.automatic_function_calling.disable)
@@ -200,13 +301,24 @@ class RuntimeTests(unittest.TestCase):
             with self.subTest(code=code),self.assertRaisesRegex(ValueError,text):
                 call_model(Assessment,'assessment',{})
 
+    @patch.dict(os.environ,gemini_env,clear=True)
+    @patch('researchguard.providers.gemini.genai.Client')
+    def test_gemini_transport_failure_is_safe(self,client_class):
+        client_class.return_value.models.generate_content.side_effect=httpx.ConnectError(
+            'provider host and secret must not leak'
+        )
+        with self.assertRaisesRegex(ValueError,'unreachable after bounded retries') as raised:
+            call_model(Assessment,'assessment',{})
+        self.assertNotIn('provider host',str(raised.exception))
+        self.assertNotIn('test-secret',str(raised.exception))
+
     @patch.dict(os.environ,{
         'LLM_PROVIDER':'gemini','GEMINI_API_KEY':'test-secret',
         'GEMINI_FREE_TIER_CONFIRMED':'true',
     },clear=True)
     def test_model_input_limit(self):
-        with self.assertRaisesRegex(ValueError,'120000-byte'):
-            call_model(Assessment,'assessment',{'passage':'x'*120001})
+        with self.assertRaisesRegex(ValueError,'20000-byte'):
+            call_model(Assessment,'assessment',{'passage':'x'*20001})
 
     @patch.dict(os.environ,{'LLM_PROVIDER':'gemini','GEMINI_API_KEY':'test-secret'},clear=True)
     def test_free_tier_confirmation_required(self):

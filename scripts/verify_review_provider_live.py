@@ -8,10 +8,10 @@ from __future__ import annotations
 import hashlib
 import json
 
-from researchguard.assessment import Extraction, call_model, validate_assessment
+from researchguard.assessment import AssessmentWithConfidence, Extraction, call_model, validate_assessment
 from researchguard.local_env import load_local_env
 from researchguard.providers import provider_status
-from researchguard.schemas import Assessment, Passage, Source
+from researchguard.schemas import Passage, Source
 
 
 def main() -> int:
@@ -62,7 +62,7 @@ def main() -> int:
 
         tasks_started += 1
         assessment, assessment_run = call_model(
-            Assessment,
+            AssessmentWithConfidence,
             "assessment",
             {
                 "claim": claim_text,

@@ -7,8 +7,8 @@
 > migration `202609250001` is applied and policy-tested locally but is not applied to
 > the hosted project. Google
 > OAuth, email delivery/recovery and the hosted two-user check remain unverified. The
-> earlier Gemini check reached `gemini-3.8-flash`, but generation was blocked by repeated
-> HTTP 503 high-demand responses. Structured evidence tasks now support explicitly
+> earlier Gemini checks returned HTTP 503, but a bounded public/synthetic extraction and
+> assessment completed with `gemini-3.8-flash` on 2026-09-26. Structured evidence tasks support explicitly
 > selected Groq, OpenRouter-free, or NVIDIA NIM providers instead of defaulting to
 > Gemini; their live evidence-generation path remains unverified locally. Vercel deployed
 > the latest checked commit, but its generated deployment URL is
@@ -52,6 +52,9 @@ reply remains labeled as unverified model output and separate from evidence revi
 - **Validated provenance:** reviews retain source IDs, URLs, access levels, hashes,
   locations, retrieval attempts, timestamps, requested/returned models and deterministic
   quotation checks.
+- **Bounded full-text assessment:** complete retrieved sources remain in the canonical
+  review while the model receives a disclosed, claim/context-ranked set of exact passage
+  excerpts. Quotes are accepted only from excerpts supplied to that request.
 - **Publication-notice checks:** PubMed correction/retraction relationships are parsed
   from the retrieved EFetch record. Crossref is queried only as a DOI fallback after no
   PMID-level notice is found. Failed checks remain visibly unconfirmed rather than clean.
@@ -79,7 +82,8 @@ reply remains labeled as unverified model output and separate from evidence revi
 This remains a local-first application with a reported free-tier deployment. The former
 OpenAI API adapter is disabled. Groq, OpenRouter-free and NVIDIA structured adapters
 have passed controlled fixture tests but **have not completed a local live evidence
-generation**. The retained Gemini adapter also has no successful live generation.
+generation**. The retained Gemini adapter completed one bounded public/synthetic live
+extraction and assessment on 2026-09-26; this does not verify hosted Groq behavior.
 Scientific accuracy has not been measured. See `PROGRESS.md` for actual results
 and incomplete phase gates; read `context.md` before continuing any phase. The exact
 free hosted setup is in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md). A successful host
@@ -216,7 +220,9 @@ are available at http://127.0.0.1:8000/api/docs while the server is running.
    at most three records per query. Inspect the search/access history and relevance.
 5. Use “Assess retrieved evidence” to call the configured model. With missing
    credentials, failed retrieval, or invalid output, no assessment is fabricated.
-   A quote membership check does not establish scientific entailment.
+   For long full text, the canonical review keeps every retrieved passage while the
+   request uses a disclosed bounded excerpt set. A quote membership check does not
+   establish scientific entailment.
 6. After a primary assessment, a signed-in user may explicitly request a second opinion
    from another available provider. This makes one additional provider call over the
    exact same source IDs. Each output is validated independently, and only differences

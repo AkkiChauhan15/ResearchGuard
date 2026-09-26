@@ -167,10 +167,25 @@ to another provider after an error. Groq is the code and example-configuration d
 Groq is restricted to `openai/gpt-oss-20b` and sends strict `json_schema` response
 format. OpenRouter is restricted to `openrouter/free`, sends the same strict schema and
 requires routed providers to support requested parameters. NVIDIA NIM is restricted to
-the checked-in Llama model IDs and sends `guided_json`. Every result is bounded to the
-same input/output and token limits as Gemini, reparsed through the canonical Pydantic
-type, and then subjected to original-span or source-ID/quotation/location validation.
+the checked-in Llama model IDs and sends `guided_json`. Compatible-provider serialized
+input is capped at 20,000 bytes and extraction/assessment output at 2,048 tokens. For an
+assessment, `assessment.py` first builds a model-only payload capped at 12,000 bytes.
+The canonical review still retains every retrieved passage; the model payload retains
+source identity, access and provenance fields but includes at most 16 exact passage
+excerpts ranked deterministically by claim/context term overlap, with at least one
+opportunity per readable source. Selection is disclosed as a retrieval aid and does not
+assert support. Results are reparsed through the canonical Pydantic type and then
+subjected to original-span or source-ID/quotation/location validation.
 Provider response bodies and keys never enter safe errors, exports or model provenance.
+
+Quotation validation for assessments uses a temporary Source view containing only the
+exact excerpts supplied to that request. A quotation present elsewhere in the canonical
+full text is rejected because the model did not receive it. Successful model-run
+validation records the number of selected versus available passages; exports still hold
+the complete canonical source. Groq uses current `max_completion_tokens`, low reasoning
+effort and hidden reasoning to conserve its Free Plan token allowance while preserving
+strict structured output. HTTP 413, 422, 424, 498 and 499 states are distinguished
+without exposing response bodies. No error causes a provider switch.
 
 `ModelRun` now records the provider as well as the requested model, returned model,
 prompt version, sources and validation. Its default `legacy_unspecified` value keeps

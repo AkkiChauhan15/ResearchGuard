@@ -8,6 +8,7 @@ from typing import Any
 
 from google import genai
 from google.genai import errors, types
+import httpx
 from pydantic import BaseModel, ValidationError
 
 from ..schemas import ModelRun
@@ -15,14 +16,14 @@ from .base import ProviderStatus
 
 
 PROVIDER_NAME = "gemini"
-PROMPT_VERSION = "researchguard-2026-09-25-gemini-v2"
+PROMPT_VERSION = "researchguard-2026-09-26-gemini-v3"
 DEFAULT_MODEL = "gemini-3.8-flash"
 # Verified against the official pricing table on 2026-09-18. Keep this narrow
 # and recheck current pricing before adding a model identifier.
 FREE_TIER_MODELS = frozenset({"gemini-3.8-flash"})
-MAX_INPUT_BYTES = 120_000
+MAX_INPUT_BYTES = 20_000
 MAX_OUTPUT_BYTES = 64_000
-MAX_OUTPUT_TOKENS = {"extraction": 2_048, "assessment": 4_096}
+MAX_OUTPUT_TOKENS = {"extraction": 2_048, "assessment": 2_048}
 REQUEST_TIMEOUT_MS = 60_000
 CONCURRENCY_WAIT_SECONDS = 5
 _CONCURRENCY = threading.BoundedSemaphore(2)
@@ -173,6 +174,10 @@ class GeminiProvider:
             )
         except errors.APIError as exc:
             raise ValueError(_api_error_message(exc.code)) from None
+        except httpx.TransportError:
+            raise ValueError(
+                "Gemini timed out or is unreachable after bounded retries. Retry later; no fallback was used."
+            ) from None
         except (ValidationError, json.JSONDecodeError, KeyError, TypeError, AttributeError):
             raise ValueError("Malformed Gemini output rejected; no result was produced.") from None
         finally:

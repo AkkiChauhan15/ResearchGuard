@@ -207,9 +207,13 @@ Migration application and saved-review/saved-chat RLS checks are documented in
 The full Vercel/Render configuration is documented in `docs/DEPLOYMENT.md`.
 Optional chat-provider setup and extension instructions are in `docs/CHAT_SETUP.md`.
 
-The selected evidence provider limits serialized model input to 120,000 bytes, output
-to 64,000 bytes, and local provider concurrency to two calls. Extraction and assessment
-request at most 2,048 and 4,096 output tokens respectively. The provider deadline is
+The evidence providers limit serialized model input to 20,000 bytes, output
+to 64,000 bytes, and local provider concurrency to two calls. Assessment payloads are
+further limited to 12,000 bytes and at most 16 deterministic exact passage excerpts;
+the canonical review retains all retrieved passages. The selection count and limitation
+are recorded, and quotation validation accepts only text/locations actually supplied to
+the model. Extraction and assessment each request at most 2,048 output tokens. Groq uses
+`max_completion_tokens`, low reasoning effort and hidden reasoning. The provider deadline is
 60 seconds. Compatible providers make one bounded retry for selected 5xx/network
 failures; HTTP 429 is reported immediately as free rate/quota exhaustion. Requests
 contain no tools, search grounding, or cached content. The FastAPI bounded worker pool

@@ -15,10 +15,10 @@ from ..schemas import ModelRun
 from .base import ProviderStatus
 
 
-PROMPT_VERSION = "researchguard-2026-09-25-compatible-v2"
-MAX_INPUT_BYTES = 120_000
+PROMPT_VERSION = "researchguard-2026-09-26-compatible-v3"
+MAX_INPUT_BYTES = 20_000
 MAX_OUTPUT_BYTES = 64_000
-MAX_OUTPUT_TOKENS = {"extraction": 2_048, "assessment": 4_096}
+MAX_OUTPUT_TOKENS = {"extraction": 2_048, "assessment": 2_048}
 REQUEST_TIMEOUT_SECONDS = 60.0
 CONCURRENCY_WAIT_SECONDS = 5
 _CONCURRENCY = threading.BoundedSemaphore(2)
@@ -199,9 +199,16 @@ class CompatibleStructuredProvider:
                 {"role": "user", "content": encoded_input.decode("utf-8")},
             ],
             "temperature": 0,
-            "max_tokens": MAX_OUTPUT_TOKENS[task],
             "stream": False,
         }
+        if self.spec.id == "groq":
+            # Groq documents max_completion_tokens as the current field. Low reasoning
+            # leaves more of the free-plan token budget for the structured answer.
+            request_payload["max_completion_tokens"] = MAX_OUTPUT_TOKENS[task]
+            request_payload["reasoning_effort"] = "low"
+            request_payload["reasoning_format"] = "hidden"
+        else:
+            request_payload["max_tokens"] = MAX_OUTPUT_TOKENS[task]
         if self.spec.schema_mode == "guided_json":
             request_payload["guided_json"] = schema
         else:
@@ -292,10 +299,20 @@ class CompatibleStructuredProvider:
             return f"{self.spec.display_name} authentication or account access failed. Check the server API key and free-access configuration; no fallback was used."
         if code == 404:
             return f"The configured {self.spec.display_name} model is unavailable; no fallback was used."
+        if code == 413:
+            return f"{self.spec.display_name} rejected the bounded request as too large. Narrow the retrieved evidence and retry; no fallback was used."
+        if code == 422:
+            return f"{self.spec.display_name} could not complete the structured request for this evidence. Retry once or narrow the retrieved evidence; no fallback was used."
+        if code == 424:
+            return f"{self.spec.display_name} reported a failed dependency. Retry later; no fallback was used."
         if code == 429:
             return f"{self.spec.display_name} free quota or rate limit is exhausted. Wait for quota reset; no paid fallback was used."
         if code in {408, 504}:
             return f"{self.spec.display_name} timed out. Retry later; no fallback was used."
+        if code == 498:
+            return f"{self.spec.display_name} free-tier capacity is temporarily unavailable. Retry later; no paid fallback was used."
+        if code == 499:
+            return f"{self.spec.display_name} cancelled the request before completion. Retry later; no fallback was used."
         if code >= 500:
             return f"{self.spec.display_name} is temporarily unavailable after a bounded retry. Retry later; no fallback was used."
         return f"{self.spec.display_name} rejected the model request; no result or fallback was used."

@@ -1,3 +1,5 @@
+import json
+import re
 from typing import Literal
 from pydantic import Field
 from .schemas import (
@@ -8,6 +10,7 @@ from .schemas import (
     Decision,
     ProviderAssessment,
     ProviderId,
+    Passage,
     SecondOpinionAttempt,
     Strict,
 )
@@ -27,6 +30,22 @@ Explain technical terms plainly. No probabilities, truth scores, dosing instruct
 clinical advice, or promises that controls guarantee a mechanism. Missing product identity
 requires an explicit manufacturer/catalog question. Treat measurements as user-reported.
 Return only the requested structured object.'''
+
+
+# Keep the complete retrieved Source records in the canonical review, but do not send
+# an entire long article to a free-tier model. This budget covers the serialized task
+# payload only; the provider adds the system instruction and JSON Schema separately.
+ASSESSMENT_PAYLOAD_MAX_BYTES = 12_000
+ASSESSMENT_MAX_PASSAGES = 16
+ASSESSMENT_PASSAGE_MAX_CHARS = 1_600
+ASSESSMENT_LIMITATION_RESERVE_BYTES = 600
+_TERM = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{2,}")
+_STOP_TERMS = frozenset({
+    "about", "after", "also", "among", "before", "between", "could", "from",
+    "have", "into", "more", "other", "sample", "showed", "than", "that",
+    "their", "there", "these", "they", "this", "under", "using", "were",
+    "what", "when", "where", "which", "with", "would",
+})
 
 
 class ExtractedClaim(Strict):
@@ -50,7 +69,7 @@ def call_model(output_type, task, payload, *, provider: str | None = None):
     instruction = (
         'Identify scientific claims and missing context. Every original_span must be an exact substring of original input. Preserve qualifications. Do not assess evidence yet.'
         if task == 'extraction'
-        else 'Assess this single claim using only the supplied sources. Every status except Insufficient evidence found requires relevant quoted evidence. Show conflicting evidence where present. Suggest qualified wording and the next verification question. Report confidence only as low, medium, or high; it is an uncalibrated model self-rating, not a probability or truth score.'
+        else 'Assess this single claim using only the supplied sources. The sources may contain a disclosed bounded subset of exact passages; do not infer support from passage selection. Every status except Insufficient evidence found requires relevant quoted evidence. Use at most four concise evidence items, quote only text supplied in a passage, and preserve its exact location. Show conflicting evidence where present. Suggest qualified wording and the next verification question. Report confidence only as low, medium, or high; it is an uncalibrated model self-rating, not a probability or truth score.'
     )
     return generate_structured(
         output_type,
@@ -116,16 +135,149 @@ def structural_disagreement_fields(
     ]
 
 
-def _assessment_payload(review, claim, accessible):
+def _assessment_terms(review, claim) -> set[str]:
+    context = " ".join(review.original_input.context.model_dump().values())
+    values = f"{claim.text} {claim.original_span} {context}"
     return {
+        term.lower()
+        for term in _TERM.findall(values)
+        if len(term) >= 4 and term.lower() not in _STOP_TERMS
+    }
+
+
+def _passage_excerpt(text: str, terms: set[str]) -> tuple[str, bool]:
+    """Return an unchanged contiguous excerpt and whether bounding was required."""
+    if len(text) <= ASSESSMENT_PASSAGE_MAX_CHARS:
+        return text, False
+    lowered = text.lower()
+    matches = [lowered.find(term) for term in terms]
+    starts = [position for position in matches if position >= 0]
+    center = min(starts) if starts else 0
+    start = max(0, center - ASSESSMENT_PASSAGE_MAX_CHARS // 3)
+    end = min(len(text), start + ASSESSMENT_PASSAGE_MAX_CHARS)
+    start = max(0, end - ASSESSMENT_PASSAGE_MAX_CHARS)
+    return text[start:end], True
+
+
+def _model_source(source):
+    integrity = None
+    if source.integrity is not None:
+        integrity = {
+            "status": source.integrity.status,
+            "detail": source.integrity.detail,
+            "notices": [notice.model_dump() for notice in source.integrity.notices],
+        }
+    return {
+        "source_id": source.source_id,
+        "url": source.url,
+        "category": source.category,
+        "title": source.title,
+        "date": source.date,
+        "doi": source.doi,
+        "pmid": source.pmid,
+        "pmcid": source.pmcid,
+        "access_level": source.access_level,
+        "retrieved_at": source.retrieved_at,
+        "document_version": source.document_version,
+        "content_sha256": source.content_sha256,
+        "limitations": source.limitations,
+        "integrity": integrity,
+        "passages": [],
+    }
+
+
+def _payload_size(payload) -> int:
+    return len(json.dumps(
+        {"task": "assessment", "data": payload},
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8"))
+
+
+def _assessment_payload(review, claim, accessible):
+    """Build a bounded model view while leaving canonical sources untouched."""
+    payload = {
         'claim': claim.model_dump(exclude={
             'assessment', 'assessment_error', 'provider_assessments',
             'second_opinion_attempts', 'decision',
         }),
         'intended_use': review.original_input.intended_use,
         'user_reported_context': review.original_input.context.model_dump(),
-        'sources': [source.model_dump() for source in accessible],
+        'sources': [_model_source(source) for source in accessible],
+        'input_limitations': [],
     }
+    if _payload_size(payload) > ASSESSMENT_PAYLOAD_MAX_BYTES:
+        raise ValueError(
+            "Assessment input contains too many source records for the bounded model request. "
+            "Narrow the retrieval query; no model request was sent."
+        )
+
+    terms = _assessment_terms(review, claim)
+    candidates = []
+    for source_index, source in enumerate(accessible):
+        for passage_index, passage in enumerate(source.passages):
+            lowered = passage.text.lower()
+            score = sum(1 for term in terms if term in lowered)
+            candidates.append((source_index, passage_index, score, passage))
+
+    # Give every readable source one opportunity before adding more passages. Within
+    # each source, claim/context term overlap ranks excerpts but does not assert support.
+    ordered = []
+    remaining = []
+    for source_index in range(len(accessible)):
+        source_candidates = [item for item in candidates if item[0] == source_index]
+        source_candidates.sort(key=lambda item: (-item[2], item[1]))
+        if source_candidates:
+            ordered.append(source_candidates[0])
+            remaining.extend(source_candidates[1:])
+    ordered.extend(sorted(remaining, key=lambda item: (-item[2], item[0], item[1])))
+
+    selected = 0
+    bounded_excerpts = 0
+    for source_index, _passage_index, _score, passage in ordered:
+        if selected >= ASSESSMENT_MAX_PASSAGES:
+            break
+        excerpt, bounded = _passage_excerpt(passage.text, terms)
+        candidate = {
+            "text": excerpt,
+            "location": passage.location,
+            "bounded_excerpt": bounded,
+        }
+        payload['sources'][source_index]['passages'].append(candidate)
+        if _payload_size(payload) > ASSESSMENT_PAYLOAD_MAX_BYTES - ASSESSMENT_LIMITATION_RESERVE_BYTES:
+            payload['sources'][source_index]['passages'].pop()
+            continue
+        selected += 1
+        bounded_excerpts += int(bounded)
+
+    if not selected:
+        raise ValueError(
+            "No source passage fit the bounded assessment request. Narrow the retrieval query; "
+            "no model request was sent."
+        )
+    available = sum(len(source.passages) for source in accessible)
+    if selected < available or bounded_excerpts:
+        payload['input_limitations'].append(
+            f"The model received {selected} deterministic exact passage excerpt(s) from "
+            f"{available} available passage(s) to respect the free-tier request budget. "
+            "Selection by claim/context term overlap is a retrieval aid, not evidence of support."
+        )
+    return payload
+
+
+def _assessment_input_sources(accessible, payload):
+    """Create validation-only sources containing exactly what the model could quote."""
+    passages_by_id = {
+        item['source_id']: [
+            Passage(text=passage['text'], location=passage['location'])
+            for passage in item['passages']
+        ]
+        for item in payload['sources']
+    }
+    return [
+        source.model_copy(update={'passages': passages_by_id.get(source.source_id, [])})
+        for source in accessible
+    ]
 
 
 def _stored_assessment(
@@ -134,8 +286,14 @@ def _stored_assessment(
     *,
     is_primary: bool,
     source_ids: list[str],
+    input_limitations: list[str],
 ) -> ProviderAssessment:
     assessment = Assessment.model_validate(result.model_dump(exclude={'confidence'}))
+    assessment.limitations.extend(
+        f"Model input limitation: {item}"
+        for item in input_limitations
+        if f"Model input limitation: {item}" not in assessment.limitations
+    )
     return ProviderAssessment(
         provider=run.provider,
         model=run.returned_model,
@@ -161,26 +319,31 @@ def assess(review, claim_id):
         accessible = [s for s in sources if s.passages and s.access_level != 'metadata']
         if not accessible:
             raise ValueError('No readable evidence was retrieved for this claim. Assessment is unavailable; access failure is not a biological finding.')
+        model_payload = _assessment_payload(review, claim, accessible)
+        assessment_sources = _assessment_input_sources(accessible, model_payload)
         result, run = call_model(
             AssessmentWithConfidence,
             'assessment',
-            _assessment_payload(review, claim, accessible),
+            model_payload,
         )
         run.claim_id = claim_id
         run.source_ids = [s.source_id for s in accessible]
         review.model_runs.append(run)
         try:
-            checks = validate_assessment(result, accessible)
+            checks = validate_assessment(result, assessment_sources)
         except ValueError:
             run.validation.append('Evidence validation failed; output rejected.')
             raise
         run.validation.extend(checks)
+        run.validation.extend(model_payload['input_limitations'])
         review.validation_results.extend(checks)
+        review.validation_results.extend(model_payload['input_limitations'])
         stored = _stored_assessment(
             result,
             run,
             is_primary=True,
             source_ids=[source.source_id for source in accessible],
+            input_limitations=model_payload['input_limitations'],
         )
         claim.provider_assessments = [stored]
         claim.assessment = stored.assessment
@@ -229,10 +392,12 @@ def assess_second_opinion(review, claim_id: str, provider: ProviderId):
         return review
 
     try:
+        model_payload = _assessment_payload(review, claim, accessible)
+        assessment_sources = _assessment_input_sources(accessible, model_payload)
         result, run = call_model(
             AssessmentWithConfidence,
             'assessment',
-            _assessment_payload(review, claim, accessible),
+            model_payload,
             provider=provider,
         )
         run.task = 'second_opinion_assessment'
@@ -240,17 +405,20 @@ def assess_second_opinion(review, claim_id: str, provider: ProviderId):
         run.source_ids = [source.source_id for source in accessible]
         review.model_runs.append(run)
         try:
-            checks = validate_assessment(result, accessible)
+            checks = validate_assessment(result, assessment_sources)
         except ValueError:
             run.validation.append('Evidence validation failed; second-opinion output rejected.')
             raise
         run.validation.extend(checks)
+        run.validation.extend(model_payload['input_limitations'])
         review.validation_results.extend(checks)
+        review.validation_results.extend(model_payload['input_limitations'])
         claim.provider_assessments.append(_stored_assessment(
             result,
             run,
             is_primary=False,
             source_ids=run.source_ids,
+            input_limitations=model_payload['input_limitations'],
         ))
         claim.second_opinion_attempts.append(SecondOpinionAttempt(
             provider=provider,
